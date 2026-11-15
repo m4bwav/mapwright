@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261114-5 · 2026-11-14 · 0.3.0: read and trace
+- because: user request (Step D.5), T-20261114-4, L-013, L-014, L-015
+- files: scripts/mpw_read.py (new), scripts/mpw.py, tests/test_read.py (new), tests/roundtrip_trace.py (new), skills/mapwright/SKILL.md, README.md, plugin.json, .claude-plugin/plugin.json
+- `read` reports a picture's size, colour class shares and dominant colours, runs tesseract when present (else every text field is "not sure" with the reason), fits an affine georeference from 3 or more `--gcp` points with residuals and metres per pixel, and writes a world file. `read --prompt` gives an agent a checklist for its own vision; `read --answers` checks those answers (boxes, swatch colours, scale bar against the GCP fit). `trace` turns a colour class or colour into polygons with holes or centre lines, simplified by Douglas-Peucker, in pixels or georeferenced. PNG is decoded with zlib; Pillow is optional for other formats. `doctor` probes Pillow and tesseract. Plugin version files caught up from 0.1.0 to 0.3.0.
+
 ### C-20261114-4 · 2026-11-14 · 0.2.0 (unreleased): render, label, legend, style, serve, sheet; label bars in check
 - because: user request (Step D.4), T-20261114-3, L-010, L-011, L-012
 - files: scripts/mpw_render.py (new), scripts/mpw.py, tests/test_mpw.py, skills/mapwright/SKILL.md, README.md

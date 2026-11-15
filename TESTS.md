@@ -6,6 +6,15 @@ Entry shape: `### T-YYYYMMDD-n · date · harness · env · passed/total`, then 
 
 ## Runs
 
+### T-20261114-4 · 2026-11-14 · unittest (tests/) + tests/roundtrip_trace.py · Windows, Python 3.14.6 · 81/81 in 13 s
+- New (20, tests/test_read.py): PNG decoder (RGB round trip, all five filters, RGBA over white, palette at 1 bit, grey at 2 bit, 16 bit); rings with a hole and an island, diagonal pixels kept apart; Douglas-Peucker; thinning to one centre line; affine from 6 exact GCPs recovers the transform within 1e-9 and rms under 1 mm; 3 points flagged as proving nothing, a 0.001 deg error shows as tens of metres, collinear points refused; world file round trip within 1e-9; read without tesseract says "not sure" in text, printed scale, scale, georeference, legend and names; a fake tesseract's TSV gives words, a low-confidence count and the 1:50,000 scale; GCPs write a .pgw and the right metres per pixel; `--answers` gives ok, mismatch, dropped and not sure verdicts and catches a scale bar 50 percent off; trace georeferenced by GCPs and by `--world auto` agree; a coloured river traces to one line; raster round trip bar.
+- Round trip, stdlib land raster (topographic, 512 px, no labels), seeds 7, 11, 23 at 4000 cells, distances in raster px (1 px = 1.95 km): recipe coast to traced median 0.26-0.29, p95 0.75-2.96; traced to recipe coast median 0.49-0.52, p95 0.66-0.67. Bar in the unit test: median <= 1 px and p95 <= 4 px both ways.
+- Round trip, full headless Chrome render (1000 px, labels, roads, rivers, legend), same seeds, coast plus lake rings: recipe to traced median 0.57-0.61 px, p95 2.98-7.82 px; traced to recipe median 1.06-1.23 px, p95 20.6-47.7 px. The traced-to-recipe tail is real non-water ink (label halos, legend, scale bar, north arrow over the sea), not coast error. Not a unit test: needs a browser.
+- Timings: trace of a 512 px raster 0.10-0.17 s; of a 1000 px PNG 0.8-1.2 s; Chrome render 1.1-1.6 s.
+- OCR not measured on real maps: tesseract absent on this machine; the OCR path is covered by a fake only.
+- led to: L-013, L-014, L-015
+
+
 ### T-20261114-3 · 2026-11-14 · unittest (tests/) · Windows, Python 3.14.6 · 61/61 in 15 s
 - New (11): render SVG byte-identical twice in every style, LF only, all layers present; bad style and bad extension refused; river width varies with flow; label bars pass and catch a forced overlap and an edge cut; OCR bar is None (skipped) without tesseract; shipped width table at least as wide as Georgia, Arial, Palatino and Times hmtx for letters, digits and punctuation; legend lists only drawn symbols; style list; serve binds 127.0.0.1, serves page and SVG, 404 elsewhere; sheet by styles and by seeds; PNG (1000 px wide) and PDF through headless Chrome; child map labels pass.
 - Timings, `render` seed 7 (Ryzen 9 9900X, stdlib, 512 px raster): 16k cells 0.71-0.86 s, 65k cells 1.05-1.08 s; land raster is 95+ percent of it; placement under 0.02 s. PNG end to end at 65k 2.3 s (browser start included). SVG size 16k: topographic 401 KB, satellite 298 KB, ink-and-parchment 207 KB, atlas 197 KB, star-chart 123 KB, blueprint 110 KB; 65k: topographic 457 KB, ink-and-parchment 259 KB, atlas 252 KB.

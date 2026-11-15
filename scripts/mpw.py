@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """mapwright CLI: read, write, measure and project maps with the standard library.
 
-Subcommands: doctor, explain, inspect, convert, measure, project, gen, zoom, check, names,
-render, label, legend, style, serve, sheet.
+Subcommands: doctor, explain, inspect, convert, measure, project, read, trace, gen, zoom, check,
+names, render, label, legend, style, serve, sheet.
 Optional extras (numpy, shapely, pyproj, GDAL, geographiclib) are probed, never
 imported at the top level.
 """
@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -86,6 +86,8 @@ def cmd_doctor(a):
             "pyproj": _probe_module("pyproj"),
             "gdal": gdal or (shutil.which("gdalinfo") and "gdalinfo on PATH"),
             "geographiclib": _probe_module("geographiclib"),
+            "pillow": _probe_module("PIL"),
+            "tesseract": shutil.which("tesseract") and "tesseract on PATH",
         },
     }
     if a.json:
@@ -1124,6 +1126,61 @@ def cmd_project(a):
 
 
 # ---------------------------------------------------------------- generator
+# ---------------------------------------------------------------- read / trace
+def _read():
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import mpw_read
+    return mpw_read
+
+
+def _gcps(R, a):
+    try:
+        return [R.parse_gcp(g) for g in (a.gcp or [])]
+    except ValueError as e:
+        die(str(e))
+
+
+def cmd_read(a):
+    R = _read()
+    if not os.path.isfile(a.image):
+        die("no such image: " + a.image)
+    g = _gcps(R, a)
+    try:
+        if a.prompt:
+            out = R.agent_prompt(a.image)
+        elif a.answers:
+            with open(a.answers, encoding="utf-8") as f:
+                out = R.validate_answers(a.image, json.load(f), g, a.units)
+        else:
+            out = R.read_report(a.image, g, a.units, write_world=a.world)
+    except ValueError as e:
+        die(str(e))
+    print(R.dumps(out))
+
+
+def cmd_trace(a):
+    R = _read()
+    if not os.path.isfile(a.image):
+        die("no such image: " + a.image)
+    g = _gcps(R, a)
+    world = a.world
+    if world == "auto":
+        world = R.world_file_path(a.image)
+        world = world if os.path.isfile(world) else None
+    try:
+        colour = R.parse_hex(a.colour) if a.colour else None
+        fc_ = R.trace(a.image, a.cls, colour, a.tol, a.mode, a.epsilon, a.min_area, a.min_length, a.clean,
+                      g, a.units, world, a.fill_holes)
+    except ValueError as e:
+        die(str(e))
+    if a.out:
+        with open(a.out, "w", encoding="utf-8", newline="\n") as f:
+            json.dump(fc_, f)
+        print(json.dumps(dict(fc_["mapwright"], out=a.out)))
+    else:
+        print(json.dumps(fc_))
+
+
 def _gen():
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import mpw_gen
@@ -1425,6 +1482,34 @@ def build_parser():
     s.add_argument("--list", action="store_true")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_project)
+
+    s = sub.add_parser("read", help="what a map picture shows: size, colour classes, text (OCR), georeference from GCPs")
+    s.add_argument("image")
+    s.add_argument("--gcp", action="append", help="px,py,lon,lat (pixel from top-left corner); 3 or more fit an affine")
+    s.add_argument("--units", choices=["deg", "m"], default="deg", help="GCP map units: degrees or metres")
+    s.add_argument("--world", action="store_true", help="write a world file beside the image from the GCP fit")
+    s.add_argument("--prompt", action="store_true", help="print the checklist for an agent's own vision to fill in")
+    s.add_argument("--answers", help="JSON answers from --prompt to check against the picture")
+    s.set_defaults(fn=cmd_read)
+
+    s = sub.add_parser("trace", help="map picture to GeoJSON polygons or centre lines by colour class or colour")
+    s.add_argument("image")
+    s.add_argument("--class", dest="cls", default="water",
+                   choices=["water", "vegetation", "relief", "light", "ink", "grey", "other"])
+    s.add_argument("--colour", help="#rrggbb to trace instead of a class")
+    s.add_argument("--tol", type=float, default=40.0, help="RGB distance for --colour")
+    s.add_argument("--mode", choices=["polygons", "lines"], default="polygons")
+    s.add_argument("--epsilon", type=float, default=1.0, help="Douglas-Peucker tolerance, pixels")
+    s.add_argument("--min-area", type=float, default=16.0, help="drop rings smaller than this, pixels")
+    s.add_argument("--min-length", type=float, default=8.0, help="drop lines shorter than this, pixels")
+    s.add_argument("--fill-holes", type=float, default=0.0,
+                   help="fill holes smaller than this, pixels (label halos over the sea)")
+    s.add_argument("--clean", type=int, default=1, help="3x3 majority filter passes before tracing")
+    s.add_argument("--gcp", action="append", help="px,py,lon,lat; output georeferenced by an affine fit")
+    s.add_argument("--units", choices=["deg", "m"], default="deg")
+    s.add_argument("--world", help="world file to georeference with ('auto' looks beside the image)")
+    s.add_argument("-o", "--out", help="write GeoJSON here (default stdout)")
+    s.set_defaults(fn=cmd_trace)
 
     s = sub.add_parser("gen", help="generate a world or a child region as a recipe folder")
     gs = s.add_subparsers(dest="what", required=True)

@@ -3,7 +3,7 @@ name: mapwright
 description: "Cartography for real, fantasy and sci-fi worlds: read, write, find and generate maps of places. Inspects and converts GeoJSON, GPX, KML, shapefiles, GeoPackage, MBTiles and heightmap PNGs, measures geodesic distance, bearing, area and scale, projects points (Web Mercator, Mollweide, Lambert equal-area, Robinson, Equal Earth), explains map terms, and grows invented worlds as recipe folders. Use whenever the user wants a map of a place or world: 'what is in this GPX', 'convert this KML to GeoJSON', 'how far is it from A to B', 'which projection for a world map', 'make a fantasy continent map', 'star map for my sci-fi setting'. Also 'refresh mapwright'. Not for code or repository maps (evergreen-map), charts of data on a map such as choropleths (chartwright) or 3D models of places (polywright)."
 license: MIT
 metadata:
-  version: 0.1.0
+  version: 0.3.0
 ---
 
 # mapwright
@@ -30,7 +30,12 @@ Four verbs, below. Pick one, then read only the reference that step names.
 
 `MPW inspect <file> [--json]` reads GeoJSON, GPX, KML/KMZ, shapefiles (.shp with .dbf and .prj), dBASE, PNG (16-bit heightmaps and .pgw world files), GeoPackage and MBTiles. It prints feature counts by geometry type, the extent, property names and the CRS when the file states one. Report "CRS not stated" plainly; never guess it. A world file holds the centre of the top-left pixel, so the extent is half a pixel wider than the naive sum.
 
-Reading a map picture (a scan, a screenshot, a fantasy map image) is a vision task: [references/reading-map-pictures.md](../../references/reading-map-pictures.md).
+Reading a map picture (a scan, a screenshot, a fantasy map image): [references/reading-map-pictures.md](../../references/reading-map-pictures.md). The script measures; your vision finds; neither invents.
+
+- `MPW read <image>`: size, colour class shares (water, vegetation, relief, light, ink, grey; plain RGB rules listed in the output), dominant colours, and text by tesseract when it is on PATH. Without tesseract every text field (names, legend, printed scale) is `"not sure"` with the reason. PNG needs nothing; other formats need Pillow.
+- `MPW read <image> --gcp px,py,lon,lat` (3 or more; pixels from the top-left corner) fits an affine with residuals in metres and metres per pixel at the centre; `--world` writes the world file beside the image. Three points fit exactly and prove nothing: get a 4th. `--units m` for projected coordinates.
+- `MPW read <image> --prompt` prints a checklist for your own vision (schema, "not sure" rules, a box for every item). Fill it, save it, then `MPW read <image> --answers a.json [--gcp ...]`: boxes outside the picture or missing are dropped, legend colours are checked against the swatch pixels, a scale bar is checked against the GCP fit (10 percent). Report only what comes back ok or unchecked, and say which.
+- `MPW trace <image> [--class water | --colour #rrggbb --tol 40] [--mode polygons|lines] [--epsilon 1] [-o out.geojson]`: masks by colour, then polygons with holes (pixel-edge contours) or centre lines (thinning), simplified by Douglas-Peucker. Coordinates in pixels, or georeferenced with `--gcp` or `--world auto`. Labels and legend boxes over the sea show as holes; `--fill-holes N` fills holes under N px but also fills islands that small.
 
 ## Write: convert, measure, project
 
