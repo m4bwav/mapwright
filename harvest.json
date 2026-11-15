@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "beats": ["mapmaking"],
+  "targets": [
+    {"kind": "reddit", "sub": "mapmaking", "weight": "core", "keep": "process posts and breakdowns that name tools and steps"},
+    {"kind": "reddit", "sub": "FantasyMaps", "weight": "core", "keep": "hand-drawn and digital fantasy map methods; note the AI flair"},
+    {"kind": "reddit", "sub": "worldbuilding", "keep": "map, geography and climate posts only"},
+    {"kind": "reddit", "sub": "dndmaps", "weight": "low", "keep": "world and region maps with method; read only (bans AI maps)"},
+    {"kind": "reddit", "sub": "imaginarymaps", "weight": "low", "keep": "invented-map styles and techniques"},
+    {"kind": "reddit", "sub": "proceduralgeneration", "keep": "terrain, erosion, tectonics, climate, rivers, Voronoi and hex maps with code"},
+    {"kind": "reddit", "sub": "cartography", "keep": "design rules: type, relief, colour, generalisation"},
+    {"kind": "reddit", "sub": "gis", "weight": "low", "keep": "cartographic design and labelling"},
+    {"kind": "reddit", "sub": "MapPorn", "weight": "low", "keep": "real-world maps whose design is discussed"},
+    {"kind": "reddit", "sub": "QGIS", "weight": "low", "keep": "styling, print layouts, hillshade"},
+    {"kind": "hn", "query": "maps", "keep": "map generators, projections, cartography tools, points > 50"},
+    {"kind": "hn", "query": "cartography", "keep": "cartography write-ups and tools"},
+    {"kind": "rss", "url": "https://www.redblobgames.com/blog/posts.xml", "keep": "polygon maps, hex grids, map generation articles"},
+    {"kind": "rss", "url": "https://azgaar.wordpress.com/feed/", "keep": "Fantasy Map Generator method posts"},
+    {"kind": "github", "url": "https://github.com/Azgaar/Fantasy-Map-Generator", "keep": "releases and generator features"},
+    {"kind": "web", "url": "https://www.cartographersguild.com/", "keep": "tutorials and critique threads"},
+    {"kind": "rss", "url": "https://nacis.org/feed/", "keep": "cartographic design practice"},
+    {"kind": "web", "url": "https://github.com/topics/map-generator", "keep": "new open map generators"}
+  ]
+}

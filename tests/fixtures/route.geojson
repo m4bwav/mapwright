@@ -1,0 +1,6 @@
+{"type": "FeatureCollection", "features": [
+ {"type": "Feature", "geometry": {"type": "Point", "coordinates": [-0.1275862, 51.5072178, 11.0]}, "properties": {"name": "Start", "desc": "Trafalgar"}},
+ {"type": "Feature", "geometry": {"type": "LineString", "coordinates": [[13.4049540, 52.5200066], [13.3777041, 52.5162746]]}, "properties": {"name": "Plan", "gpx": "rte"}},
+ {"type": "Feature", "geometry": {"type": "LineString", "coordinates": [[-0.1275862, 51.5072178], [-0.1246254, 51.5007292], [-0.1195113, 51.5033635]]}, "properties": {"name": "Walk", "gpx": "trk"}},
+ {"type": "Feature", "geometry": {"type": "MultiLineString", "coordinates": [[[2.2944813, 48.8583701], [2.2950275, 48.8606111]], [[2.3522219, 48.856614], [2.3376441, 48.8606111]]]}, "properties": {"name": "Paris", "gpx": "trk"}}
+]}

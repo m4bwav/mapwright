@@ -1,0 +1,44 @@
+{
+ "N": 65536,
+ "t": {
+  "mesh": 0.2,
+  "plates_uplift": 2.975,
+  "priority_flood": 0.032,
+  "flow_acc": 0.015,
+  "total_gen": 3.227
+ },
+ "check": {
+  "land": 19790,
+  "river_cells": 534,
+  "lake_cells": 1176,
+  "not_downhill": 0,
+  "no_outlet": 0,
+  "splits": 0,
+  "receiver_not_neighbour": 0
+ },
+ "digest": "a921f2e4f2a5acc1e696552e1b7ee09f905eace32a4ffc6d028a600be3a8c8a8",
+ "svg_sha": "d69e06985ba6698d6c4b538f130f5a36459976bd9e75bb886fa088c9b8c654ac",
+ "render": {
+  "render_s": 0.778,
+  "raster_hillshade_s": 0.735,
+  "svg_bytes": 188616,
+  "png_b64_bytes": 90960,
+  "coast_segs": 2461
+ },
+ "zoom": {
+  "child_cells": 16384,
+  "child_spacing": 1.953125,
+  "window": [
+   750.0,
+   750.0,
+   1000.0,
+   1000.0
+  ],
+  "child_coast_segs": 524,
+  "dev_mean_parent_sp": 0.148,
+  "dev_p95": 0.388,
+  "dev_max": 0.533,
+  "frac_within_1_parent_sp": 1.0,
+  "zoom_s": 0.426
+ }
+}

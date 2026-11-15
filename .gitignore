@@ -1,0 +1,6 @@
+ask/*/server.json
+prototypes/*.png
+prototypes/*.svg
+__pycache__/
+*.pyc
+*.map/out/

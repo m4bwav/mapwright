@@ -1,0 +1,134 @@
+# mapwright: the mapmaking plugin continue prompt
+
+Work from `D:\m4bwa\Claude\Projects\Ai\mapwright`. The name is a working name; changing it is a small ruling, decide and flag it in the log. One thing to weigh: the evergreen plugin already owns "map this repo" (codemaps), so the skill descriptions here must say cartography, places and worlds, and never claim codebase maps.
+
+## Goal
+
+Build an evergreen plugin that can read, write, find and generate maps. Mark's words: "an evergreen mapmaking plugin for reading, writing, finding, and generating life-like and fantasy maps and for science fiction".
+
+Four verbs, three kinds of world, one knowledge base:
+
+- **Read**: open a map and say what is on it. Geodata files (vector, raster, elevation, tiles, routes), map pictures (a scan, a screenshot, a hand drawing: legend, scale, place names, features, and where on Earth it is when it is a real place), and the files of map tools and games (world generators, tile editors, virtual tabletops, sector files).
+- **Write**: a map is data first (features, heights, names, a style and a seed in one recipe folder), then rendered: a print map with legend, scale bar, north arrow and placed labels; a page a person can pan and zoom, served from this machine on the loopback address only; and exports for game engines, tabletops, 3D and print.
+- **Find**: existing maps and map data for a place, a time or a subject, with the licence and the credit line recorded beside every file: open world data, elevation and sea depth, historical scans, planetary and star data.
+- **Generate**: worlds from a seed, the same at every zoom: world, region, city, building or dungeon, battle map; and for space: galaxy or sector, star system, planet, ship or station deck plan.
+
+The three kinds:
+
+- **Life-like**: real places from real data, and invented places that obey physical geography (plates, erosion, rivers, climate, biomes, where people settle) and can be drawn as a topographic sheet, an atlas page or a satellite view.
+- **Fantasy**: hand-drawn styles (ink and parchment, atlas, painted), regional and world maps, cities, dungeons and gridded battle maps.
+- **Science fiction**: star maps from real catalogues and invented ones, sector and hyperlane maps, system diagrams, planet maps that wrap a sphere, deck plans, cities of the future and megastructures.
+
+The work ends when the four verbs pass their evals across the three kinds, the plugin is released and installed, its beat and harvest targets exist, and every book Mark has supplied is distilled. Then HANDOFF.md says `Status: finished`.
+
+## 1. Load state
+
+1. Read `ai-docs/HANDOFF.md`, the end of `ai-docs/log.md`, and `ai-docs/notes/books.md`. Compare HANDOFF.md's age with run logs and commits, and trust the newer evidence.
+2. If HANDOFF.md says the build has not started, also read, before designing anything:
+   - the `evergreen-new` skill and one sibling's layout (`Ai/fractalwright` or `Ai/polywright`) for the house shape: hub SKILL.md, one stdlib-first script, references loaded on demand, LEARNINGS, evals with a baseline, `harvest.json`, README banner, SECURITY.md, wiki;
+   - the "Mapmaking plugin" entry in `Ai/plugin-backlog/new-plugins.md`;
+   - the plugins this one calls and must not duplicate: polywright-capture (`pw.py place`: a real place from open map data and elevation to a 3D scene and a print tile), polywright-print, fractalwright (fBm terrain, heightmap measures), threewright (globes and terrain in the browser), chartwright (data charts; decide with its knowledge base who owns choropleths and other statistical maps), historywright-pack (`places.geojson`, period checks), pixelwright (tiles and sprites), comfyui-gen (image models, both hosts), artwright-judge (blind pair ranking), cinewright (map shots in films), ludowright (level and world design), the engine plugins (unity-agent, roblox-agent, minewright), askwright (decision pages), everscout (beats), readwright (books);
+   - Mark's own work the plugin should serve and reuse: the galaxy generator at `Ai/labs/UniverseGenerator`, his seeded random and name generator packages (see `Ai/package-backlog`), the Arvum Electrum colony sim, SpaceDeckBuilder2, the Starfinder game (sf2e skills), his films, and the tabletop and lorewright ideas in the plugin backlog.
+3. Standing rules are not repeated here. Their sources: `C:/Users/m4bwa/.claude/CLAUDE.md` (pull requests, merging, releases, attribution, worktrees, file links, wrap-up), the chainwright SKILL.md, and the memory index (package size budget, local servers over Artifacts, estimates in agent time, small rulings, tests always allowed, the model download floor, Krea 2 provenance, Meta-gated models, kill by PID only, queue on a busy GPU, README banner, contact details in the vault profile).
+
+## 2. Read answers
+
+For any askwright set HANDOFF.md names, run `ask.py read`, act on answered questions and close them. "Not sure" and unanswered questions stay open; never fill them with the guess.
+
+## 3. Order of work
+
+This is one chain. The session that runs this prompt is the master: it hands each batch (a research topic, a book, a generator test, a build step in its own worktree) to a subagent, keeps only the short report and the file pointers, and hands on to a fresh session only when its own context runs low. Take the next item HANDOFF.md names, then the next step below. Update HANDOFF.md at each milestone.
+
+### Step A. Research, written to `references/` and `kb/` with a source on every claim
+
+One subagent per topic, in parallel:
+
+1. **Cartography and its history**: from the oldest surviving maps through portolans, Mercator, national surveys and web maps; the conventions a reader expects (scale, legend, orientation, grid, inset) and the design rules: visual hierarchy, figure and ground, generalisation by scale, Bertin's visual variables, colour schemes that survive colour blindness.
+2. **Projections and coordinates**: datums, coordinate reference systems and their codes, the common projections and what each one keeps and breaks, picking one for an area and purpose, Tissot's indicatrix, the antimeridian and the poles, projections for invented worlds and for other bodies.
+3. **Geodata formats and tools**: every common vector, raster, elevation, tile and route format; which can be read with the Python standard library alone and which need a probed extra (GDAL, PROJ, QGIS, a headless browser); spatial operations a map needs (distance, area, buffer, simplify, clip, overlay) and their traps.
+4. **Sources and their terms**: open world data, place-name lookups, elevation and sea depth, land cover, borders past and present, historical map scans, planetary and lunar data, star and exoplanet catalogues. For each: the licence, the credit line, the usage policy (request rates, bulk rules, what tile and geocoding servers forbid), and which commercial services may never be scraped.
+5. **Relief and labels**: hillshade, contours, hypsometric tints, hachures, Imhof and Tanaka; label placement rules for points, lines and areas, type choice, curved text, collision handling; what automated placement gets right and wrong.
+6. **Reading maps from pictures**: what vision models read reliably off a map and what they invent, legend and scale reading, place-name reading, georeferencing with control points, tracing features into vectors, telling a real map from a made-up one.
+7. **Making land that looks real**: plates and mountain belts, erosion (hydraulic, thermal), drainage basins and river networks, lakes, coasts, wind, rain shadows, climate classes, biomes, soils, where settlements, roads and borders go; the published generators and write-ups (polygon maps on Voronoi cells, erosion-based fantasy maps, plate simulators, the open browser world generators) and what each does well.
+8. **Fantasy map craft**: the hand-drawn tradition and its symbols (mountains, forests, coasts, compass roses, cartouches), the styles readers recognise, the tools hobbyists use and their file formats, the usual mistakes (rivers that split, square mountain walls, deserts beside rain forests), and scale by purpose: world, region, city, dungeon, battle map.
+9. **Cities, buildings and dungeons**: street network growth, blocks and lots, walls and districts, city generators; floor plans; dungeon methods (space partition, cellular caves, wave function collapse, graph first then rooms); hex and square grids; battle map conventions for virtual tabletops (pixels per square, wall and light export formats).
+10. **Science fiction maps**: real star positions in 3D and honest ways to flatten them, sector and subsector hex maps and their text formats, jump routes and hyperlane graphs, galaxy shapes and densities, system diagrams (to scale against schematic, travel-cost maps), generating planets that are not Earth (tidally locked, ice, ocean, gas giant bands, cratered moons), sphere-wrapping textures without a seam or a pinched pole, deck plans and station layouts, megastructures (rings, cylinders, shells) and how to map their inside surfaces.
+11. **Maps and image models**: what diffusion and edit models can do for a map and what they cannot (garbled labels, rivers running uphill, no scale); the route that works: geometry from code, a clean render, a style pass held by a control image, labels set in code afterwards; map style LoRAs and the licence class of each model; satellite-style and aerial looks.
+12. **Maps for games, film and print**: tilemap and level formats, engine terrain and heightmap imports, fog of war and minimaps, navigation meshes; animated route and zoom shots for film; print sizes, resolution, bleed and folding; terrain tiles for 3D print through polywright.
+13. **Tools and prior art**: existing map skills, plugins and MCP servers (do not duplicate one), the open map renderers and style languages, the hobby map programs, and the licence of every tool, symbol set, brush pack and font the plugin might read, call or ship.
+
+### Step B. Beat and harvest targets
+
+- Create an everscout beat for mapmaking and procedural worlds with everscout-beat: verified sources (cartography and worldbuilding communities, procedural generation forums, feeds, GitHub), entities, a question bank and a literature list. Many hand-drawn map communities are hostile to AI art: default to read-only unless Mark says otherwise. Findings land in LEARNINGS for review, never straight in the skill.
+- Add `harvest.json` to the plugin so the technique harvest (`Ai/technique-harvest`, `evergreen.py harvest targets --json`) picks it up.
+
+### Step C. Design note, then decisions
+
+Write `ai-docs/plans/design.md`. It must settle, by measurement and not by taste:
+
+- **The world recipe**: one folder per map holding the features, heights, names, style, seed, projection, sources with licences, and the tool version; enough to redraw the map and to zoom into any part of it. Use open formats a GIS program can open where one fits.
+- **The render core.** Test the candidates against each other on speed, install size, label quality and how many outputs one code path serves: SVG written by the standard library, a browser map library driven by a headless browser (the same style then serves stills and the interactive page), and a GIS program run headless where it is already installed. Keep the install small; a heavy dependency is optional and probed, never required.
+- **The generator core**: which terrain and river method, at what cell counts, in what time, and how child maps inherit from the parent so a coast does not move between zoom levels.
+- **Skills**: one hub, or a hub with siblings by verb or by kind of world; let the catalogue lint and the trigger evals decide.
+- **Scope edges**: what stays with the neighbours listed in section 1 and what moves here.
+
+Open choices go on an askwright page (name, public or private repo, which of his projects to serve first, how much AI styling he wants, which paid or keyed services are allowed); carry on with the guesses meanwhile.
+
+### Step D. Build the script and the pages, each command proven before the next
+
+One command-line script with a short name no sibling uses (check `mw.py`, `pw.py`, `fw.py`, `sw.py` and the rest first). Commands, in this order:
+
+- `doctor`, `explain` (a term, a projection, a symbol, a method), `inspect` (any supported file: what it holds, extent, coordinate system, licence if recorded), `convert`, `measure` (distance, area, bearing, scale).
+- `read` (a map picture: legend, scale, names, features, a georeference when it can be earned), `trace` (picture to vectors).
+- `find` (place, time or subject in; candidate maps and data out with licence and credit), `fetch` (polite, cached, within each source's policy, credit file written beside the data).
+- `render` (recipe to print map or picture), `label`, `legend`, `style` (named looks: topographic, atlas, satellite, ink and parchment, blueprint, star chart), `serve` (the interactive page), `sheet` (variations side by side for a pick).
+- `gen world`, `gen region`, `gen city`, `gen dungeon`, `gen battle`; `gen sector`, `gen system`, `gen planet`, `gen deck`; `zoom` (child map from a parent), `names` (place names from a sound pattern, kept consistent across a world).
+- `check` (the proof bars below, run on any recipe), `export` (engine heightmap and tilemap, tabletop format with walls and lights, a sphere texture, a mesh hand-off to polywright, print-ready PDF or PNG).
+- `aistyle` (optional: the style pass through comfyui-gen, geometry held, labels set afterwards).
+
+Proof bars, numbers and not opinions:
+
+- **Reading**: a round trip through each format pair keeps coordinates within a stated tolerance. Distances, areas and bearings match published values for known places. Each projection's forward and inverse agree, and an equal-area projection keeps area ratios.
+- **Reading pictures**: on a set of maps with known answers, the share of place names, legend entries and the scale read correctly is measured and stated, and the tool says "not sure" instead of inventing.
+- **Finding**: every result carries a licence and a credit line; a fetch never exceeds the source's stated rate; nothing is fetched from a source on the forbidden list.
+- **Generating land**: every river runs downhill to a sea or a lake and none splits outside a marked delta; each lake has at most one outlet; climate follows latitude, wind and mountains by the table in the references; the same seed gives the same files twice; a child map's coast and rivers match its parent within a stated tolerance.
+- **Cities and dungeons**: every street, room and door can be reached; a battle map's grid lands on whole pixels; the tabletop export loads with its walls in place.
+- **Space**: catalogue stars sit at their published distances; a route graph is connected; a planet texture shows no seam where its edges meet and no pinch at the poles; every room on a deck plan can be reached.
+- **Labels**: none overlap, none are cut by the edge, and every one is read back by text recognition from the final picture, the AI-styled one included.
+- **AI style pass**: the coast and rivers before and after overlap above a stated share.
+- Pictures a person will judge go through artwright-judge blind pairs first, then to Mark on an askwright page.
+
+### Step E. First real uses
+
+Before release, make one map Mark would keep in each kind, picked from his own projects (HANDOFF.md names them once he has answered): a life-like one, a fantasy one and a science fiction one. Each goes through `check`, then to him on an askwright page. What fails becomes a test.
+
+### Step F. Skill, evals, release
+
+Hub skill (and siblings only if the design note says so), eval suite with a no-skill baseline (evergreen-test) including decoys for codemaps, data charts and 3D places so the neighbours keep their prompts, worth check (evergreen-worth), README with banner, SECURITY.md, wiki (wikiwright), then repository, release and install as the standing rules say. Add the plugin to `Ai/plugin-backlog/existing-plugins.md` when released and keep its `new-plugins.md` entry's status line current.
+
+### Step G. Books
+
+`ai-docs/notes/books.md` lists what Mark could supply, with a status per title. When one turns up on disk (`Ai/technique-harvest/scripts/book_harvest.py find`), a reader subagent distills it with readwright under `Ai/technique-harvest/ai-docs/books/BUILD-BRIEF.md`; only tested rules enter the skill. Free online titles are fetched and read without waiting.
+
+## 4. Stop before anything that needs the owner
+
+Put the question on an askwright page, record the set in HANDOFF.md, and carry on with other work. These wait on Mark:
+
+- making the repository public, and the final name;
+- any account, API key or paid plan for a map, tile, imagery or geocoding service;
+- sending his home address, or any private address or location of his family, to an outside service (a geocoder, a routing service, a tile request that reveals it); work on such places from data already on disk;
+- bulk downloads: a whole-planet extract, a global elevation set, anything that would break the model download floor's free-space rule;
+- installing or running downloaded third-party programs (a desktop GIS, the hobby map programs, world generators); reading their docs and file formats is free;
+- shipping or redistributing symbol sets, brushes, fonts, textures or data whose licence is not clearly open; maps of published settings (novels, games, tabletop worlds) are found and described for his private use and never copied into the plugin, its examples or its tests;
+- anything the "tests always allowed" grant excludes: disk space, security, legal questions, renders that tie up a GPU for hours;
+- any unattended or scheduled run;
+- publishing to a package registry or the Claude directory;
+- buying books.
+
+## 5. Stop early
+
+If HANDOFF.md says `Status: finished`, or nothing can move without Mark, say what waits and stop. Waiting on a review of pictures never ends a session while research, tests, evals or books remain.
+
+## 6. Hand over
+
+Run the wrap-up (evergreen-wrapup, if installed; a failure is reported and never blocks), update `ai-docs/log.md` and `ai-docs/HANDOFF.md`, and only then print the start command: `Execute D:/m4bwa/Claude/Projects/Ai/mapwright/ai-docs/plans/mapwright-continue-prompt.md`, with the folder to start in (`D:/m4bwa/Claude/Projects/Ai`). State goes in HANDOFF.md, never in this file.

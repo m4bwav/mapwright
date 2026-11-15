@@ -1,0 +1,181 @@
+{
+  "askwright": 1,
+  "id": "mapwright-setup-1",
+  "title": "mapwright: name, repo and first maps",
+  "context": "",
+  "asked_by": "mapwright master session",
+  "product": "Claude Code",
+  "session": "mapwright chain 1",
+  "working_dir": "D:\\m4bwa\\Claude\\Projects\\Ai\\mapwright",
+  "media_roots": [],
+  "questions": [
+    {
+      "id": "name",
+      "kind": "choice",
+      "title": "Plugin name",
+      "question": "What should the mapmaking plugin be called?",
+      "background": "Working name is mapwright. Evergreen already owns 'map this repo' (codemaps), so the word map may pull code prompts toward it.",
+      "why": "The name goes into the repo, skill names and trigger descriptions; changing it after release is costly.",
+      "options": [
+        {
+          "id": "mapwright",
+          "label": "mapwright"
+        },
+        {
+          "id": "cartowright",
+          "label": "cartowright"
+        },
+        {
+          "id": "atlaswright",
+          "label": "atlaswright"
+        }
+      ],
+      "guess": {
+        "option": "mapwright",
+        "why": "Plain and findable; the trigger evals will include codemap decoys to keep the prompts apart.",
+        "confidence": "low"
+      },
+      "created": "2026-11-14T17:07:02-06:00",
+      "updated": "2026-11-14T19:22:13-06:00",
+      "status": "closed"
+    },
+    {
+      "id": "repo",
+      "kind": "choice",
+      "title": "Public or private",
+      "question": "Should the repository start public or private?",
+      "background": "Most sibling plugins (polywright, fractalwright) went public at their first release.",
+      "why": "Decides whether research and test maps must be checked for licences before the first push.",
+      "options": [
+        {
+          "id": "private-then-public",
+          "label": "Private until the first release, then public"
+        },
+        {
+          "id": "public-now",
+          "label": "Public from the first commit"
+        },
+        {
+          "id": "private",
+          "label": "Keep it private"
+        }
+      ],
+      "guess": {
+        "option": "private-then-public",
+        "why": "Same path as the other wright plugins.",
+        "confidence": "high"
+      },
+      "created": "2026-11-14T17:07:02-06:00",
+      "updated": "2026-11-14T19:22:13-06:00",
+      "status": "closed"
+    },
+    {
+      "id": "first-maps",
+      "kind": "text",
+      "title": "First three maps",
+      "question": "Which of your projects should get the first life-like, fantasy and sci-fi maps?",
+      "background": "Step E makes one keeper map per kind before release.",
+      "why": "These become the plugin's first real uses and its tests.",
+      "guess": {
+        "text": "Life-like: a real place you name (not home). Fantasy: a region for a story or the Starfinder game. Sci-fi: a sector map from UniverseGenerator output.",
+        "why": "Reuses work already on disk.",
+        "confidence": "low"
+      },
+      "created": "2026-11-14T17:07:02-06:00",
+      "updated": "2026-11-14T19:22:13-06:00",
+      "status": "closed"
+    },
+    {
+      "id": "aistyle",
+      "kind": "choice",
+      "title": "AI styling",
+      "question": "How much should maps lean on AI image styling?",
+      "background": "Image models garble labels and move rivers; the plan draws geometry in code, then optionally restyles it with a control image and sets labels afterwards.",
+      "why": "Decides whether aistyle is built early or left last.",
+      "options": [
+        {
+          "id": "optional",
+          "label": "Code render by default, AI pass optional"
+        },
+        {
+          "id": "heavy",
+          "label": "AI pass on most fantasy maps"
+        },
+        {
+          "id": "none",
+          "label": "No AI styling at all"
+        }
+      ],
+      "guess": {
+        "option": "optional",
+        "why": "Keeps every map checkable; the AI pass is extra polish.",
+        "confidence": "high"
+      },
+      "created": "2026-11-14T17:07:02-06:00",
+      "updated": "2026-11-14T19:22:13-06:00",
+      "status": "closed"
+    },
+    {
+      "id": "paid",
+      "kind": "choice",
+      "title": "Keyed services",
+      "question": "May the plugin use any keyed or paid map services?",
+      "background": "Open data (OpenStreetMap, Natural Earth, Copernicus DEM, Gaia) covers most needs. Mapbox, MapTiler and Google need keys and have strict terms.",
+      "why": "Decides whether find/fetch ever asks for an API key.",
+      "options": [
+        {
+          "id": "open-only",
+          "label": "Open data only"
+        },
+        {
+          "id": "free-keys",
+          "label": "Free-tier keys allowed, I will set them up"
+        },
+        {
+          "id": "paid",
+          "label": "Paid services allowed"
+        }
+      ],
+      "guess": {
+        "option": "open-only",
+        "why": "No accounts, no bills, simpler licences.",
+        "confidence": "high"
+      },
+      "created": "2026-11-14T17:07:02-06:00",
+      "updated": "2026-11-14T19:22:13-06:00",
+      "status": "closed"
+    },
+    {
+      "id": "beat",
+      "kind": "choice",
+      "title": "Scout engagement",
+      "question": "Should the mapmaking everscout beat stay read-only?",
+      "background": "Many hand-drawn map communities ban or dislike AI art.",
+      "why": "Read-only means no drafted comments to makers on that beat.",
+      "options": [
+        {
+          "id": "read-only",
+          "label": "Read-only"
+        },
+        {
+          "id": "engage-where-allowed",
+          "label": "Ask makers where the community's rules allow it"
+        }
+      ],
+      "guess": {
+        "option": "read-only",
+        "why": "Low risk; can open up later.",
+        "confidence": "low"
+      },
+      "created": "2026-11-14T17:07:02-06:00",
+      "updated": "2026-11-14T19:22:13-06:00",
+      "status": "closed"
+    }
+  ],
+  "created": "2026-11-14T17:07:01-06:00",
+  "updated": "2026-11-14T19:22:13-06:00",
+  "project": {
+    "name": "mapwright",
+    "path": "D:/m4bwa/Claude/Projects/Ai/mapwright"
+  }
+}

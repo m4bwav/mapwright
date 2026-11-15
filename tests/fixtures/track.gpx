@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="hand" xmlns="http://www.topografix.com/GPX/1/1">
+  <wpt lat="47.5951518" lon="-122.3316393"><ele>56.0</ele><name>Cafe</name></wpt>
+  <trk><name>Loop</name><trkseg>
+    <trkpt lat="47.6062095" lon="-122.3320708"><ele>53.5</ele></trkpt>
+    <trkpt lat="47.6097199" lon="-122.3421290"><ele>40.1</ele></trkpt>
+    <trkpt lat="47.6205063" lon="-122.3492774"><ele>60.0</ele></trkpt>
+  </trkseg></trk>
+</gpx>

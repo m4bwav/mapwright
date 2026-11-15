@@ -1,0 +1,65 @@
+{
+  "skill": "mapwright",
+  "cases": [
+    {
+      "id": "t1",
+      "kind": "trigger",
+      "prompt": "What's in this GPX file from my hike? tests/fixtures/track.gpx",
+      "expect": "mpw.py inspect runs"
+    },
+    {
+      "id": "t2",
+      "kind": "trigger",
+      "prompt": "Convert my KML of campsites to GeoJSON",
+      "expect": "mpw.py convert runs"
+    },
+    {
+      "id": "t3",
+      "kind": "trigger",
+      "prompt": "How far is Wellington from Salamanca along the earth, and what bearing?",
+      "expect": "mpw.py measure distance; 19959.679 km"
+    },
+    {
+      "id": "t4",
+      "kind": "trigger",
+      "prompt": "Which projection should I use for a world map comparing country areas?",
+      "expect": "equal-area named (Equal Earth or Mollweide), not Web Mercator"
+    },
+    {
+      "id": "t5",
+      "kind": "trigger",
+      "prompt": "Make me a fantasy continent map for my campaign",
+      "expect": "skill fires; generate section (gen not built in 0.1.0, says so)"
+    },
+    {
+      "id": "d1",
+      "kind": "decoy",
+      "prompt": "map this repo for me",
+      "expect": "evergreen-map, not mapwright"
+    },
+    {
+      "id": "d2",
+      "kind": "decoy",
+      "prompt": "choropleth of sales by state",
+      "expect": "chartwright"
+    },
+    {
+      "id": "d3",
+      "kind": "decoy",
+      "prompt": "3D model of my town for printing",
+      "expect": "polywright-capture"
+    },
+    {
+      "id": "d4",
+      "kind": "decoy",
+      "prompt": "pixel art tileset for a dungeon",
+      "expect": "pixelwright"
+    },
+    {
+      "id": "d5",
+      "kind": "decoy",
+      "prompt": "level design for my dungeon crawler",
+      "expect": "ludowright"
+    }
+  ]
+}

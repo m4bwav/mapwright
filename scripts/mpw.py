@@ -1,0 +1,1142 @@
+#!/usr/bin/env python3
+"""mapwright CLI: read, write, measure and project maps with the standard library.
+
+Subcommands: doctor, explain, inspect, convert, measure, project.
+Optional extras (numpy, shapely, pyproj, GDAL, geographiclib) are probed, never
+imported at the top level.
+"""
+import argparse
+import importlib
+import importlib.util
+import json
+import math
+import os
+import shutil
+import sqlite3
+import struct
+import sys
+import xml.etree.ElementTree as ET
+import zipfile
+import zlib
+
+VERSION = "0.1.0"
+
+# ---------------------------------------------------------------- ellipsoids
+ELLIPSOIDS = {
+    "WGS84": (6378137.0, 1 / 298.257223563),
+    "GRS80": (6378137.0, 1 / 298.257222101),
+    "clarke1866": (6378206.4, 1 / 294.978698214),
+}
+WEB_R = 6378137.0
+
+
+def die(msg, code=2):
+    print("mpw: " + msg, file=sys.stderr)
+    sys.exit(code)
+
+
+# ---------------------------------------------------------------- doctor
+def _probe_module(name):
+    spec = importlib.util.find_spec(name)
+    if spec is None:
+        return None
+    try:
+        mod = importlib.import_module(name)
+        return getattr(mod, "__version__", "present")
+    except Exception as e:  # broken install
+        return "broken: %s" % e.__class__.__name__
+
+
+
+def find_browser():
+    cands = []
+    if os.name == "nt":
+        for base in (os.environ.get("PROGRAMFILES", r"C:\Program Files"),
+                     os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)"),
+                     os.environ.get("LOCALAPPDATA", "")):
+            if not base:
+                continue
+            cands += [os.path.join(base, "Google", "Chrome", "Application", "chrome.exe"),
+                      os.path.join(base, "Microsoft", "Edge", "Application", "msedge.exe")]
+    elif sys.platform == "darwin":
+        cands += ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+                  "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"]
+    for c in cands:
+        if os.path.isfile(c):
+            return c
+    for n in ("google-chrome", "chromium", "chromium-browser", "chrome", "msedge", "microsoft-edge"):
+        p = shutil.which(n)
+        if p:
+            return p
+    return None
+
+
+def cmd_doctor(a):
+    gdal = _probe_module("osgeo")
+    info = {
+        "mapwright": VERSION,
+        "python": sys.version.split()[0],
+        "python_ok": sys.version_info >= (3, 9),
+        "browser": find_browser(),
+        "sqlite": sqlite3.sqlite_version,
+        "extras": {
+            "numpy": _probe_module("numpy"),
+            "shapely": _probe_module("shapely"),
+            "pyproj": _probe_module("pyproj"),
+            "gdal": gdal or (shutil.which("gdalinfo") and "gdalinfo on PATH"),
+            "geographiclib": _probe_module("geographiclib"),
+        },
+    }
+    if a.json:
+        print(json.dumps(info, indent=2))
+        return
+    print("mapwright %s" % VERSION)
+    print("python        %s %s" % (info["python"], "ok" if info["python_ok"] else "(need 3.9+)"))
+    print("sqlite        %s" % info["sqlite"])
+    print("browser       %s" % (info["browser"] or "none found (PNG/PDF export needs Chrome or Edge)"))
+    for k, v in info["extras"].items():
+        print("%-14s%s" % (k, v or "absent (optional)"))
+
+
+# ---------------------------------------------------------------- explain
+GLOSSARY = {
+    "web-mercator": ("EPSG:3857. Spherical Mercator on the WGS84 radius used by web tiles. Conformal, "
+                     "area grows as sec^2(lat); cut at about 85.0511 deg. Never use it for area.",
+                     "references/projections.md"),
+    "mercator": ("Conformal cylindrical projection: angles and local shapes kept, area wildly "
+                 "inflated toward the poles. Good for navigation (rhumb lines are straight).",
+                 "references/projections.md"),
+    "equirectangular": ("Plate carree when the standard parallel is 0: x = lon, y = lat scaled. "
+                        "Neither equal-area nor conformal; the usual texture layout for globes.",
+                        "references/projections.md"),
+    "mollweide": ("Equal-area pseudocylindrical world projection, elliptical outline; meridians are "
+                  "ellipses. Needs a Newton step on the auxiliary angle. Common for whole-sky maps.",
+                  "references/projections.md"),
+    "laea": ("Lambert azimuthal equal-area: true area, directions true from the centre. Good for "
+             "continents and polar maps (EPSG:3035 is Europe's).", "references/projections.md"),
+    "robinson": ("Compromise world projection from a 5-degree table; keeps nothing exactly, looks "
+                 "right. Poles are lines 0.5322 of the equator.", "references/projections.md"),
+    "equal-earth": ("Equal-area pseudocylindrical projection (2018), a free equal-area alternative "
+                    "to Robinson.", "references/projections.md"),
+    "utm": ("Universal Transverse Mercator: 60 zones 6 deg wide, k0 = 0.9996, false easting "
+            "500 000 m. Do not draw data spanning several zones in one zone.", "references/projections.md"),
+    "tissot": ("Tissot's indicatrix: the ellipse a small circle becomes; shows a projection's "
+               "local scale and angle distortion.", "references/projections.md"),
+    "geodesic": ("Shortest path on the ellipsoid. mpw.py uses Vincenty's inverse formula, with "
+                 "geographiclib (Karney) when installed or near antipodes.", "references/projections.md"),
+    "rhumb-line": ("Loxodrome: a line of constant bearing; straight on Mercator, longer than the "
+                   "geodesic.", "references/projections.md"),
+    "authalic-sphere": ("The sphere with the same surface area as the ellipsoid (WGS84 R = 6371007.2 m). "
+                        "With authalic latitude it maps ellipsoid area exactly.", "references/projections.md"),
+    "scale": ("Representative fraction 1:N: 1 unit on the map is N on the ground. 1:50000 means "
+              "1 cm = 500 m. Large scale = small N = more detail.", "references/cartography-design.md"),
+    "contour": ("Line of equal elevation. Interval stays constant on one map; every fifth is an "
+                "index contour, drawn heavier and labelled uphill.", "references/relief-and-labels.md"),
+    "hillshade": ("Relief shading from a light, usually NW at 315 deg azimuth, 45 deg altitude, "
+                  "from the slope and aspect of a heightmap.", "references/relief-and-labels.md"),
+    "hachures": ("Short strokes drawn down the slope, denser and heavier where steeper; the "
+                 "pre-contour way to show relief.", "references/relief-and-labels.md"),
+    "geojson": ("RFC 7946: JSON features in WGS84 lon/lat, CCW outer rings, no CRS member.",
+                "references/formats-and-tools.md"),
+    "world-file": ("Six-line sidecar (.pgw, .wld): pixel size x, two rotations, negative pixel "
+                   "size y, x and y of the top-left pixel centre. Holds no CRS.",
+                   "references/formats-and-tools.md"),
+    "priority-flood": ("Depression filling in O(n log n): flood from the edges with a priority "
+                       "queue, raise pits to their spill height (plus epsilon so water drains).",
+                       "references/realistic-land.md"),
+    "voronoi": ("Cells closest to each seed point; the dual of the Delaunay triangulation. The "
+                "mesh mapwright generators grow land on.", "references/realistic-land.md"),
+}
+ALIASES = {"epsg:3857": "web-mercator", "3857": "web-mercator", "webmercator": "web-mercator",
+           "plate-carree": "equirectangular", "lambert-azimuthal-equal-area": "laea",
+           "indicatrix": "tissot", "great-circle": "geodesic", "loxodrome": "rhumb-line",
+           "pgw": "world-file", "representative-fraction": "scale"}
+
+
+def cmd_explain(a):
+    key = a.term.strip().lower().replace(" ", "-").replace("_", "-")
+    key = ALIASES.get(key, key)
+    if key == "list":
+        print("\n".join(sorted(GLOSSARY)))
+        return
+    if key not in GLOSSARY:
+        print("Not in the built-in glossary: %r. Try `mpw.py explain list`, or search "
+              "references/sources-and-terms.md and references/projections.md." % a.term)
+        sys.exit(1)
+    text, ref = GLOSSARY[key]
+    print("%s: %s\nMore: %s" % (key, text, ref))
+
+
+# ---------------------------------------------------------------- safe XML
+def parse_xml(data):
+    if isinstance(data, bytes):
+        head = data[:4096].decode("utf-8", "replace")
+    else:
+        head = data[:4096]
+    if "<!ENTITY" in head or "<!DOCTYPE" in head:
+        die("refusing XML with a DOCTYPE or ENTITY (entity-expansion risk)")
+    return ET.fromstring(data)
+
+
+def local(tag):
+    return tag.rsplit("}", 1)[-1]
+
+
+# ---------------------------------------------------------------- GeoJSON model
+def fc(features):
+    return {"type": "FeatureCollection", "features": features}
+
+
+def feat(geom, props=None):
+    return {"type": "Feature", "geometry": geom, "properties": props or {}}
+
+
+def read_geojson(path):
+    with open(path, encoding="utf-8-sig") as f:
+        d = json.load(f)
+    if d.get("type") == "FeatureCollection":
+        return d
+    if d.get("type") == "Feature":
+        return fc([d])
+    return fc([feat(d)])
+
+
+def iter_coords(geom):
+    t = geom["type"] if geom else None
+    if t is None:
+        return
+    if t == "GeometryCollection":
+        for g in geom["geometries"]:
+            yield from iter_coords(g)
+        return
+    c = geom["coordinates"]
+    depth = {"Point": 0, "MultiPoint": 1, "LineString": 1, "MultiLineString": 2,
+             "Polygon": 2, "MultiPolygon": 3}[t]
+
+    def walk(x, d):
+        if d == 0:
+            yield x
+        else:
+            for y in x:
+                yield from walk(y, d - 1)
+    yield from walk(c, depth)
+
+
+def extent(features):
+    xs, ys = [], []
+    for f in features:
+        for p in iter_coords(f.get("geometry")):
+            xs.append(p[0])
+            ys.append(p[1])
+    if not xs:
+        return None
+    return [min(xs), min(ys), max(xs), max(ys)]
+
+
+# ---------------------------------------------------------------- GPX
+GPX_NS = "http://www.topografix.com/GPX/1/1"
+
+
+def _pt(el):
+    p = [float(el.get("lon")), float(el.get("lat"))]
+    for ch in el:
+        if local(ch.tag) == "ele" and ch.text:
+            p.append(float(ch.text))
+    return p
+
+
+def _meta(el):
+    props = {}
+    for ch in el:
+        if local(ch.tag) in ("name", "desc", "type", "time") and ch.text:
+            props[local(ch.tag)] = ch.text
+    return props
+
+
+def read_gpx(path):
+    with open(path, "rb") as f:
+        root = parse_xml(f.read())
+    out = []
+    for el in root:
+        t = local(el.tag)
+        if t == "wpt":
+            out.append(feat({"type": "Point", "coordinates": _pt(el)}, dict(_meta(el), gpx="wpt")))
+        elif t == "rte":
+            pts = [_pt(p) for p in el if local(p.tag) == "rtept"]
+            out.append(feat({"type": "LineString", "coordinates": pts}, dict(_meta(el), gpx="rte")))
+        elif t == "trk":
+            segs = [[_pt(p) for p in s if local(p.tag) == "trkpt"] for s in el if local(s.tag) == "trkseg"]
+            props = dict(_meta(el), gpx="trk")
+            if len(segs) == 1:
+                out.append(feat({"type": "LineString", "coordinates": segs[0]}, props))
+            else:
+                out.append(feat({"type": "MultiLineString", "coordinates": segs}, props))
+    return fc(out)
+
+
+def _fmt(v):
+    return repr(float(v))
+
+
+def write_gpx(collection, path):
+    ET.register_namespace("", GPX_NS)
+    root = ET.Element("{%s}gpx" % GPX_NS, version="1.1", creator="mapwright mpw.py " + VERSION)
+    skipped = 0
+
+    def add_meta(el, props):
+        for k in ("name", "desc", "type"):
+            if k in props and props[k] is not None:
+                ET.SubElement(el, "{%s}%s" % (GPX_NS, k)).text = str(props[k])
+
+    def add_pt(parent, tag, p):
+        e = ET.SubElement(parent, "{%s}%s" % (GPX_NS, tag), lat=_fmt(p[1]), lon=_fmt(p[0]))
+        if len(p) > 2:
+            ET.SubElement(e, "{%s}ele" % GPX_NS).text = _fmt(p[2])
+        return e
+
+    wpts, rtes, trks = [], [], []
+    for f in collection["features"]:
+        g, props = f.get("geometry"), f.get("properties") or {}
+        if not g:
+            continue
+        t = g["type"]
+        if t == "Point":
+            wpts.append((g["coordinates"], props))
+        elif t == "MultiPoint":
+            wpts += [(c, props) for c in g["coordinates"]]
+        elif t == "LineString":
+            (rtes if props.get("gpx") == "rte" else trks).append(([g["coordinates"]], props))
+        elif t == "MultiLineString":
+            trks.append((g["coordinates"], props))
+        else:
+            skipped += 1
+    for c, props in wpts:  # GPX 1.1 schema order: wpt, rte, trk
+        add_meta(add_pt(root, "wpt", c), props)
+    for segs, props in rtes:
+        r = ET.SubElement(root, "{%s}rte" % GPX_NS)
+        add_meta(r, props)
+        for p in segs[0]:
+            add_pt(r, "rtept", p)
+    for segs, props in trks:
+        t = ET.SubElement(root, "{%s}trk" % GPX_NS)
+        add_meta(t, props)
+        for s in segs:
+            se = ET.SubElement(t, "{%s}trkseg" % GPX_NS)
+            for p in s:
+                add_pt(se, "trkpt", p)
+    ET.ElementTree(root).write(path, encoding="utf-8", xml_declaration=True)
+    return skipped
+
+
+# ---------------------------------------------------------------- KML
+KML_NS = "http://www.opengis.net/kml/2.2"
+
+
+def _kml_coords(text):
+    pts = []
+    for tok in (text or "").split():
+        pts.append([float(v) for v in tok.split(",")])
+    return pts
+
+
+def _kml_geom(el):
+    t = local(el.tag)
+    if t == "Point":
+        return {"type": "Point", "coordinates": _kml_coords(_find_text(el, "coordinates"))[0]}
+    if t == "LineString":
+        return {"type": "LineString", "coordinates": _kml_coords(_find_text(el, "coordinates"))}
+    if t == "Polygon":
+        rings = []
+        for b in el:
+            if local(b.tag) in ("outerBoundaryIs", "innerBoundaryIs"):
+                for lr in b.iter():
+                    if local(lr.tag) == "coordinates":
+                        if local(b.tag) == "outerBoundaryIs":
+                            rings.insert(0, _kml_coords(lr.text))
+                        else:
+                            rings.append(_kml_coords(lr.text))
+        return {"type": "Polygon", "coordinates": rings}
+    if t == "MultiGeometry":
+        gs = [_kml_geom(c) for c in el if local(c.tag) in ("Point", "LineString", "Polygon", "MultiGeometry")]
+        return {"type": "GeometryCollection", "geometries": gs}
+    return None
+
+
+def _find_text(el, name):
+    for e in el.iter():
+        if local(e.tag) == name:
+            return e.text
+    return None
+
+
+def read_kml(path):
+    if path.lower().endswith(".kmz"):
+        with zipfile.ZipFile(path) as z:
+            names = [n for n in z.namelist() if n.lower().endswith(".kml")]
+            main = "doc.kml" if "doc.kml" in names else names[0]
+            data = z.read(main)
+    else:
+        with open(path, "rb") as f:
+            data = f.read()
+    root = parse_xml(data)
+    out = []
+    for pm in root.iter():
+        if local(pm.tag) != "Placemark":
+            continue
+        props, geom = {}, None
+        for ch in pm:
+            t = local(ch.tag)
+            if t in ("name", "description") and ch.text:
+                props["desc" if t == "description" else t] = ch.text
+            elif t == "ExtendedData":
+                for d in ch:
+                    if local(d.tag) == "Data":
+                        v = _find_text(d, "value")
+                        props[d.get("name")] = v
+            elif t in ("Point", "LineString", "Polygon", "MultiGeometry"):
+                geom = _kml_geom(ch)
+        out.append(feat(geom, props))
+    return fc(out)
+
+
+def write_kml(collection, path):
+    ET.register_namespace("", KML_NS)
+    k = "{%s}" % KML_NS
+    root = ET.Element(k + "kml")
+    doc = ET.SubElement(root, k + "Document")
+
+    def coords(pts):
+        return " ".join(",".join(_fmt(v) for v in p) for p in pts)
+
+    def geom(parent, g):
+        t = g["type"]
+        if t == "Point":
+            ET.SubElement(ET.SubElement(parent, k + "Point"), k + "coordinates").text = coords([g["coordinates"]])
+        elif t == "LineString":
+            ET.SubElement(ET.SubElement(parent, k + "LineString"), k + "coordinates").text = coords(g["coordinates"])
+        elif t == "Polygon":
+            pe = ET.SubElement(parent, k + "Polygon")
+            for i, ring in enumerate(g["coordinates"]):
+                b = ET.SubElement(pe, k + ("outerBoundaryIs" if i == 0 else "innerBoundaryIs"))
+                ET.SubElement(ET.SubElement(b, k + "LinearRing"), k + "coordinates").text = coords(ring)
+        elif t.startswith("Multi"):
+            m = ET.SubElement(parent, k + "MultiGeometry")
+            for c in g["coordinates"]:
+                geom(m, {"type": t[5:], "coordinates": c})
+        elif t == "GeometryCollection":
+            m = ET.SubElement(parent, k + "MultiGeometry")
+            for sub in g["geometries"]:
+                geom(m, sub)
+
+    for f in collection["features"]:
+        pm = ET.SubElement(doc, k + "Placemark")
+        props = dict(f.get("properties") or {})
+        if "name" in props:
+            ET.SubElement(pm, k + "name").text = str(props.pop("name"))
+        if "desc" in props:
+            ET.SubElement(pm, k + "description").text = str(props.pop("desc"))
+        if props:
+            ed = ET.SubElement(pm, k + "ExtendedData")
+            for key, v in props.items():
+                d = ET.SubElement(ed, k + "Data", name=str(key))
+                ET.SubElement(d, k + "value").text = "" if v is None else str(v)
+        if f.get("geometry"):
+            geom(pm, f["geometry"])
+    ET.ElementTree(root).write(path, encoding="utf-8", xml_declaration=True)
+    return 0
+
+
+# ---------------------------------------------------------------- Shapefile / DBF
+SHP_TYPES = {0: "Null", 1: "Point", 3: "PolyLine", 5: "Polygon", 8: "MultiPoint",
+             11: "PointZ", 13: "PolyLineZ", 15: "PolygonZ", 18: "MultiPointZ",
+             21: "PointM", 23: "PolyLineM", 25: "PolygonM", 28: "MultiPointM", 31: "MultiPatch"}
+
+
+def read_dbf(path, encoding=None):
+    if encoding is None:
+        cpg = os.path.splitext(path)[0] + ".cpg"
+        encoding = open(cpg).read().strip() if os.path.exists(cpg) else "latin-1"
+    with open(path, "rb") as f:
+        hdr = f.read(32)
+        nrec, hlen, rlen = struct.unpack("<IHH", hdr[4:12])
+        fields = []
+        while True:
+            fd = f.read(32)
+            if not fd or fd[0] == 0x0D:
+                break
+            name = fd[:11].split(b"\0")[0].decode("ascii", "replace")
+            fields.append((name, chr(fd[11]), fd[16], fd[17]))
+        f.seek(hlen)
+        rows = []
+        for _ in range(nrec):
+            rec = f.read(rlen)
+            if not rec or rec[0:1] == b"*":
+                continue
+            pos, row = 1, {}
+            for name, typ, size, dec in fields:
+                raw = rec[pos:pos + size].decode(encoding, "replace").strip()
+                pos += size
+                if typ in "NF":
+                    try:
+                        row[name] = (float(raw) if (dec or "." in raw) else int(raw)) if raw else None
+                    except ValueError:
+                        row[name] = None
+                elif typ == "L":
+                    row[name] = raw.upper() in ("Y", "T") if raw and raw != "?" else None
+                else:
+                    row[name] = raw
+            rows.append(row)
+    return fields, rows
+
+
+def _ring_area(r):
+    return sum(r[i][0] * r[i + 1][1] - r[i + 1][0] * r[i][1] for i in range(len(r) - 1)) / 2.0
+
+
+def read_shp(path):
+    """Return (shape_type_name, bbox, list of GeoJSON geometries)."""
+    geoms = []
+    with open(path, "rb") as f:
+        hdr = f.read(100)
+        code, = struct.unpack(">i", hdr[:4])
+        if code != 9994:
+            die("not a shapefile (file code %d)" % code)
+        stype, = struct.unpack("<i", hdr[32:36])
+        bbox = struct.unpack("<4d", hdr[36:68])
+        while True:
+            rh = f.read(8)
+            if len(rh) < 8:
+                break
+            _, clen = struct.unpack(">2i", rh)
+            body = f.read(clen * 2)
+            t, = struct.unpack("<i", body[:4])
+            base = t % 10 if t < 30 else t
+            if t == 0:
+                geoms.append(None)
+            elif base == 1:
+                x, y = struct.unpack("<2d", body[4:20])
+                geoms.append({"type": "Point", "coordinates": [x, y]})
+            elif base == 8:
+                n, = struct.unpack("<i", body[36:40])
+                pts = [list(struct.unpack("<2d", body[40 + 16 * i:56 + 16 * i])) for i in range(n)]
+                geoms.append({"type": "MultiPoint", "coordinates": pts})
+            elif base in (3, 5):
+                nparts, npts = struct.unpack("<2i", body[36:44])
+                parts = list(struct.unpack("<%di" % nparts, body[44:44 + 4 * nparts]))
+                o = 44 + 4 * nparts
+                pts = [list(struct.unpack("<2d", body[o + 16 * i:o + 16 * i + 16])) for i in range(npts)]
+                rings = [pts[parts[i]:(parts[i + 1] if i + 1 < nparts else npts)] for i in range(nparts)]
+                if base == 3:
+                    geoms.append({"type": "LineString", "coordinates": rings[0]} if nparts == 1
+                                 else {"type": "MultiLineString", "coordinates": rings})
+                else:
+                    # Shapefile outer rings are clockwise (negative signed area), holes CCW.
+                    # A hole goes to the last outer ring before it (common writer order).
+                    polys = []
+                    for r in rings:
+                        if _ring_area(r) <= 0 or not polys:
+                            polys.append([list(reversed(r))])  # to RFC 7946 CCW outer
+                        else:
+                            polys[-1].append(list(reversed(r)))  # CW hole
+                    geoms.append({"type": "Polygon", "coordinates": polys[0]} if len(polys) == 1
+                                 else {"type": "MultiPolygon", "coordinates": polys})
+            else:
+                geoms.append(None)
+    return SHP_TYPES.get(stype, str(stype)), bbox, geoms
+
+
+def read_shapefile(path):
+    stype, bbox, geoms = read_shp(path)
+    dbf = os.path.splitext(path)[0] + ".dbf"
+    rows = read_dbf(dbf)[1] if os.path.exists(dbf) else [{}] * len(geoms)
+    return fc([feat(g, r) for g, r in zip(geoms, rows)])
+
+
+# ---------------------------------------------------------------- PNG + world file
+def png_header(path):
+    with open(path, "rb") as f:
+        sig = f.read(8)
+        if sig != b"\x89PNG\r\n\x1a\n":
+            die("not a PNG")
+        ln, typ = struct.unpack(">I4s", f.read(8))
+        if typ != b"IHDR":
+            die("PNG without IHDR first")
+        w, h, depth, ctype, comp, filt, inter = struct.unpack(">IIBBBBB", f.read(13))
+    names = {0: "greyscale", 2: "RGB", 3: "palette", 4: "greyscale+alpha", 6: "RGBA"}
+    return {"width": w, "height": h, "bit_depth": depth, "colour": names.get(ctype, ctype),
+            "interlaced": bool(inter), "colour_type": ctype}
+
+
+def png_grey_range(path):
+    """Min and max of a non-interlaced greyscale PNG (8 or 16 bit), stdlib only."""
+    with open(path, "rb") as f:
+        data = f.read()
+    pos, idat, hdr = 8, b"", None
+    while pos < len(data):
+        ln, typ = struct.unpack(">I4s", data[pos:pos + 8])
+        chunk = data[pos + 8:pos + 8 + ln]
+        if typ == b"IHDR":
+            hdr = struct.unpack(">IIBBBBB", chunk)
+        elif typ == b"IDAT":
+            idat += chunk
+        pos += 12 + ln
+    w, h, depth, ctype, _, _, inter = hdr
+    if ctype != 0 or inter or depth not in (8, 16):
+        return None
+    bpp = depth // 8
+    stride = w * bpp
+    raw = zlib.decompress(idat)
+    prev = bytearray(stride)
+    lo, hi = None, None
+    for y in range(h):
+        ft = raw[y * (stride + 1)]
+        line = bytearray(raw[y * (stride + 1) + 1:(y + 1) * (stride + 1)])
+        for i in range(stride):
+            a = line[i - bpp] if i >= bpp else 0
+            b = prev[i]
+            c = prev[i - bpp] if i >= bpp else 0
+            if ft == 1:
+                line[i] = (line[i] + a) & 255
+            elif ft == 2:
+                line[i] = (line[i] + b) & 255
+            elif ft == 3:
+                line[i] = (line[i] + (a + b) // 2) & 255
+            elif ft == 4:
+                p = a + b - c
+                pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+                line[i] = (line[i] + (a if pa <= pb and pa <= pc else b if pb <= pc else c)) & 255
+        vals = struct.unpack(">%d%s" % (w, "H" if bpp == 2 else "B"), bytes(line))
+        mn, mx = min(vals), max(vals)
+        lo = mn if lo is None else min(lo, mn)
+        hi = mx if hi is None else max(hi, mx)
+        prev = line
+    return lo, hi
+
+
+def write_png_grey16(path, rows):
+    """Write a 16-bit greyscale PNG from a list of rows of ints 0..65535."""
+    h, w = len(rows), len(rows[0])
+    raw = b"".join(b"\0" + struct.pack(">%dH" % w, *r) for r in rows)
+
+    def chunk(t, d):
+        return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
+    with open(path, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 16, 0, 0, 0, 0))
+                + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
+
+
+def world_file_for(path):
+    stem, ext = os.path.splitext(path)
+    short = "." + ext[1] + ext[-1] + "w" if len(ext) == 4 else None
+    for cand in ([stem + short] if short else []) + [path + "w", stem + ".wld"]:
+        if os.path.exists(cand):
+            vals = [float(x) for x in open(cand).read().split()[:6]]
+            return cand, vals
+    return None, None
+
+
+# ---------------------------------------------------------------- inspect
+def _crs_from_prj(path):
+    prj = os.path.splitext(path)[0] + ".prj"
+    if os.path.exists(prj):
+        txt = open(prj, encoding="utf-8", errors="replace").read().strip()
+        return txt[:120] + ("..." if len(txt) > 120 else "")
+    return None
+
+
+def _summary_fc(collection, fmt, crs):
+    counts = {}
+    for f in collection["features"]:
+        t = (f.get("geometry") or {}).get("type", "null")
+        counts[t] = counts.get(t, 0) + 1
+    keys = sorted({k for f in collection["features"] for k in (f.get("properties") or {})})
+    return {"format": fmt, "features": len(collection["features"]), "geometry_types": counts,
+            "extent": extent(collection["features"]), "crs": crs, "properties": keys[:30]}
+
+
+def inspect_file(path):
+    low = path.lower()
+    if not os.path.exists(path):
+        die("no such file: " + path)
+    if low.endswith((".geojson", ".json")):
+        with open(path, encoding="utf-8-sig") as f:
+            d = json.load(f)
+        crs = "WGS84 lon/lat (RFC 7946)"
+        if "crs" in d:
+            crs = "stated (pre-RFC 7946 crs member): " + json.dumps(d["crs"])[:100]
+        return _summary_fc(read_geojson(path), "GeoJSON", crs)
+    if low.endswith(".gpx"):
+        s = _summary_fc(read_gpx(path), "GPX 1.1", "WGS84 (by schema)")
+        pts = sum(1 for f in read_gpx(path)["features"] for _ in iter_coords(f["geometry"]))
+        s["points"] = pts
+        return s
+    if low.endswith((".kml", ".kmz")):
+        return _summary_fc(read_kml(path), "KMZ" if low.endswith("kmz") else "KML", "WGS84 (by spec)")
+    if low.endswith(".shp"):
+        stype, bbox, geoms = read_shp(path)
+        s = _summary_fc(read_shapefile(path), "Shapefile", _crs_from_prj(path) or "not stated (no .prj)")
+        s["shape_type"] = stype
+        s["header_bbox"] = list(bbox)
+        return s
+    if low.endswith(".dbf"):
+        fields, rows = read_dbf(path)
+        return {"format": "dBASE", "records": len(rows),
+                "fields": [{"name": n, "type": t, "size": s} for n, t, s, _ in fields]}
+    if low.endswith(".png"):
+        h = png_header(path)
+        s = {"format": "PNG", **{k: v for k, v in h.items() if k != "colour_type"}}
+        if h["colour_type"] == 0 and h["bit_depth"] == 16:
+            s["note"] = "16-bit greyscale: likely a heightmap"
+        rng = png_grey_range(path) if h["colour_type"] == 0 and h["width"] * h["height"] <= 4_000_000 else None
+        if rng:
+            s["value_range"] = list(rng)
+        wf, vals = world_file_for(path)
+        if wf:
+            A, D, B, E, C, F = vals
+            s["world_file"] = os.path.basename(wf)
+            s["pixel_size"] = [A, E]
+            s["rotation"] = [D, B]
+            # world file holds the centre of the top-left pixel; edges are half a pixel out
+            x0, y0 = C - A / 2, F - E / 2
+            s["extent"] = [x0, y0 + E * h["height"], x0 + A * h["width"], y0]
+            s["crs"] = _crs_from_prj(path) or "not stated (world files carry no CRS)"
+        return s
+    if low.endswith((".gpkg", ".mbtiles", ".sqlite")):
+        con = sqlite3.connect("file:%s?mode=ro" % path.replace("\\", "/"), uri=True)
+        try:
+            tabs = {r[0] for r in con.execute("select name from sqlite_master where type='table'")}
+            app = con.execute("pragma application_id").fetchone()[0]
+            if "gpkg_contents" in tabs:
+                rows = con.execute("select table_name, data_type, srs_id, min_x, min_y, max_x, max_y "
+                                   "from gpkg_contents").fetchall()
+                layers = []
+                for tn, dt, srs, *bb in rows:
+                    n = con.execute('select count(*) from "%s"' % tn.replace('"', '""')).fetchone()[0]
+                    srsname = con.execute("select srs_name, organization, organization_coordsys_id "
+                                          "from gpkg_spatial_ref_sys where srs_id=?", (srs,)).fetchone()
+                    layers.append({"table": tn, "type": dt, "rows": n, "extent": bb,
+                                   "crs": "%s (%s:%s)" % srsname if srsname else srs})
+                return {"format": "GeoPackage", "application_id": hex(app),
+                        "user_version": con.execute("pragma user_version").fetchone()[0], "layers": layers}
+            if "tiles" in tabs or "metadata" in tabs:
+                meta = dict(con.execute("select name, value from metadata").fetchall()) if "metadata" in tabs else {}
+                s = {"format": "MBTiles", "metadata": meta}
+                if "tiles" in tabs:
+                    s["tiles"] = con.execute("select count(*) from tiles").fetchone()[0]
+                    s["zooms"] = [r[0] for r in con.execute("select distinct zoom_level from tiles order by 1")]
+                s["crs"] = "EPSG:3857 tiles (TMS row order)"
+                return s
+            return {"format": "SQLite", "tables": sorted(tabs)}
+        finally:
+            con.close()
+    die("unknown format: %s (GeoJSON, GPX, KML/KMZ, SHP, DBF, PNG, GPKG, MBTiles)" % path)
+
+
+def cmd_inspect(a):
+    s = inspect_file(a.file)
+    if a.json:
+        print(json.dumps(s, indent=2, default=str))
+    else:
+        for k, v in s.items():
+            print("%-15s %s" % (k, json.dumps(v, default=str) if isinstance(v, (list, dict)) else v))
+
+
+# ---------------------------------------------------------------- convert
+READERS = {".geojson": read_geojson, ".json": read_geojson, ".gpx": read_gpx, ".kml": read_kml,
+           ".kmz": read_kml, ".shp": read_shapefile}
+
+
+def write_geojson(collection, path):
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(collection, f, indent=1)
+        f.write("\n")
+    return 0
+
+
+WRITERS = {".geojson": write_geojson, ".json": write_geojson, ".gpx": write_gpx, ".kml": write_kml}
+
+
+def convert(src, dst):
+    ri = os.path.splitext(src)[1].lower()
+    wo = os.path.splitext(dst)[1].lower()
+    if ri not in READERS:
+        die("cannot read %s (reads %s)" % (ri, ", ".join(sorted(READERS))))
+    if wo not in WRITERS:
+        die("cannot write %s (writes %s)" % (wo, ", ".join(sorted(WRITERS))))
+    col = READERS[ri](src)
+    skipped = WRITERS[wo](col, dst)
+    return len(col["features"]), skipped
+
+
+def cmd_convert(a):
+    n, skipped = convert(a.input, a.output)
+    print("wrote %s: %d features%s" % (a.output, n - skipped,
+                                       ", %d skipped (GPX holds points and lines only)" % skipped if skipped else ""))
+
+
+# ---------------------------------------------------------------- geodesy
+def vincenty_inverse(lat1, lon1, lat2, lon2, ell="WGS84", tol=1e-12, maxiter=200):
+    """Distance (m), initial and final azimuth (deg). Raises ValueError if it does not converge."""
+    a, f = ELLIPSOIDS[ell]
+    b = a * (1 - f)
+    if lat1 == lat2 and lon1 == lon2:
+        return 0.0, 0.0, 0.0
+    L = math.radians(lon2 - lon1)
+    U1 = math.atan((1 - f) * math.tan(math.radians(lat1)))
+    U2 = math.atan((1 - f) * math.tan(math.radians(lat2)))
+    sU1, cU1, sU2, cU2 = math.sin(U1), math.cos(U1), math.sin(U2), math.cos(U2)
+    lam = L
+    for _ in range(maxiter):
+        sl, cl = math.sin(lam), math.cos(lam)
+        ss = math.hypot(cU2 * sl, cU1 * sU2 - sU1 * cU2 * cl)
+        if ss == 0:
+            return 0.0, 0.0, 0.0
+        cs = sU1 * sU2 + cU1 * cU2 * cl
+        sig = math.atan2(ss, cs)
+        sa = cU1 * cU2 * sl / ss
+        c2a = 1 - sa * sa
+        c2sm = cs - 2 * sU1 * sU2 / c2a if c2a else 0.0
+        C = f / 16 * c2a * (4 + f * (4 - 3 * c2a))
+        lp = lam
+        lam = L + (1 - C) * f * sa * (sig + C * ss * (c2sm + C * cs * (-1 + 2 * c2sm * c2sm)))
+        if abs(lam - lp) < tol:
+            break
+    else:
+        raise ValueError("Vincenty did not converge (nearly antipodal points)")
+    u2 = c2a * (a * a - b * b) / (b * b)
+    A = 1 + u2 / 16384 * (4096 + u2 * (-768 + u2 * (320 - 175 * u2)))
+    B = u2 / 1024 * (256 + u2 * (-128 + u2 * (74 - 47 * u2)))
+    ds = B * ss * (c2sm + B / 4 * (cs * (-1 + 2 * c2sm ** 2) - B / 6 * c2sm * (-3 + 4 * ss ** 2) * (-3 + 4 * c2sm ** 2)))
+    s = b * A * (sig - ds)
+    a1 = math.degrees(math.atan2(cU2 * math.sin(lam), cU1 * sU2 - sU1 * cU2 * math.cos(lam)))
+    a2 = math.degrees(math.atan2(cU1 * math.sin(lam), -sU1 * cU2 + cU1 * sU2 * math.cos(lam)))
+    return s, a1 % 360, a2 % 360
+
+
+def geodesic_inverse(lat1, lon1, lat2, lon2, ell="WGS84"):
+    """Returns dict with distance, azimuths and the method used."""
+    try:
+        s, a1, a2 = vincenty_inverse(lat1, lon1, lat2, lon2, ell)
+        return {"distance_m": s, "azimuth1": a1, "azimuth2": a2, "method": "Vincenty (%s)" % ell}
+    except ValueError:
+        pass
+    try:
+        from geographiclib.geodesic import Geodesic
+        a, f = ELLIPSOIDS[ell]
+        r = Geodesic(a, f).Inverse(lat1, lon1, lat2, lon2)
+        return {"distance_m": r["s12"], "azimuth1": r["azi1"] % 360, "azimuth2": r["azi2"] % 360,
+                "method": "Karney via geographiclib (%s)" % ell}
+    except ImportError:
+        pass
+    R = authalic_radius(ell)
+    p1, p2, dl = math.radians(lat1), math.radians(lat2), math.radians(lon2 - lon1)
+    h = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    s = 2 * R * math.asin(min(1.0, math.sqrt(h)))
+    az = math.degrees(math.atan2(math.sin(dl) * math.cos(p2),
+                                 math.cos(p1) * math.sin(p2) - math.sin(p1) * math.cos(p2) * math.cos(dl)))
+    return {"distance_m": s, "azimuth1": az % 360, "azimuth2": None,
+            "method": "haversine on the authalic sphere (Vincenty failed near antipodes; install "
+                      "geographiclib for an exact answer; error up to ~0.5%)"}
+
+
+def _q(sinphi, e):
+    """Snyder 1987 eq. 3-12 (q for authalic latitude)."""
+    if e == 0:
+        return 2 * sinphi
+    es = e * sinphi
+    return (1 - e * e) * (sinphi / (1 - es * es) - (1 / (2 * e)) * math.log((1 - es) / (1 + es)))
+
+
+def authalic_radius(ell="WGS84"):
+    a, f = ELLIPSOIDS[ell]
+    e = math.sqrt(f * (2 - f))
+    return a * math.sqrt(_q(1.0, e) / 2)
+
+
+def ellipsoid_area(ring, ell="WGS84"):
+    """Area (m^2) of a lon/lat ring on the ellipsoid.
+
+    Each point goes to the cylindrical equal-area projection of the ellipsoid
+    (x = a*lambda, y = a*q(phi)/2), which is exact for area, and the ring's area
+    is the planar shoelace there. Edges are therefore taken as straight in that
+    projection: exact for parallels and meridians, an approximation for long
+    oblique edges (densify them first).
+    """
+    a, f = ELLIPSOIDS[ell]
+    e = math.sqrt(f * (2 - f))
+    pts = [(a * math.radians(p[0]), a * _q(math.sin(math.radians(p[1])), e) / 2) for p in ring]
+    if pts[0] != pts[-1]:
+        pts.append(pts[0])
+    return abs(sum(pts[i][0] * pts[i + 1][1] - pts[i + 1][0] * pts[i][1] for i in range(len(pts) - 1)) / 2)
+
+
+def polygon_area(geom, ell="WGS84"):
+    t = geom["type"]
+    polys = [geom["coordinates"]] if t == "Polygon" else geom["coordinates"] if t == "MultiPolygon" else []
+    total = 0.0
+    for poly in polys:
+        total += ellipsoid_area(poly[0], ell) - sum(ellipsoid_area(h, ell) for h in poly[1:])
+    return total
+
+
+def parse_scale(s):
+    s = s.replace(",", "").replace(" ", "")
+    if ":" in s:
+        s = s.split(":")[1]
+    return float(s)
+
+
+UNITS = {"mm": 0.001, "cm": 0.01, "m": 1.0, "km": 1000.0, "in": 0.0254, "ft": 0.3048, "mi": 1609.344}
+
+
+def parse_len(s):
+    for u in sorted(UNITS, key=len, reverse=True):
+        if s.endswith(u):
+            return float(s[:-len(u)]) * UNITS[u], u
+    return float(s), "m"
+
+
+def cmd_measure(a):
+    if a.what == "distance":
+        r = geodesic_inverse(a.lat1, a.lon1, a.lat2, a.lon2, a.ellipsoid)
+        if a.json:
+            print(json.dumps(r, indent=2))
+        else:
+            print("distance  %.3f m (%.3f km)" % (r["distance_m"], r["distance_m"] / 1000))
+            print("bearing   %.6f deg (initial)" % r["azimuth1"])
+            if r["azimuth2"] is not None:
+                print("final     %.6f deg" % r["azimuth2"])
+            print("method    %s" % r["method"])
+    elif a.what == "area":
+        col = READERS[os.path.splitext(a.file)[1].lower()](a.file)
+        total = sum(polygon_area(f["geometry"], a.ellipsoid) for f in col["features"] if f.get("geometry"))
+        r = {"area_m2": total, "area_km2": total / 1e6,
+             "method": "ellipsoid (%s) via authalic latitude; edges straight in cylindrical equal-area" % a.ellipsoid}
+        print(json.dumps(r, indent=2) if a.json else "area  %.1f m2 (%.6f km2)\nmethod %s" % (total, total / 1e6, r["method"]))
+    elif a.what == "scale":
+        n = parse_scale(a.scale)
+        if a.map:
+            m, _ = parse_len(a.map)
+            g = m * n
+            print("%s on the map = %.6g m = %.6g km on the ground at 1:%g" % (a.map, g, g / 1000, n))
+        elif a.ground:
+            g, _ = parse_len(a.ground)
+            m = g / n
+            print("%s on the ground = %.6g cm on the map at 1:%g" % (a.ground, m * 100, n))
+        else:
+            print("1:%g  1 cm = %.6g m = %.6g km; 1 km = %.6g cm" % (n, n / 100, n / 1e5, 1e5 / n))
+
+
+# ---------------------------------------------------------------- projections (sphere unless noted)
+def _wrap(lon):
+    return (lon + 180.0) % 360.0 - 180.0
+
+
+ROBINSON = [  # lat, X, Y (Snyder & Voxland 1989); linear interpolation between rows
+    (0, 1.0000, 0.0000), (5, 0.9986, 0.0620), (10, 0.9954, 0.1240), (15, 0.9900, 0.1860),
+    (20, 0.9822, 0.2480), (25, 0.9730, 0.3100), (30, 0.9600, 0.3720), (35, 0.9427, 0.4340),
+    (40, 0.9216, 0.4958), (45, 0.8962, 0.5571), (50, 0.8679, 0.6176), (55, 0.8350, 0.6769),
+    (60, 0.7986, 0.7346), (65, 0.7597, 0.7903), (70, 0.7186, 0.8435), (75, 0.6732, 0.8936),
+    (80, 0.6213, 0.9394), (85, 0.5722, 0.9761), (90, 0.5322, 1.0000)]
+
+
+def _rob(alat):
+    i = min(int(alat // 5), 17)
+    t = (alat - 5 * i) / 5.0
+    (_, x0, y0), (_, x1, y1) = ROBINSON[i], ROBINSON[i + 1]
+    return x0 + t * (x1 - x0), y0 + t * (y1 - y0)
+
+
+EE = (1.340264, -0.081106, 0.000893, 0.003796)
+
+
+def forward(name, lon, lat, R=1.0, lon0=0.0, lat0=0.0):
+    lam = math.radians(_wrap(lon - lon0))
+    phi = math.radians(lat)
+    if name == "webmercator":
+        if abs(lat) > 85.05112877980659:
+            raise ValueError("Web Mercator is cut at +-85.0511 deg")
+        return WEB_R * lam, WEB_R * math.atanh(math.sin(phi))
+    if name == "equirectangular":
+        return R * lam * math.cos(math.radians(lat0)), R * phi
+    if name == "mollweide":
+        th = phi
+        if abs(abs(phi) - math.pi / 2) < 1e-15:
+            th = math.copysign(math.pi / 2, phi)
+        else:
+            k = math.pi * math.sin(phi)
+            th = phi
+            for _ in range(100):  # Newton on 2t + sin 2t = pi sin(phi), t = theta
+                d = -(2 * th + math.sin(2 * th) - k) / (2 + 2 * math.cos(2 * th))
+                th += d
+                if abs(d) < 1e-15:
+                    break
+        return R * 2 * math.sqrt(2) / math.pi * lam * math.cos(th), R * math.sqrt(2) * math.sin(th)
+    if name == "laea":
+        p0 = math.radians(lat0)
+        cc = math.sin(p0) * math.sin(phi) + math.cos(p0) * math.cos(phi) * math.cos(lam)
+        if cc <= -1 + 1e-15:
+            raise ValueError("LAEA is undefined at the antipode of the centre")
+        k = math.sqrt(2 / (1 + cc))
+        return (R * k * math.cos(phi) * math.sin(lam),
+                R * k * (math.cos(p0) * math.sin(phi) - math.sin(p0) * math.cos(phi) * math.cos(lam)))
+    if name == "robinson":
+        X, Y = _rob(abs(lat))
+        return 0.8487 * R * X * lam, math.copysign(1.3523 * R * Y, lat)
+    if name == "equalearth":
+        A1, A2, A3, A4 = EE
+        th = math.asin(math.sqrt(3) / 2 * math.sin(phi))
+        t2 = th * th
+        t6 = t2 * t2 * t2
+        x = R * 2 * math.sqrt(3) * lam * math.cos(th) / (3 * (A1 + 3 * A2 * t2 + t6 * (7 * A3 + 9 * A4 * t2)))
+        y = R * th * (A1 + A2 * t2 + t6 * (A3 + A4 * t2))
+        return x, y
+    raise ValueError("unknown projection " + name)
+
+
+def inverse(name, x, y, R=1.0, lon0=0.0, lat0=0.0):
+    if name == "webmercator":
+        lam, phi = x / WEB_R, 2 * math.atan(math.exp(y / WEB_R)) - math.pi / 2
+    elif name == "equirectangular":
+        lam, phi = x / (R * math.cos(math.radians(lat0))), y / R
+    elif name == "mollweide":
+        th = math.asin(max(-1.0, min(1.0, y / (R * math.sqrt(2)))))
+        phi = math.asin(max(-1.0, min(1.0, (2 * th + math.sin(2 * th)) / math.pi)))
+        c = math.cos(th)
+        lam = math.pi * x / (2 * R * math.sqrt(2) * c) if c > 1e-15 else 0.0
+    elif name == "laea":
+        p0 = math.radians(lat0)
+        rho = math.hypot(x, y)
+        if rho < 1e-15:
+            return lon0, lat0
+        c = 2 * math.asin(min(1.0, rho / (2 * R)))
+        phi = math.asin(max(-1.0, min(1.0, math.cos(c) * math.sin(p0) + y * math.sin(c) * math.cos(p0) / rho)))
+        lam = math.atan2(x * math.sin(c), rho * math.cos(p0) * math.cos(c) - y * math.sin(p0) * math.sin(c))
+    elif name == "robinson":
+        yy = abs(y) / (1.3523 * R)
+        if yy > 1 + 1e-12:
+            raise ValueError("outside the Robinson outline")
+        lo, hi = 0.0, 90.0
+        for _ in range(200):  # Y is monotone in latitude: bisect
+            mid = (lo + hi) / 2
+            if _rob(mid)[1] < yy:
+                lo = mid
+            else:
+                hi = mid
+        alat = (lo + hi) / 2
+        lam = x / (0.8487 * R * _rob(alat)[0])
+        return _wrap(math.degrees(lam) + lon0), math.copysign(alat, y)
+    elif name == "equalearth":
+        A1, A2, A3, A4 = EE
+        yy = y / R
+        th = yy
+        for _ in range(100):
+            t2 = th * th
+            t6 = t2 * t2 * t2
+            fy = th * (A1 + A2 * t2 + t6 * (A3 + A4 * t2)) - yy
+            fpy = A1 + 3 * A2 * t2 + t6 * (7 * A3 + 9 * A4 * t2)
+            d = fy / fpy
+            th -= d
+            if abs(d) < 1e-15:
+                break
+        t2 = th * th
+        t6 = t2 * t2 * t2
+        lam = 3 * (x / R) * (A1 + 3 * A2 * t2 + t6 * (7 * A3 + 9 * A4 * t2)) / (2 * math.sqrt(3) * math.cos(th))
+        phi = math.asin(max(-1.0, min(1.0, 2 * math.sin(th) / math.sqrt(3))))
+    else:
+        raise ValueError("unknown projection " + name)
+    return _wrap(math.degrees(lam) + lon0), math.degrees(phi)
+
+
+PROJECTIONS = {
+    "webmercator": "EPSG:3857 spherical Mercator on R = 6378137 m (metres; conformal)",
+    "equirectangular": "plate carree (lat0 = standard parallel; R units)",
+    "mollweide": "Mollweide, equal-area (R units)",
+    "laea": "Lambert azimuthal equal-area centred on lon0, lat0 (sphere, R units)",
+    "robinson": "Robinson, table with linear interpolation (compromise; R units)",
+    "equalearth": "Equal Earth, equal-area (R units)",
+}
+
+
+def cmd_project(a):
+    if a.list:
+        for k, v in PROJECTIONS.items():
+            print("%-16s %s" % (k, v))
+        return
+    if a.name not in PROJECTIONS:
+        die("unknown projection %r; --list shows them" % a.name)
+    try:
+        if a.inverse:
+            lon, lat = inverse(a.name, a.x, a.y, a.radius, a.lon0, a.lat0)
+            r = {"lon": lon, "lat": lat}
+        else:
+            x, y = forward(a.name, a.x, a.y, a.radius, a.lon0, a.lat0)
+            r = {"x": x, "y": y}
+    except ValueError as e:
+        die(str(e))
+    print(json.dumps(r) if a.json else "  ".join("%s=%.10g" % kv for kv in r.items()))
+
+
+# ---------------------------------------------------------------- main
+def build_parser():
+    p = argparse.ArgumentParser(prog="mpw.py", description="mapwright: read, write, measure and project maps")
+    p.add_argument("--version", action="version", version=VERSION)
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    s = sub.add_parser("doctor", help="check Python, browser and optional extras")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_doctor)
+
+    s = sub.add_parser("explain", help="explain a cartography term (`explain list`)")
+    s.add_argument("term")
+    s.set_defaults(fn=cmd_explain)
+
+    s = sub.add_parser("inspect", help="what a map file holds")
+    s.add_argument("file")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_inspect)
+
+    s = sub.add_parser("convert", help="convert between GeoJSON, GPX and KML (reads SHP, KMZ)")
+    s.add_argument("input")
+    s.add_argument("output")
+    s.set_defaults(fn=cmd_convert)
+
+    s = sub.add_parser("measure", help="geodesic distance, ellipsoid area, map scale")
+    ms = s.add_subparsers(dest="what", required=True)
+    d = ms.add_parser("distance", help="distance and bearing: LAT1 LON1 LAT2 LON2")
+    for n in ("lat1", "lon1", "lat2", "lon2"):
+        d.add_argument(n, type=float)
+    ar = ms.add_parser("area", help="area of the polygons in a file")
+    ar.add_argument("file")
+    sc = ms.add_parser("scale", help="1:N conversions")
+    sc.add_argument("scale", help="e.g. 1:50000")
+    sc.add_argument("--map", help="length on the map, e.g. 2cm")
+    sc.add_argument("--ground", help="length on the ground, e.g. 3km")
+    for x in (d, ar, sc):
+        x.add_argument("--ellipsoid", default="WGS84", choices=sorted(ELLIPSOIDS))
+        x.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_measure)
+
+    s = sub.add_parser("project", help="forward or inverse projection of one point")
+    s.add_argument("name", nargs="?")
+    s.add_argument("x", nargs="?", type=float, help="lon (forward) or x (inverse)")
+    s.add_argument("y", nargs="?", type=float, help="lat (forward) or y (inverse)")
+    s.add_argument("--inverse", action="store_true")
+    s.add_argument("--radius", type=float, default=1.0)
+    s.add_argument("--lon0", type=float, default=0.0)
+    s.add_argument("--lat0", type=float, default=0.0)
+    s.add_argument("--list", action="store_true")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_project)
+    return p
+
+
+def main(argv=None):
+    a = build_parser().parse_args(argv)
+    if a.cmd == "project" and not a.list and (a.name is None or a.x is None or a.y is None):
+        die("project NAME X Y [--inverse]; --list shows names")
+    a.fn(a)
+
+
+if __name__ == "__main__":
+    main()

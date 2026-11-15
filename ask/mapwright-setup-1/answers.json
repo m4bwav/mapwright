@@ -1,0 +1,78 @@
+{
+  "askwright": 1,
+  "rev": 14,
+  "answers": {
+    "name": {
+      "choice": "mapwright",
+      "note": "",
+      "attachments": [],
+      "timecodes": [],
+      "guess_revealed": false,
+      "guess_revealed_before_pick": false,
+      "q_rev": 1,
+      "rev": 1,
+      "updated": "2026-11-14T17:27:29-06:00",
+      "state": "answered"
+    },
+    "repo": {
+      "choice": "public-now",
+      "note": "",
+      "attachments": [],
+      "timecodes": [],
+      "guess_revealed": false,
+      "guess_revealed_before_pick": false,
+      "q_rev": 1,
+      "rev": 2,
+      "updated": "2026-11-14T17:27:35-06:00",
+      "state": "answered"
+    },
+    "first-maps": {
+      "text": "Nothing at first but maybe some of my gaming and learning plugins coudl use it",
+      "note": "",
+      "attachments": [],
+      "timecodes": [],
+      "guess_revealed": false,
+      "guess_revealed_before_pick": false,
+      "q_rev": 1,
+      "rev": 5,
+      "updated": "2026-11-14T17:30:11-06:00",
+      "state": "answered"
+    },
+    "aistyle": {
+      "choice": "optional",
+      "note": "The plugin should know all the latest concepts in non-ai map generation as well as with AI.",
+      "attachments": [],
+      "timecodes": [],
+      "guess_revealed": false,
+      "guess_revealed_before_pick": false,
+      "q_rev": 1,
+      "rev": 12,
+      "updated": "2026-11-14T17:31:03-06:00",
+      "state": "answered"
+    },
+    "paid": {
+      "choice": "free-keys",
+      "note": "",
+      "attachments": [],
+      "timecodes": [],
+      "guess_revealed": false,
+      "guess_revealed_before_pick": false,
+      "q_rev": 1,
+      "rev": 13,
+      "updated": "2026-11-14T17:31:20-06:00",
+      "state": "answered"
+    },
+    "beat": {
+      "choice": "engage-where-allowed",
+      "note": "",
+      "attachments": [],
+      "timecodes": [],
+      "guess_revealed": false,
+      "guess_revealed_before_pick": false,
+      "q_rev": 1,
+      "rev": 14,
+      "updated": "2026-11-14T17:31:29-06:00",
+      "state": "answered"
+    }
+  }
+}
