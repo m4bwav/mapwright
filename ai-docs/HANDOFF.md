@@ -1,39 +1,22 @@
 # HANDOFF: mapwright
 
-Status: Step D.2 done (2026-11-14): gen world/region/zoom + check (7 land bars, all pass) + Robinson PROJ spline merged to main; tests 35/35; public repo https://github.com/m4bwav/mapwright created and pushed. Next: D.3 names + settlements/roads, then find/fetch.
+Status: Step D.3 done (2026-11-14): names (mpw_names.py, 6 styles + custom pattern), settlements + A* roads (mpw_human.py), inherited by children, relative parent path, check now 13 bars; PR #1 merged (b9f0ad3); tests 50/50. Next: D.4 render/label/legend/style/serve/sheet.
 
 Continue prompt: [plans/mapwright-continue-prompt.md](plans/mapwright-continue-prompt.md)
 
-## What exists
-
-- The continue prompt (passes `chain.py check`), this file, [log.md](log.md) and a starter book list in [notes/books.md](notes/books.md).
-- Backlog entry "Mapmaking plugin" in [../../plugin-backlog/new-plugins.md](../../plugin-backlog/new-plugins.md).
-
 ## Mark's request (2026-11-14)
 
 "can you create a prompt for an evergreen mapmaking plugin? for reading, writing, finding, and generating life-like and fantasy maps and for science fiction"
 
 ## Next
 
-1. Step D.3: `names` (sound-pattern place names, consistent per world; fill names.json) and settlements/roads (river mouths, confluences, coasts; least-cost roads) per design.md section 4. Child recipe.json stores the parent's absolute path: make it relative so child regen is location-independent.
-2. README banner (ComfyUI, 1536x640, .github/images/banner.jpg) owed before release.
-3. Run evergreen-convert on mapwright (adds evergreen.json) so `harvest targets` picks up harvest.json.
-4. Then Step D order: read/trace, find/fetch, render/label/legend/style/serve/sheet, gen city/dungeon/battle, space gens, export, aistyle.
-5. Source pass 3 in small batches (~170 unverified marks; priority never-scrape terms, tabletop formats, Snyder values).
-6. Beat: read AI rules of r/mapmaking, r/cartography, Cartographers' Guild before any asks.
-
-## Mark's request (2026-11-14)
-
-"can you create a prompt for an evergreen mapmaking plugin? for reading, writing, finding, and generating life-like and fantasy maps and for science fiction"
-
-## Next
-
-0. Before creating public m4bwav/mapwright: privacy-check the first commit (ask/ answers and ai-docs/ went in as-is); rewrite history if anything private. Robinson uses linear table interpolation (PROJ: cubic spline) - fix before world maps.
-1. Step D.2: gen world/region/zoom from prototypes/gen.py with the design note's uplift, erosion and river-constrained zoom. Decisions in [plans/design.md](plans/design.md): stdlib SVG render core + headless Chrome/Edge for PNG/PDF; one hub skill (split only on evidence); chartwright keeps choropleths.
-2. Run evergreen-convert on mapwright (adds evergreen.json) so `harvest targets` picks up the existing harvest.json.
-3. Source pass 3, in small batches (agents stop after ~15-40 calls): ~170 (unverified) marks remain over 13 references; priority = never-scrape terms (Google/Apple/MapTiler), tabletop formats (UVTT/Owlbear/Roll20/Dungeondraft), Snyder values (pubs.usgs.gov 403s scripts: try a mirror or Chrome).
-4. Beat: read AI rules of r/mapmaking, r/cartography, Cartographers' Guild before any asks there. Beat at Ai/indie-ai-scout/beats/mapmaking, data ~/.everscout/data/mapmaking.
-5. Create public repo m4bwav/mapwright when first code lands (Step D).
+1. Step D.4: `render`, `label` (no overlaps, none cut by the edge, OCR read-back bar), `legend`, `style` (topographic, atlas, satellite, ink and parchment, blueprint, star chart), `serve` (127.0.0.1 only), `sheet`. Decisions in [plans/design.md](plans/design.md): stdlib SVG + headless Chrome/Edge for PNG/PDF.
+2. Open issues from D.3 (LEARNINGS L-009): a grandchild window with no sea fails bar 1 (predates D.3); one dry child sits on bar 7's 20-sample edge; no ferries yet (islands get their own road nets).
+3. README banner (ComfyUI, 1536x640, .github/images/banner.jpg) owed before release.
+4. Run evergreen-convert on mapwright (adds evergreen.json) so `harvest targets` picks up harvest.json.
+5. Then: read/trace, find/fetch, gen city/dungeon/battle, space gens, export, aistyle.
+6. Source pass 3 in small batches (~170 unverified marks; priority never-scrape terms, tabletop formats, Snyder values).
+7. Beat: read AI rules of r/mapmaking, r/cartography, Cartographers' Guild before any asks.
 
 ## Mark's answers (ask/mapwright-setup-1, answered 2026-11-14, set closed)
 
