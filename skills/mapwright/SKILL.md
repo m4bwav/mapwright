@@ -49,7 +49,11 @@ Not built in 0.1.0. Until `fetch` lands, name the open source and its licence fr
 
 ## Generate: invented worlds
 
-Not built in 0.1.0 (`gen world`, `gen region`, `zoom` come next). The plan and the recipe folder (`<name>.map/` with recipe.json, features.geojson, heights.png and .pgw) are in the repository's design note. Until then say the generator is not ready rather than drawing a map by hand. Cities and dungeons: [references/cities-and-dungeons.md](../../references/cities-and-dungeons.md). AI image models for a styled look: [references/ai-image-models.md](../../references/ai-image-models.md). Games, film and print exports: [references/games-film-print.md](../../references/games-film-print.md).
+- `MPW gen world --seed N [--cells 16000] --out DIR`: plates (convergent, divergent, transform uplift), fBm, stream-power erosion, Priority-Flood rivers and one-outlet lakes, latitude + wind + rain-shadow climate, Whittaker biomes. Writes the recipe folder (recipe.json, features.geojson, heights.png + .pgw, mesh.json, names.json stub, sources.json) and map.svg. About 1 s at 16k cells, 3.5 s at 65k.
+- `MPW gen region --parent DIR --window x0,y0,x1,y1 --cells N --out DIR` (or `MPW zoom DIR --out DIR`, which picks the coast-richest quarter): a child map that keeps the parent's coast and rivers and adds smaller rivers. Window is in map km (0..1000, y south).
+- `MPW check DIR`: the land proof bars (downhill rivers, no splits, one outlet per lake, byte-identical regeneration, child within 1 parent spacing, climate sanity). Exit 1 on any failure; run it before handing a map over.
+
+Names, settlements and roads are not built yet; say so rather than drawing them by hand. Cities and dungeons: [references/cities-and-dungeons.md](../../references/cities-and-dungeons.md). AI image models for a styled look: [references/ai-image-models.md](../../references/ai-image-models.md). Games, film and print exports: [references/games-film-print.md](../../references/games-film-print.md).
 
 ## Hand-offs
 
