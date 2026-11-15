@@ -188,19 +188,19 @@ mapwright is stdlib-first Python, so this file favours methods that need only `r
 
 ### 8.2 Universal VTT (.dd2vtt / .uvtt) JSON
 
-The format started in Dungeondraft's ".dd2vtt" export and is shared by Arkenforge, DungeonFog and others under the name Universal VTT [UVTT][DD] (version history unverified). Coordinates are in **grid squares**, not pixels. Fields [UVTT][UBI]:
+The format was created by Megasploot, the developer of Dungeondraft, and is shared by Arkenforge, DungeonFog, Dungeon Alchemist, Mapforge and others under the name Universal VTT; `.dd2vtt`, `.df2vtt` and `.uvtt` are the same file underneath [UVTT][DD] (https://arkenforge.com/universal-vtt-files/, checked 2026-11-15). Coordinates are in **grid squares**, not pixels ("All positions and sizes are in the unit of 'Squares'"). The field names and types below match the Arkenforge field list (checked 2026-11-15) [UVTT][UBI]:
 
-- `format`: number, e.g. `0.3` (unverified which is newest).
+- `format`: decimal, "essentially a version number" [UVTT]. The spec lists no versions; the Foundry importer writes `0.2` when it merges several files [UBI] (checked 2026-11-15). Which number current Dungeondraft writes is unverified (closed source; read it from a real export).
 - `resolution`:
   - `map_origin`: `{x, y}` in squares, usually `{0, 0}`.
   - `map_size`: `{x, y}` in squares.
   - `pixels_per_grid`: integer.
 - `line_of_sight`: array of polylines; each polyline is an array of `{x, y}` points. These are the walls.
-- `objects_line_of_sight`: same shape, for walls from objects (newer versions, unverified).
+- `objects_line_of_sight`: same shape, for walls from objects. It is in the core field list [UVTT]; the Foundry importer treats it as optional and adds it to the walls only when its object-walls option is on [UBI] (checked 2026-11-15).
 - `portals`: array of doors/windows, each with `position {x, y}`, `bounds` (two points, the door segment), `rotation` (radians), `closed` (bool), `freestanding` (bool).
-- `environment`: `baked_lighting` (bool), `ambient_light` (hex colour string like `"ffffffff"`, ARGB/RGBA order unverified).
+- `environment`: `baked_lighting` (bool), `ambient_light` (hex colour string like `"ffffffff"`). The order is alpha first (AARRGGBB): the Foundry importer drops the first two characters of a light's `color` to get `#RRGGBB` [UBI] (ddimport.js, checked 2026-11-15); `ambient_light` uses the same 8-character form.
 - `lights`: array, each with `position {x, y}`, `range` (squares), `intensity`, `color` (hex string), `shadows` (bool).
-- `image`: base64-encoded PNG (or WebP in some exporters, unverified) of the whole map.
+- `image`: "base64 encoded PNG or WEBP" of the whole map [UVTT] (checked 2026-11-15).
 
 Minimal example mapwright should emit:
 
@@ -218,32 +218,32 @@ Minimal example mapwright should emit:
 }
 ```
 
-Leave a gap in `line_of_sight` where each portal is, as Dungeondraft does (unverified), or the importer gets a wall over the door.
+Leave a gap in `line_of_sight` where each portal is, or the importer gets a wall over the door: the Foundry importer builds a separate door wall from each portal's `bounds` [UBI] (checked 2026-11-15). It also reads a portal with `closed: false` as a window (proximity sight and light, not a door unless its openable-windows setting is on), so write `closed: true` for every real door. That Dungeondraft itself leaves the gap is unverified (closed source; inspect a real export).
 
 ### 8.3 Foundry VTT scene JSON
 
 A scene export (right-click scene, Export Data) contains, among others [FVTT-API]:
 
 - `name`, `width`, `height` (px), `padding` (fraction, default 0.25), `background.src` (image path; older versions `img`).
-- `grid`: in v12+ an object `{type, size, style, thickness, color, alpha, distance, units}`; type 1 = square, 2-5 = hex variants (older versions put `grid` as a number and `gridType` separately) [FVTT-API] (version split unverified in detail).
+- `grid`: in v12+ an object `{type, size, style, thickness, color, alpha, distance, units}`; type 1 = square, 2-5 = hex variants (older versions put `grid` as a number and `gridType` separately) [FVTT-API]. The Version 14 API lists exactly these eight grid fields, and `GRID_TYPES` is GRIDLESS 0, SQUARE 1, HEXODDR 2, HEXEVENR 3, HEXODDQ 4, HEXEVENQ 5 (https://foundryvtt.com/api/interfaces/foundry.documents.types.GridData.html, https://foundryvtt.com/api/variables/CONST.GRID_TYPES.html, checked 2026-11-15). The older number form was not re-checked.
 - `walls`: array of WallDocument:
   - `c`: `[x0, y0, x1, y1]` in pixels.
   - `move`, `sight`, `light`, `sound`: sense levels; 0 = none, 10 = limited, 20 = normal (v11+ also 30 proximity, 40 distance) [FVTT-API].
   - `door`: 0 none, 1 door, 2 secret. `ds`: 0 closed, 1 open, 2 locked.
   - `dir`: 0 both, 1 left, 2 right.
 - `lights`: array of AmbientLightDocument: `x`, `y` (px), `config: {dim, bright, color, alpha, angle, animation, ...}`, with `dim`/`bright` in grid distance units (e.g. feet), not pixels [FVTT-API].
-- Pixel coordinates are measured from the top-left of the scene **including padding**: an image point (px, py) maps to (px + padX, py + padY) where padX = ceil(width * padding / gridSize) * gridSize (unverified exact rounding). Exporting with `padding: 0` avoids this.
+- Pixel coordinates are measured from the top-left of the scene **including padding**: an image point (px, py) maps to (px + padX, py + padY) where padX = ceil(width * padding / gridSize) * gridSize (unverified exact rounding: the SceneData and GridData API pages give no formula and Foundry's source is not public, 2026-11-15; test against a real scene). Exporting with `padding: 0` avoids this.
 - UVTT to Foundry: multiply square coordinates by `pixels_per_grid`, then add padding offset. Module "Universal Battlemap Importer" does this [UBI].
 
 ### 8.4 Roll20 dynamic lighting
 
 - Roll20 walls are paths drawn on the Dynamic Lighting layer; doors and windows are separate objects in the updated dynamic lighting [R20-DL].
-- Roll20 has no native UVTT import. Community API scripts (Pro subscription needed for API) import .dd2vtt walls, for example "UniversalVTTImporter" [R20-API] (unverified name and status).
+- Roll20 has no native UVTT import. Community API scripts (Pro subscription needed for API) import .dd2vtt walls, for example UniversalVTTImporter, which is in Roll20's own script repository at version 0.1.13: "Imports UniversalVTT files, `.dd2vtt`, as used by Dungeondraft", run with `!uvtt` [R20-API] (https://github.com/Roll20/roll20-api-scripts/tree/master/UniversalVTTImporter, checked 2026-11-15).
 - Practical export for Roll20 users: a PNG at 70 px per square plus the UVTT file; tell the user an API script or a manual wall pass is needed.
 
 ### 8.5 Owlbear Rodeo
 
-- Owlbear Rodeo 2.0 has fog and walls through its extension system; the "Dynamic Fog" extension draws walls (unverified) [OBR-DOC]. UVTT import exists through community extensions (unverified).
+- Owlbear Rodeo 2.0 has fog and walls through its extension system; the "Dynamic Fog" extension draws walls (unverified) [OBR-DOC]. UVTT import exists through community extensions (unverified). Both stay unverified: docs.owlbear.rodeo answered 403 to WebFetch on 2026-11-15, so this needs a browser.
 - Safe default: PNG with the grid size in squares stated in the file name, e.g. `crypt_20x15_100px.png`.
 
 ---
@@ -285,11 +285,11 @@ A scene export (right-click scene, Export Data) contains, among others [FVTT-API
 - [DMG14] Wizards of the Coast. Dungeon Master's Guide (5e), 2014, optional diagonal rule (unverified page).
 - [PF2] Paizo. Pathfinder Core Rulebook, 2nd ed., movement on a grid (unverified page).
 - [FVTT-SCN] Foundry VTT Knowledge Base, "Scenes." https://foundryvtt.com/article/scenes/
-- [FVTT-API] Foundry VTT API docs: SceneData, WallData, AmbientLightData. https://foundryvtt.com/api/ (field values per v11-v13; unverified for v14)
+- [FVTT-API] Foundry VTT API docs: SceneData, WallData, AmbientLightData. https://foundryvtt.com/api/ (field names for GridData, WallData and SceneData checked 2026-11-15 against the Version 14 docs, 14.370; sense, door and direction values not re-checked)
 - [UBI] "Universal Battlemap Importer" Foundry module. https://foundryvtt.com/packages/dd-import (checked 2026-11-14: by Moo Man, imports Dungeondraft, DungeonFog and Arkenforge exports, v6.1.1 verified for Foundry 14)
-- [UVTT] Universal VTT format notes from Dungeondraft and Arkenforge docs (unverified canonical spec URL).
+- [UVTT] Arkenforge, "Universal VTT files", with the developer field list. https://arkenforge.com/universal-vtt-files/ (checked 2026-11-15). Dungeondraft publishes no spec of its own that this pass found.
 - [DD] Dungeondraft, export documentation. https://dungeondraft.net/ (unverified)
 - [R20-GRID] Roll20 Help Center, "Page Settings" (70 px units). https://help.roll20.net/
 - [R20-DL] Roll20 Help Center, "Dynamic Lighting." https://help.roll20.net/
-- [R20-API] Roll20 API script library, community UVTT importers (unverified).
+- [R20-API] Roll20 API script library, UniversalVTTImporter 0.1.13. https://github.com/Roll20/roll20-api-scripts/tree/master/UniversalVTTImporter (checked 2026-11-15)
 - [OBR-DOC] Owlbear Rodeo documentation. https://docs.owlbear.rodeo/ (unverified details)

@@ -102,7 +102,7 @@ Terrain3D is a GDExtension addon, not core Godot [S8]. It stores terrain in regi
 
 ### 2.4 Roblox terrain from heightmap
 
-The Terrain Editor's Import tool takes a heightmap image and an optional colormap that sets materials by colour [S9]. Terrain voxels are 4 x 4 x 4 studs [S9]. Max heightmap size and the colour-to-material table are documented on the same page; the limit is 4096 x 4096 px, .png or .jpg, one pixel = 4 studs (https://create.roblox.com/docs/parts/terrain). Scripts can also fill terrain with `Terrain:WriteVoxels` or `FillBlock` for full control [S10]. Scale: 1 stud is about 0.28 m for a 5-stud-tall character convention (unverified, community convention not an official unit).
+The Terrain Editor's Import tool takes a heightmap image and an optional colormap that sets materials by colour [S9]. Terrain voxels are 4 x 4 x 4 studs [S9]. Max heightmap size and the colour-to-material table are documented on the same page; the limit is 4096 x 4096 px, .png or .jpg, one pixel = 4 studs (https://create.roblox.com/docs/parts/terrain). Scripts can also fill terrain with `Terrain:WriteVoxels` or `FillBlock` for full control [S10]. Scale: 1 stud = 28 cm. Fixed 2026-11-15: this is Roblox's own conversion, not only a community convention; the Units page lists length as 1 stud = 28 cm (https://create.roblox.com/docs/physics/units, checked 2026-11-15).
 
 ### 2.5 Minecraft
 
