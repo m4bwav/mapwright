@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """mapwright CLI: read, write, measure and project maps with the standard library.
 
-Subcommands: doctor, explain, inspect, convert, measure, project, gen, zoom, check, names.
+Subcommands: doctor, explain, inspect, convert, measure, project, gen, zoom, check, names,
+render, label, legend, style, serve, sheet.
 Optional extras (numpy, shapely, pyproj, GDAL, geographiclib) are probed, never
 imported at the top level.
 """
@@ -1169,12 +1170,20 @@ def cmd_check(a):
     if not os.path.isfile(os.path.join(a.dir, "recipe.json")):
         die("no recipe.json in " + a.dir)
     bars = g.check(a.dir, determinism=not a.no_regen)
+    if not a.no_labels:
+        r = _render()
+        try:
+            lb = r.check_labels(a.dir, a.style)
+        except ValueError as e:
+            die(str(e))
+        nxt = max(b[0] for b in bars) + 1
+        bars += [(nxt + i, name, ok, detail) for i, (name, ok, detail) in enumerate(lb)]
     if a.json:
         print(json.dumps([dict(bar=b[0], name=b[1], ok=b[2], detail=b[3]) for b in bars], indent=1))
     else:
         for num, name, ok, detail in bars:
-            print("bar %d %s: %s (%s)" % (num, "PASS" if ok else "FAIL", name, detail))
-    if not all(b[2] for b in bars):
+            print("bar %d %s: %s (%s)" % (num, "SKIP" if ok is None else ("PASS" if ok else "FAIL"), name, detail))
+    if any(b[2] is False for b in bars):
         sys.exit(1)
 
 
@@ -1218,6 +1227,151 @@ def cmd_names(a):
         print(json.dumps(dict(language=lang, names=names), indent=1))
     else:
         print("\n".join(names))
+
+
+# ---------------------------------------------------------------- render
+def _render():
+    _gen()
+    import mpw_render
+    return mpw_render
+
+
+def _need_recipe(d):
+    if not os.path.isfile(os.path.join(d, "recipe.json")):
+        die("no recipe.json in " + d)
+
+
+def cmd_render(a):
+    r = _render()
+    _need_recipe(a.dir)
+    try:
+        svg, info = r.render_svg(a.dir, a.style, a.font, a.title)
+        r.write_out(svg, a.out)
+    except (ValueError, RuntimeError, OSError) as e:
+        die(str(e))
+    info.pop("labels")
+    info["out"] = a.out
+    info["svg_bytes"] = len(svg.encode("utf-8"))
+    if a.json:
+        print(json.dumps(info, indent=1))
+    else:
+        print("wrote %s: style %s, %d labels (%d dropped), %d legend entries, %.2f s"
+              % (a.out, a.style, info["placed"], len(info["dropped"]), len(info["legend"]), info["times"]["total"]))
+
+
+def cmd_label(a):
+    r = _render()
+    _need_recipe(a.dir)
+    try:
+        svg, info = r.render_svg(a.dir, a.style, a.font)
+    except (ValueError, OSError) as e:
+        die(str(e))
+    bars = r.label_bars(svg)
+    res = dict(placed=[dict(text=x["text"], kind=x["kind"], x=x["x"], y=x["y"], size=x["size"], angle=x["angle"],
+                            box=[round(v, 1) for v in x["box"]]) for x in info["labels"]],
+               dropped=info["dropped"], bars=[dict(name=n, ok=ok, detail=dt) for n, ok, dt in bars])
+    if a.json:
+        print(json.dumps(res, indent=1))
+    else:
+        print("%d labels placed, %d dropped (no free spot)" % (len(res["placed"]), len(res["dropped"])))
+        for n, ok, dt in bars:
+            print("%s: %s (%s)" % ("SKIP" if ok is None else ("PASS" if ok else "FAIL"), n, dt))
+    if any(b[1] is False for b in bars):
+        sys.exit(1)
+
+
+def cmd_legend(a):
+    r = _render()
+    _need_recipe(a.dir)
+    try:
+        st = r.style(a.style)
+    except ValueError as e:
+        die(str(e))
+    rc, m, feats = r.load(a.dir)
+    ents = r.legend_entries(feats, m, st, rc)
+    if a.out:
+        frame = (0, 0, 1, 22 + 15 * len(ents) + 2 * r.MARGIN)
+        body, box = r.legend_svg(ents, frame, st)
+        w, h = box[2] + r.MARGIN, box[3] + r.MARGIN
+        svg = "\n".join(['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">'
+                         % (w, h, w, h)] + body + ["</svg>", ""])
+        try:
+            r.write_out(svg, a.out)
+        except (ValueError, RuntimeError) as e:
+            die(str(e))
+    if a.json:
+        print(json.dumps(ents, indent=1))
+    else:
+        for e in ents:
+            print("%-6s %s" % (e["kind"], e["label"]))
+
+
+def cmd_style(a):
+    r = _render()
+    if a.list or not a.name:
+        for k in sorted(r.STYLES):
+            print("%-18s %s" % (k, r.STYLES[k]["desc"]))
+        return
+    try:
+        print(json.dumps(r.style(a.name), indent=1))
+    except ValueError as e:
+        die(str(e))
+
+
+def cmd_serve(a):
+    r = _render()
+    _need_recipe(a.dir)
+    try:
+        svg, info = r.render_svg(a.dir, a.style)
+    except ValueError as e:
+        die(str(e))
+    srv = r.make_server(svg, os.path.basename(os.path.abspath(a.dir)), a.port)
+    print("serving http://%s:%d/ (127.0.0.1 only; Ctrl+C stops)" % srv.server_address[:2], flush=True)
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        srv.server_close()
+
+
+def cmd_sheet(a):
+    import tempfile
+    r = _render()
+    g = _gen()
+    _need_recipe(a.dir)
+    items = []
+    styles = [s.strip() for s in a.styles.split(",")] if a.styles else []
+    try:
+        seeds = [int(s) for s in a.seeds.split(",")] if a.seeds else []
+    except ValueError:
+        die("--seeds wants a comma list of integers")
+    if not styles and not seeds:
+        styles = sorted(r.STYLES)
+    tmp = tempfile.mkdtemp(prefix="mpw-sheet-")
+    try:
+        if seeds:
+            with open(os.path.join(a.dir, "recipe.json"), encoding="utf-8") as f:
+                rc = json.load(f)
+            if rc["kind"] != "world":
+                die("--seeds works on a world recipe")
+            p = rc["params"]
+            st = styles[0] if styles else r.DEFAULT_STYLE
+            for sd in seeds:
+                out = os.path.join(tmp, "s%d" % sd)
+                g.gen_world(sd, p["cells"], out, p["plates"], p["erosion_steps"], p["lat_top"], p["lat_bottom"],
+                            p["raster_px"], VERSION)
+                items.append(("seed %d, %s" % (sd, st), r.render_svg(out, st)[0]))
+        else:
+            for st in styles:
+                items.append((st, r.render_svg(a.dir, st)[0]))
+        svg = r.sheet_svg(items, a.cols)
+        r.write_out(svg, a.out)
+    except (ValueError, RuntimeError, OSError) as e:
+        die(str(e))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    print("wrote %s: %d maps" % (a.out, len(items)))
 
 
 # ---------------------------------------------------------------- main
@@ -1309,6 +1463,8 @@ def build_parser():
     s = sub.add_parser("check", help="run the land proof bars on a recipe folder")
     s.add_argument("dir")
     s.add_argument("--no-regen", action="store_true", help="skip the byte-identical regeneration bar")
+    s.add_argument("--no-labels", action="store_true", help="skip the label bars (overlap, edge, OCR)")
+    s.add_argument("--style", default="topographic", help="style the label bars render with")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_check)
 
@@ -1321,6 +1477,48 @@ def build_parser():
     s.add_argument("--list", action="store_true", help="list the built-in styles")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_names)
+
+    s = sub.add_parser("render", help="recipe folder to a print map (.svg, or .png/.pdf via headless Chrome or Edge)")
+    s.add_argument("dir")
+    s.add_argument("-o", "--out", required=True)
+    s.add_argument("--title")
+    s.set_defaults(fn=cmd_render)
+    rn = s
+
+    s = sub.add_parser("label", help="place labels with collision avoidance and run the label bars")
+    s.add_argument("dir")
+    s.set_defaults(fn=cmd_label)
+    lb = s
+
+    s = sub.add_parser("legend", help="the legend entries for the symbols on this map")
+    s.add_argument("dir")
+    s.add_argument("-o", "--out", help="write the legend alone (.svg/.png/.pdf)")
+    s.set_defaults(fn=cmd_legend)
+    lg = s
+    for x in (rn, lb, lg):
+        x.add_argument("--style", default="topographic", help="named look (`style --list`)")
+        x.add_argument("--json", action="store_true")
+    for x in (rn, lb):
+        x.add_argument("--font", help="TTF whose hmtx widths measure the labels (default: shipped wide table)")
+
+    s = sub.add_parser("style", help="list the named looks or show one")
+    s.add_argument("name", nargs="?")
+    s.add_argument("--list", action="store_true")
+    s.set_defaults(fn=cmd_style)
+
+    s = sub.add_parser("serve", help="pan/zoom page of the rendered map on 127.0.0.1 only")
+    s.add_argument("dir")
+    s.add_argument("--style", default="topographic")
+    s.add_argument("--port", type=int, default=8765)
+    s.set_defaults(fn=cmd_serve)
+
+    s = sub.add_parser("sheet", help="several styles or seeds side by side in one SVG/PNG/PDF")
+    s.add_argument("dir")
+    s.add_argument("-o", "--out", required=True)
+    s.add_argument("--styles", help="comma list (default: all styles)")
+    s.add_argument("--seeds", help="comma list of seeds: regenerate the world per seed (first --styles entry)")
+    s.add_argument("--cols", type=int)
+    s.set_defaults(fn=cmd_sheet)
     return p
 
 

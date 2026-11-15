@@ -41,3 +41,6 @@ Newest last. One dated line per fact another session would need.
 - 2026-11-14: D.3 timing (same machine, back to back): gen world 16k 1.11 s before, 1.44 s after; 65k 4.08 s before, 4.31 s after (an earlier 65k baseline run took 2.88 s; machine load varies).
 - 2026-11-14: D.3 sweep: 20 seeds x (world + 3 children + grandchild) at 4k cells and 4 seeds at 16k: bars 8-13 pass everywhere. Open: grandchild of a landlocked window fails bar 1 (also on origin/main), and one arid child fails bar 7 at its 20-sample floor (L-009).
 - 2026-11-14: session 7: D.3 merged (PR #1, b9f0ad3), verified 50/50 on main, worktree removed; HANDOFF deduplicated, Next = D.4 render family. Wrap-up minimal (nothing new to harvest beyond L-007/L-009).
+- 2026-11-14: Step D.4 built on branch render (worktree mapwright-render): scripts/mpw_render.py, `render`, `label`, `legend`, `style`, `serve`, `sheet`; `check` gains label bars 14-16 (OCR skipped without tesseract). Tests 61/61.
+- 2026-11-14: D.4 timing: render 16k 0.7-0.9 s, 65k 1.05 s; SVG 110-460 KB by style; PNG via headless Chrome 2.3 s at 65k.
+- 2026-11-14: tesseract is not installed on this machine, so the OCR label bar is skipped with a reason. Open: curved river labels (textPath), catalogue stars for star-chart, label bars on the AI-styled picture.

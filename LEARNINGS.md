@@ -61,6 +61,27 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 - Evidence: scratch sweep 2026-11-14
 - Scope: skill
 
+### L-010 · 2026-11-14 · A label bar that reuses the placer's own boxes proves nothing
+- Trigger: design of the `check` label bars.
+- Hypothesis: if check reads the boxes the placer kept, a placer bug passes its own test.
+- Rule: measure labels back from the rendered SVG's attributes (x, y, size, anchor, rotate, letter-spacing) with the width table, and test overlaps and edges on those boxes. Tests force an overlap and an edge cut into an SVG to prove the bar fails.
+- Evidence: T-20261114-3
+- Scope: skill
+
+### L-011 · 2026-11-14 · The width table must be wider than the fonts the stacks name
+- Trigger: first table had Georgia Italic 'r' (0.461 em) and Verdana '.' above the table value.
+- Hypothesis: a too-narrow estimate lets drawn text overflow its collision box, so labels touch while the bar passes.
+- Rule: keep em_width at or above every font in the style stacks; a test compares it with system TTF hmtx (Georgia, Arial, Palatino, Times) and skips where none exist. For monospace styles use a fixed 0.62 em.
+- Evidence: T-20261114-3
+- Scope: skill
+
+### L-012 · 2026-11-14 · Monospace labels look garbled when a sheet scales a map down
+- Trigger: blueprint labels in a 480 px sheet cell read as noise; at full size they are clean.
+- Hypothesis: Courier New strokes and the 2.5 px halo collapse below about 6 px text.
+- Rule: judge a style from a full-size render, not from a sheet thumbnail; an OCR bar must run on the full-size PNG.
+- Evidence: scratch renders 2026-11-14
+- Scope: skill
+
 ### L-006 · 2026-11-14 · Embedded RGB PNG drew blank: width passed as bytes per row
 - Trigger: map.svg showed only the sea colour.
 - Hypothesis: the PNG width was len(row) of an RGB bytearray, three times the pixel width.

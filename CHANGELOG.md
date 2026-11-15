@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261114-4 · 2026-11-14 · 0.2.0 (unreleased): render, label, legend, style, serve, sheet; label bars in check
+- because: user request (Step D.4), T-20261114-3, L-010, L-011, L-012
+- files: scripts/mpw_render.py (new), scripts/mpw.py, tests/test_mpw.py, skills/mapwright/SKILL.md, README.md
+- `render DIR -o out.svg|png|pdf` draws a recipe folder from its files alone: land raster per style with Horn hillshade, depth-tinted sea, lakes, rivers widened by flow, roads by rank, settlements, labels, a legend of only the symbols drawn, a scale bar and a north arrow. PNG and PDF come from headless Chrome or Edge, with a clear error when neither is found. `label` places point, area and river labels greedily in priority order with collision boxes against labels, settlement dots and the map furniture, and reports what it dropped. Text width comes from a shipped wide table (checked to be at least as wide as Georgia, Arial, Palatino and Times) or a TTF's hmtx with `--font`. `style` lists six looks (topographic, atlas, satellite, ink-and-parchment, blueprint, star-chart; star-chart is a palette plus star field). `serve` wraps the SVG in a pan and zoom page bound to 127.0.0.1 only. `sheet` sets several styles or seeds side by side. `check` adds three label bars: no overlaps, none cut by the edge, OCR read-back (skipped with a reason when tesseract is absent, never a pass).
+
 ### C-20261114-3 · 2026-11-14 · 0.2.0 (unreleased): names, settlements, roads; relative parent path; 13 bars
 - because: user request (Step D.3), L-007, L-008, L-009
 - files: scripts/mpw_names.py (new), scripts/mpw_human.py (new), scripts/mpw_gen.py, scripts/mpw.py, tests/test_mpw.py, skills/mapwright/SKILL.md, README.md
