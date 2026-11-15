@@ -6,7 +6,7 @@ An agent plugin for maps of real places, fantasy worlds and science fiction sett
 
 mapwright is a skill for AI coding agents plus one small script, `mpw.py`, that needs nothing but Python's standard library.
 
-## What works in 0.1.0
+## What works in 0.2.0
 
 - **Inspect** a map file: GeoJSON, GPX, KML and KMZ, shapefiles, dBASE, PNG heightmaps with world files, GeoPackage and MBTiles. Feature counts, extent, properties and the CRS when the file states one.
 - **Convert** between GeoJSON, GPX and KML, and read shapefiles into GeoJSON. Ring order is fixed on the way (shapefiles clockwise, GeoJSON counter-clockwise).

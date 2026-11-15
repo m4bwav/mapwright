@@ -1,6 +1,6 @@
 # HANDOFF: mapwright
 
-Status: Step D.4 done (2026-11-14): render/label/legend/style/serve/sheet in mpw_render.py, check bars 14-16 (OCR bar skips: no tesseract); PR #2 merged (d74212d); tests 61/61. Banner, social image and wiki in progress (subagent, branch images). Next: D.5 read/trace.
+Status: Step D.4 done (2026-11-14): render/label/legend/style/serve/sheet in mpw_render.py, check bars 14-16 (OCR bar skips: no tesseract); PR #2 merged (d74212d); tests 61/61. Banner, social preview (set in repo settings) and wiki 0.2.0 done (PRs #3, #4). Next: D.5 read/trace.
 
 Continue prompt: [plans/mapwright-continue-prompt.md](plans/mapwright-continue-prompt.md)
 
