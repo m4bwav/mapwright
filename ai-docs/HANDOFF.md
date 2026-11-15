@@ -1,6 +1,6 @@
 # HANDOFF: mapwright
 
-Status: Step D.3 done (2026-11-14): names (mpw_names.py, 6 styles + custom pattern), settlements + A* roads (mpw_human.py), inherited by children, relative parent path, check now 13 bars; PR #1 merged (b9f0ad3); tests 50/50. Next: D.4 render/label/legend/style/serve/sheet.
+Status: Step D.4 done (2026-11-14): render/label/legend/style/serve/sheet in mpw_render.py, check bars 14-16 (OCR bar skips: no tesseract); PR #2 merged (d74212d); tests 61/61. Banner, social image and wiki in progress (subagent, branch images). Next: D.5 read/trace.
 
 Continue prompt: [plans/mapwright-continue-prompt.md](plans/mapwright-continue-prompt.md)
 
@@ -10,9 +10,9 @@ Continue prompt: [plans/mapwright-continue-prompt.md](plans/mapwright-continue-p
 
 ## Next
 
-1. Step D.4: `render`, `label` (no overlaps, none cut by the edge, OCR read-back bar), `legend`, `style` (topographic, atlas, satellite, ink and parchment, blueprint, star chart), `serve` (127.0.0.1 only), `sheet`. Decisions in [plans/design.md](plans/design.md): stdlib SVG + headless Chrome/Edge for PNG/PDF.
+1. Check the images/wiki PR landed (log.md); if not, finish it. Then D.5 `read`/`trace`. D.4 open items (LEARNINGS L-010..012): OCR bar untested (no tesseract), straight river labels, star-chart has no catalogue stars, blueprint labels garble when a sheet shrinks.
 2. Open issues from D.3 (LEARNINGS L-009): a grandchild window with no sea fails bar 1 (predates D.3); one dry child sits on bar 7's 20-sample edge; no ferries yet (islands get their own road nets).
-3. README banner (ComfyUI, 1536x640, .github/images/banner.jpg) owed before release.
+3. Mark (2026-11-14): "don't forget the wiki and the social and hero images". Owed before release: README hero banner (ComfyUI, 1536x640, .github/images/banner.jpg), GitHub social preview image (1280x640, set in repo settings), and the wiki (wikiwright). Make the images from real mpw.py renders once D.4 lands.
 4. Run evergreen-convert on mapwright (adds evergreen.json) so `harvest targets` picks up harvest.json.
 5. Then: read/trace, find/fetch, gen city/dungeon/battle, space gens, export, aistyle.
 6. Source pass 3 in small batches (~170 unverified marks; priority never-scrape terms, tabletop formats, Snyder values).
