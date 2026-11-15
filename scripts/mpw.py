@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -1244,6 +1244,44 @@ def _places():
     return mpw_places
 
 
+def _space():
+    _gen()
+    import mpw_space
+    return mpw_space
+
+
+SPACE = ("sector", "system", "planet", "deck")
+
+
+def cmd_gen_space(a):
+    S = _space()
+    try:
+        if a.what == "sector":
+            r = S.gen_sector(a.seed, a.out, a.size, a.density, a.jump, a.real, a.radius_pc, VERSION, a.name_style)
+        elif a.what == "system":
+            r = S.gen_system(a.seed, a.out, a.star, a.planets, VERSION, a.name_style)
+        elif a.what == "planet":
+            r = S.gen_planet(a.seed, a.out, a.kind, a.width, VERSION)
+        else:
+            r = S.gen_deck(a.seed, a.out, a.w, a.h, a.decks, a.hull, a.pps, VERSION, a.name_style)
+    except (ValueError, OSError, KeyError) as e:
+        die(str(e))
+    if a.json:
+        print(json.dumps(r, indent=1))
+    elif a.what == "sector":
+        print("wrote %s: %s, %d worlds, %d routes (%d long) in %.2f s"
+              % (r["out"], r["name"], r["worlds"], r["routes"], r["long"], r["times"]["total"]))
+    elif a.what == "system":
+        print("wrote %s: %s (%s), %d planets, %d moons in %.2f s"
+              % (r["out"], r["name"], r["star"], r["planets"], r["moons"], r["times"]["total"]))
+    elif a.what == "planet":
+        print("wrote %s: %s planet texture %dx%d, %d craters in %.2f s"
+              % (r["out"], r["planet"], r["width"], r["height"], r["craters"], r["times"]["total"]))
+    else:
+        print("wrote %s: %s, %d deck(s), %d rooms in %.2f s" % (r["out"], r["name"], r["decks"], r["rooms"],
+                                                                r["times"]["total"]))
+
+
 def _kind(d):
     try:
         with open(os.path.join(d, "recipe.json"), encoding="utf-8") as f:
@@ -1278,6 +1316,8 @@ def cmd_gen_place(a):
 def cmd_gen(a):
     if a.what in ("city", "dungeon", "battle"):
         return cmd_gen_place(a)
+    if a.what in SPACE:
+        return cmd_gen_space(a)
     g = _gen()
     try:
         if a.what == "world":
@@ -1308,9 +1348,11 @@ def cmd_check(a):
         die("no recipe.json in " + a.dir)
     if _kind(a.dir) in ("city", "dungeon", "battle"):
         bars = _places().check(a.dir, determinism=not a.no_regen, labels=not a.no_labels)
+    elif _kind(a.dir) in SPACE:
+        bars = _space().check(a.dir, determinism=not a.no_regen, labels=not a.no_labels)
     else:
         bars = g.check(a.dir, determinism=not a.no_regen)
-    if not a.no_labels and _kind(a.dir) not in ("city", "dungeon", "battle"):
+    if not a.no_labels and _kind(a.dir) not in ("city", "dungeon", "battle") + SPACE:
         r = _render()
         try:
             lb = r.check_labels(a.dir, a.style)
@@ -1384,6 +1426,14 @@ def _need_recipe(d):
 def cmd_render(a):
     r = _render()
     _need_recipe(a.dir)
+    if _kind(a.dir) in SPACE:
+        try:
+            svg = _space().render_svg(a.dir, a.view)
+            r.write_out(svg, a.out)
+        except (ValueError, RuntimeError, OSError) as e:
+            die(str(e))
+        print("wrote %s" % a.out)
+        return
     if _kind(a.dir) in ("city", "dungeon", "battle"):
         try:
             svg = _places().render_svg(a.dir, None if a.style == "topographic" else a.style)
@@ -1409,6 +1459,17 @@ def cmd_render(a):
 
 def cmd_export(a):
     _need_recipe(a.dir)
+    if _kind(a.dir) in SPACE:
+        try:
+            bars, files = _space().export(a.dir, a.out)
+        except (ValueError, OSError, KeyError) as e:
+            die(str(e))
+        for name, ok, detail in bars:
+            print("%s: %s (%s)" % ("PASS" if ok else "FAIL", name, detail))
+        print("wrote %s" % ", ".join(files))
+        if any(b[1] is False for b in bars):
+            sys.exit(1)
+        return
     P = _places()
     try:
         P.write_uvtt(a.dir, a.out)
@@ -1664,6 +1725,33 @@ def build_parser():
     b.add_argument("--w", type=int, default=30, help="width in squares or hexes")
     b.add_argument("--h", type=int, default=20, help="height in squares or hex rows")
     b.add_argument("--pps", type=int, default=100, help="pixels per square (hex: hex width, even)")
+    sc = gs.add_parser("sector", help="hex subsector or sector: worlds, T5 tab file, connected routes; --real for near stars")
+    sc.add_argument("--seed", type=int, default=1)
+    sc.add_argument("--size", choices=("subsector", "sector"), default="subsector", help="8x10 or 32x40 hexes")
+    sc.add_argument("--density", type=float, default=0.5, help="share of hexes with a world")
+    sc.add_argument("--jump", type=float, default=2, help="jump range: hexes, or parsecs with --real")
+    sc.add_argument("--real", action="store_true", help="bundled near stars (scripts/data/near-stars.csv) by parallax")
+    sc.add_argument("--radius-pc", type=float, default=6.0, help="with --real: stars within this distance")
+    sy = gs.add_parser("system", help="star, planets on stable orbits, moons; schematic and to-scale diagrams")
+    sy.add_argument("--seed", type=int, required=True)
+    sy.add_argument("--star", choices=("M", "K", "G", "F"))
+    sy.add_argument("--planets", type=int)
+    pl = gs.add_parser("planet", help="equirectangular sphere texture with no seam or pole pinch")
+    pl.add_argument("--seed", type=int, required=True)
+    pl.add_argument("--kind", choices=("rocky", "ice", "ocean", "gas", "moon", "locked"), default="rocky")
+    pl.add_argument("--width", type=int, default=1024, help="texture width (even, 512+); height is half")
+    dk = gs.add_parser("deck", help="ship or station deck plan: rooms, doors, airlock, lifts, all reachable")
+    dk.add_argument("--seed", type=int, required=True)
+    dk.add_argument("--hull", choices=("ship", "station"), default="ship")
+    dk.add_argument("--w", type=int, default=40, help="length in 1.5 m squares")
+    dk.add_argument("--h", type=int, default=21, help="beam in 1.5 m squares")
+    dk.add_argument("--decks", type=int, default=2)
+    dk.add_argument("--pps", type=int, default=16, help="pixels per square in map.svg")
+    for x in (sc, sy, pl, dk):
+        x.add_argument("--out", required=True)
+        x.add_argument("--json", action="store_true")
+    for x in (sc, sy, dk):
+        x.add_argument("--name-style", help="name sound pattern (`names --list`)")
     for x in (c, d, b):
         x.add_argument("--out", required=True)
         x.add_argument("--style", choices=("ink-and-parchment", "blueprint"))
@@ -1671,9 +1759,9 @@ def build_parser():
         x.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_gen)
 
-    s = sub.add_parser("export", help="dungeon or battle recipe to Universal VTT (.dd2vtt) with walls, doors, lights")
+    s = sub.add_parser("export", help="dungeon/battle to Universal VTT (.dd2vtt), planet to a sphere PNG, sector to a T5 tab file")
     s.add_argument("dir")
-    s.add_argument("-o", "--out", required=True, help="output .dd2vtt or .uvtt file")
+    s.add_argument("-o", "--out", required=True, help="output .dd2vtt/.uvtt, .png (planet) or .tab (sector)")
     s.set_defaults(fn=cmd_export)
 
     s = sub.add_parser("zoom", help="same as `gen region --parent DIR`")
@@ -1686,7 +1774,7 @@ def build_parser():
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_zoom)
 
-    s = sub.add_parser("check", help="run the proof bars on a recipe folder (world, region, city, dungeon, battle)")
+    s = sub.add_parser("check", help="run the proof bars on a recipe folder (world, region, city, dungeon, battle, sector, system, planet, deck)")
     s.add_argument("dir")
     s.add_argument("--no-regen", action="store_true", help="skip the byte-identical regeneration bar")
     s.add_argument("--no-labels", action="store_true", help="skip the label bars (overlap, edge, OCR)")
@@ -1728,6 +1816,7 @@ def build_parser():
     s.add_argument("dir")
     s.add_argument("-o", "--out", required=True)
     s.add_argument("--title")
+    s.add_argument("--view", choices=("schematic", "scale"), help="system recipes: schematic (default) or to scale")
     s.set_defaults(fn=cmd_render)
     rn = s
 

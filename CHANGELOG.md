@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261115-3 · 2026-11-15 · 0.6.0: gen sector, gen system, gen planet, gen deck
+- because: user request (Step D.8), T-20261115-3, L-021, L-022, L-023
+- files: scripts/mpw_space.py (new), scripts/data/near-stars.csv (new), scripts/mpw.py, tests/test_space.py (new), skills/mapwright/SKILL.md, README.md, plugin.json, .claude-plugin/plugin.json
+- `gen sector` places one world per occupied hex of a subsector (8x10) or sector (32x40), joins them by the relative neighbourhood graph plus the minimum spanning tree so the graph is always connected, marks routes beyond the jump range as long, and writes a T5 tab-delimited file; `--real` places twelve near stars from a small bundled table by parallax. `gen system` builds a star, planets kept at least 12 mutual Hill radii apart, moons inside the Hill sphere, and draws a schematic and a to-scale diagram. `gen planet` samples 3D noise on the sphere for six kinds of world, so the texture has no seam and no pole pinch. `gen deck` lays out ship or station decks with a spine corridor, doors, an airlock and lifts. `check` runs the space bars; `export` writes a planet as a sphere PNG plus a hand-off note, or a sector as a T5 file; `render --view scale` draws a system to scale.
+
 ### C-20261115-2 · 2026-11-15 · 0.5.0: gen city, gen dungeon, gen battle, export to Universal VTT
 - because: user request (Step D.7), T-20261115-2, L-018, L-019, L-020
 - files: scripts/mpw_places.py (new), scripts/mpw.py, tests/test_places.py (new), skills/mapwright/SKILL.md, README.md, plugin.json, .claude-plugin/plugin.json
