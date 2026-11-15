@@ -39,7 +39,7 @@ All from the EPSG Geodetic Parameter Dataset (https://epsg.org) unless marked. E
 | EPSG:4087 | WGS 84 / World Equidistant Cylindrical | plate carrée in metres |
 | EPSG:8857 | WGS 84 / Equal Earth Greenwich | world thematic maps |
 | ESRI:54030 | World_Robinson | world reference maps |
-| ESRI:54042 | World_Winkel_Tripel_NGS | world reference maps (unverified code number) |
+| ESRI:54042 | World_Winkel_Tripel_NGS | world reference maps (code and name confirmed in PROJ's esri.sql, https://raw.githubusercontent.com/OSGeo/PROJ/master/data/sql/esri.sql, checked 2026-11-15) |
 | ESRI:54009 | World_Mollweide | world equal-area |
 
 UTM zone rule: `zone = floor((lon + 180) / 6) + 1`, central meridian `-183 + 6*zone`, with exceptions in Norway (zone 32V widened to 9° wide over 56-64°N) and Svalbard (zones 31X, 33X, 35X, 37X widened; 32X, 34X, 36X unused) (NGA, "The Universal Grids", DMA TM 8358.2, https://earth-info.nga.mil/; Snyder 1987 p.57-64). UTM covers 80°S to 84°N; the poles use UPS (polar stereographic, scale 0.994) (DMA TM 8358.2).
@@ -88,7 +88,7 @@ Each entry gives the property kept, what breaks, and the source. "Conformal" kee
 
 ### 3.8 Robinson (pseudocylindrical compromise)
 - Keeps: nothing exactly; designed to "look right" for world maps; poles are lines 0.5322 of the equator length. Used by National Geographic 1988-1998 (Snyder, "Flattening the Earth", 1993, p.214-216; Robinson 1974).
-- Defined by a table of `X` and `Y` factors at 5° steps with interpolation, not a closed formula; the inverse needs iteration (Snyder & Voxland, "An Album of Map Projections", USGS PP 1453, 1989, p.82-83, https://pubs.usgs.gov/publication/pp1453; PROJ `+proj=robin`, https://proj.org/en/stable/operations/projections/robin.html). PROJ uses cubic-spline interpolation of the table; plain linear interpolation gives visibly kinked meridians (unverified detail).
+- Defined by a table of `X` and `Y` factors at 5° steps with interpolation, not a closed formula; the inverse needs iteration (Snyder & Voxland, "An Album of Map Projections", USGS PP 1453, 1989, p.82-83, https://pubs.usgs.gov/publication/pp1453; PROJ `+proj=robin`, https://proj.org/en/stable/operations/projections/robin.html). PROJ evaluates a cubic polynomial per 5° interval from four stored coefficients per node, `c0 + z(c1 + z(c2 + z c3))` (https://raw.githubusercontent.com/OSGeo/PROJ/master/src/projections/robin.cpp, checked 2026-11-15). That plain linear interpolation gives visibly kinked meridians is unverified (no source found; plot both to see).
 
 ### 3.9 Equal Earth (pseudocylindrical, equal-area)
 - Keeps: area; meridians are smooth curves, look similar to Robinson. Published 2018 as a free equal-area alternative to Robinson and Gall-Peters (Šavrič, Patterson, Jenny, "The Equal Earth map projection", IJGIS 33(3), 2019, https://doi.org/10.1080/13658816.2018.1504949).
@@ -177,8 +177,8 @@ Policy: implement the table above in stdlib; if `pyproj` is importable, offer it
 
 ### 8.1 IAU planetary CRS in PROJ
 - The IAU Working Group on Cartographic Coordinates and Rotational Elements (WGCCRE) publishes radii and rotation models; the latest full report is Archinal et al. 2018, "Report of the IAU WGCCRE: 2015", Celestial Mechanics and Dynamical Astronomy 130:22, https://doi.org/10.1007/s10569-017-9805-5.
-- PROJ ships these as authority `IAU_2015` since PROJ 8.2 (2021), code scheme `body*100 + type`: `00` sphere geographic, `01` ellipsoid planetocentric, `02` ellipsoid planetographic, then projected codes `10`, `15`, `20`... for equirectangular, Mercator, polar stereographic and others (https://proj.org/en/stable/news.html 8.2.0 notes; Marmo et al., GDAL/PROJ IAU codes RFC, https://github.com/OSGeo/PROJ/pull/2876, unverified PR number).
-- Examples: `IAU_2015:49900` "Mars (2015) - Sphere / Ocentric" (https://spatialreference.org/ref/iau_2015/49900/, checked 2026-11-14); `IAU_2015:49901` Mars ellipsoid planetocentric, `IAU_2015:30100` Moon sphere, `IAU_2015:39900` Earth sphere (unverified codes; check `projinfo -s IAU_2015 --list-crs` or https://spatialreference.org/ref/iau_2015/).
+- PROJ ships these as authority `IAU_2015` since PROJ 8.2 (2021), code scheme `body*100 + type`: `00` sphere planetocentric, `01` ellipsoid planetographic, `02` ellipsoid planetocentric (fixed 2026-11-15 from PROJ's iau.sql: the draft had `01` and `02` the wrong way round), then projected codes `10`, `15`, `20`... for equirectangular, Mercator, polar stereographic and others (https://proj.org/en/stable/news.html 8.2.0 notes; Marmo et al., GDAL/PROJ IAU codes RFC, https://github.com/OSGeo/PROJ/pull/2876, "Add IAU_2015 CRS definitions", merged 2021-10-05, checked 2026-11-15).
+- Examples: `IAU_2015:49900` "Mars (2015) - Sphere / Ocentric" (https://spatialreference.org/ref/iau_2015/49900/, checked 2026-11-14); `IAU_2015:49901` "Mars (2015) / Ographic" and `IAU_2015:49902` "Mars (2015) / Ocentric" (fixed 2026-11-15: the draft called 49901 planetocentric, it is planetographic), `IAU_2015:30100` "Moon (2015) - Sphere / Ocentric", `IAU_2015:39900` "Earth (2015) - Sphere / Ocentric" (names from PROJ's iau.sql, https://raw.githubusercontent.com/OSGeo/PROJ/master/data/sql/iau.sql, checked 2026-11-15).
 - Older OGC WMS codes `IAU2000:49900` etc. appear in USGS and NASA services (https://pds-imaging.jpl.nasa.gov/, unverified).
 
 ### 8.2 Radii (IAU 2015 report, Archinal et al. 2018, table 4-5)
@@ -191,8 +191,8 @@ Policy: implement the table above in stdlib; if `pyproj` is importable, offer it
 | Mercury | 2 439.4 km | - | - | sphere |
 | Venus | 6 051.8 km | - | - | sphere |
 
-- Mars: USGS and NASA mosaics (MOLA, HiRISE, CTX) use the sphere 3 396 190 m for map projection with planetocentric latitude and east-positive longitude 0-360 (USGS Astrogeology, Mars MOLA product notes, https://astrogeology.usgs.gov/search/map/mars_mgs_mola_dem_463m, unverified). Hand-coded maths should accept both the sphere and the ellipsoid.
-- Moon: always the sphere R = 1 737 400 m; LROC and LOLA products use it (Archinal et al. 2018; LOLA data notes, unverified URL https://pds-geosciences.wustl.edu/missions/lro/lola.htm).
+- Mars: USGS and NASA mosaics (MOLA, HiRISE, CTX) use the sphere 3 396 190 m for map projection with planetocentric latitude and east-positive longitude 0-360 (USGS Astrogeology, Mars MOLA product notes, https://astrogeology.usgs.gov/search/map/mars_mgs_mola_dem_463m, product note unverified; the radius itself, 3396190 m, is the IAU_2015 Mars sphere in PROJ's iau.sql, with polar radius 3376200 m for the ellipsoid, checked 2026-11-15). Hand-coded maths should accept both the sphere and the ellipsoid.
+- Moon: always the sphere R = 1 737 400 m; LROC and LOLA products use it (Archinal et al. 2018; LOLA data notes, unverified URL https://pds-geosciences.wustl.edu/missions/lro/lola.htm; the radius 1737400 m is the IAU_2015 Moon sphere in PROJ's iau.sql, checked 2026-11-15).
 - Longitude convention: IAU defines planetographic longitude positive opposite to rotation (west-positive for prograde bodies like Mars); planetocentric longitude is east-positive. Since 2002 NASA Mars missions use planetocentric, east-positive (Archinal et al. 2018 section 2; Duxbury et al. 2002, "Mars Geodesy/Cartography Working Group recommendations", ISPRS Archives 34(4), unverified).
 
 ### 8.3 Invented worlds
@@ -226,7 +226,7 @@ Each rule is checkable by a test.
 
 ### Test values
 
-From Snyder 1987 numerical examples (appendix A pages are part of the cited chapter; page numbers unverified, values to be re-checked against the PDF before use):
+From Snyder 1987 numerical examples (appendix A pages are part of the cited chapter; page numbers unverified, values to be re-checked against the PDF before use; pass 3 on 2026-11-15 could not read the PDF either: pubs.usgs.gov answered 403 and the Wayback Machine copy of https://pubs.usgs.gov/pp/1395/report.pdf answered 429 twice, and PROJ's builtins.gie uses other test points, so every row below keeps its mark):
 
 | Case | Input | Expected | Source |
 |---|---|---|---|
