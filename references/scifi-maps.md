@@ -122,7 +122,7 @@ EMST  subset of  RNG  subset of  Gabriel graph  subset of  Delaunay triangulatio
 - Relative neighbourhood graph (RNG): edge (p, q) if no r is closer to both p and q than they are to each other, i.e. no r with max(d(p,r), d(q,r)) < d(p,q) [14]. Sparse, connected, looks like hand-drawn lanes.
 - Euclidean minimum spanning tree (EMST): the sparsest connected one; a tree, so no loops [13].
 
-Because EMST is contained in each, RNG, Gabriel and Delaunay are all connected [13][14]. Games with hyperlanes (Stellaris-style) look like a pruned Delaunay or RNG plus a few extra loops (unverified; no primary source on any specific game's algorithm).
+Because EMST is contained in each, RNG, Gabriel and Delaunay are all connected [13][14]. Games with hyperlanes (Stellaris-style) look like a pruned Delaunay or RNG plus a few extra loops (unverified; no primary source on any specific game's algorithm). One shipped map links each node to the start or an already linked neighbour and then adds links up to a designer-set mean connections per node (Korn and Lee, Game Dynamics, ch. 9, sec. 6). Space games drop grids for node networks, since space is points of interest in a void (Short and Adams, Procedural Generation in Game Design, ch. 10, p. 98).
 
 Stdlib-friendly route: RNG by brute force is O(n^3), fine up to a few thousand stars; or build the EMST with Prim's algorithm in O(n^2) and add back short Gabriel edges for loops. Delaunay in pure Python: Bowyer-Watson, O(n^2) worst case, adequate for sector sizes [13] (unverified complexity claim for typical inputs). In 3D the same definitions hold with spheres instead of discs.
 
@@ -181,6 +181,7 @@ Numerical proof rules:
 - Conventions shared by most published deck plans (unverified as a formal standard): walls as thick lines, doors as gaps with a swing or slide mark, irises as circles, airlocks as two doors with a small room, ladders and lifts with symbols, a legend and a scale bar, one drawing per deck with decks aligned on a common grid so lifts line up.
 - Orientation: "up" on a ship under thrust is away from the drive, so decks stack along the thrust axis; spinning habitats put "down" outward (see section 10).
 - Stations: rings, hub-and-spoke, or stacked cylinders; label the rotation axis and spin direction.
+- Decks, stations and castles are space-first: generate the plan, abstract it to a room graph, then fit the mission to it. The plan must offer doors and bottlenecks to hang locks on (Shaker, Togelius and Nelson, Procedural Content Generation in Games, ch. 5, p. 88). Check (ours): at least one bridge edge, a door whose removal splits the graph, per requested lock.
 
 Proof rule: `deck-reachability`. Model each deck as a grid graph (floor cells, door edges) with lifts/ladders as edges between decks. BFS from the main airlock reaches every room; report rooms unreachable, airlocks with only one door, and lift shafts that do not align across decks.
 

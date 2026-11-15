@@ -33,6 +33,7 @@ mapwright is stdlib-first Python, so this file favours methods that need only `r
 
 - Medieval and fantasy towns: Voronoi wards plus streets along ward edges and a few main roads from gates to centre, the Watabou approach (section 3). Cheaper and more legible at tabletop scale than either L-systems or tensor fields.
 - Modern or large cities: priority-queue L-system with local constraints first; tensor field as an option.
+- Planned Roman-style colony and its fields: a grid of squares of 20 actus (2,400 Roman feet, close to 710 m a side; 703 to 714 m found), 200 iugera each, on two main axes, the decumanus and the kardo (Harley and Woodward, History of Cartography vol. 1, ch. 13) (book fact, not cross-checked).
 
 ---
 
@@ -78,6 +79,7 @@ mapwright is stdlib-first Python, so this file favours methods that need only `r
 
 - Assign districts after roads, by flood-filling blocks from seed blocks with a weight (distance to centre, to water, to gate) [WAT-TGOS].
 - Keep districts as data (`district` field per block) so exports can colour or label them.
+- Assign the most constrained type first: the one with the least slack between its candidate cells and the count it needs (Korn and Lee, Game Dynamics, ch. 9, sec. 6).
 
 ### Proof rules for walls
 
@@ -92,6 +94,7 @@ mapwright is stdlib-first Python, so this file favours methods that need only `r
 - Lopes, Tutenel, Smelik, de Kraker and Bidarra grow rooms on a grid from seed cells ("constrained growth"): each room expands rectangularly, then into L shapes, until the floor is full; doors follow an adjacency graph [LO10].
 - Squarified treemaps make a fast first cut: split the footprint into rectangles with areas proportional to room sizes, then fix adjacency by swaps [MA10] (Marson and Musse 2010).
 - Stdlib route: treemap first, then grid growth to fix shapes, then doors from a spanning tree of the adjacency graph plus extra doors for loops. Check that the entrance reaches every room (section 7).
+- House rules from a shipped game: room type sets the target area, the door limit and the furniture list; private rooms (bedroom, bathroom) get one door and public rooms several; furniture never blocks a doorway or other furniture. Known failure: fixtures block each other in small thin bathrooms (Short and Adams, Procedural Generation in Game Design, ch. 6).
 
 ---
 
@@ -101,12 +104,30 @@ mapwright is stdlib-first Python, so this file favours methods that need only `r
 
 - Split the map rectangle recursively (horizontal or vertical, ratio limited to about 0.3 to 0.7) until leaves fall under a size; put one room per leaf with random margins; connect sibling leaves with corridors bottom-up [RB-BSP].
 - Gives non-overlapping rooms and guaranteed connectivity by construction (the tree is a spanning tree), but no loops. Add 5 to 15 percent extra corridors between nearby rooms for loops (value is a design choice, not from a source).
+- The loop pass now has a source: after assembly, add a door where two rooms share a wall and have no door nearby, which makes circular routes and cuts backtracking (Short and Adams, Procedural Generation in Game Design, ch. 7, ch. 9). The textbook BSP joins siblings only and has no loops (Shaker, Togelius and Nelson, Procedural Content Generation in Games, ch. 3). mapwright's extra-corridor share stays its own number.
+- Stop size as a share of the map: the textbook example stops splitting a leaf below a quarter of the map width or height, puts one room per leaf and joins siblings from the lowest level up, which keeps corridors from crossing (Shaker, Togelius and Nelson, Procedural Content Generation in Games, ch. 3, p. 35-37). mapwright stops at a fixed leaf size.
+- Split-axis policy sets the look: a random axis is unpredictable, always cutting the shorter side gives long thin regions, always the longer side gives even squarish ones; a weighted mix with a chance to stop early is what shipped (Short and Adams, Procedural Generation in Game Design, ch. 8, p. 76). mapwright cuts the longer side when the sides differ.
+- Skim perimeter leaves so the footprint is not a rectangle: random removal for dungeons, from the top for buildings, by traversal for mines. Keep the region adjacency graph through every split, let a random traversal pick the doors, and delete regions it never visits (Short and Adams, Procedural Generation in Game Design, ch. 8, p. 76-79).
+- The tree gives themes: a subtree joined by one corridor is a wing that can be locked, with its key placed outside it (Shaker, Togelius and Nelson, Procedural Content Generation in Games, ch. 3, p. 37).
 
 ### 5.2 Cellular automata caves
 
 - Fill cells as wall with probability about 0.45, then apply "a cell becomes wall if 5 or more of its 8 neighbours (plus itself, in some versions) are walls" for 4 to 5 passes [RB-CA].
 - Johnson, Yannakakis and Togelius used a similar rule for infinite cave levels and studied the parameters [JO10].
 - Caves come out in disconnected pockets. Fix: flood-fill each region, keep the largest, or join regions with tunnels to the nearest cell of the main region [RB-CA].
+
+Settings side by side (compared 2026-11-15). Nothing was replaced: the default changes only after a sweep on mapwright's own code.
+
+| Source | Wall fill | Rule per pass | Passes | Notes |
+|---|---|---|---|---|
+| mapwright `gen dungeon --method cave` (code, 2026-11-15) | 0.45 | wall at 5 or more of 8 wall neighbours, floor at 3 or fewer, unchanged at 4 | 5 | one-cell solid border; keeps the largest region. This is the [RB-CA] form |
+| Johnson, Yannakakis and Togelius 2010 [JO10] | r = 50% | rock at T = 5 or more in the Moore neighbourhood, M = 1 | n = 4 | 50 x 50 grid; M = 2 with T = 13 for the multi-room setting ([realistic-land.md](realistic-land.md) 10b) |
+| The same paper as quoted in Shaker, Togelius and Nelson, ch. 3, p. 43-44 | 0.5 | rock at 5 or more | 2 to 4 | size-2 neighbourhood: threshold 13, 4 steps, 50% rock. Rooms joined by a tunnel between their largest open areas at the closest point, then 2 more passes over all nine rooms |
+| Caves of Qud (Short and Adams, ch. 26, p. 288-290) | 55% | open becomes wall at 6 to 8 wall neighbours, wall becomes open at 0 to 4 | 2 | two-cell solid border |
+
+- A random fill that must be connected with no smoothing wants a sparse start: at 50% filled a path from entrance to exit is very unlikely; at 20% filled, or with walls capped at length 5, nearly every random map is connected (Shaker, Togelius and Nelson, Procedural Content Generation in Games, ch. 9, p. 162, p. 165).
+- The automaton cannot be asked for a room count or a connectivity; each parameter moves several features at once (Shaker, Togelius and Nelson, Procedural Content Generation in Games, ch. 3, p. 44).
+- Even stocking of an uneven cave: grow nearest-seed regions by breadth-first search, add seeds until the largest region is under a target size, then put the same count in each region (Short and Adams, Procedural Generation in Game Design, ch. 26, p. 296-297).
 
 ### 5.3 Drunkard's walk
 
@@ -120,6 +141,7 @@ mapwright is stdlib-first Python, so this file favours methods that need only `r
 - Loop: each cell holds the set of allowed tiles; pick the cell with lowest entropy, collapse it to one tile weighted by frequency, propagate constraints to neighbours; on contradiction, restart or backtrack [WFC].
 - WFC does not guarantee connectivity or a path from entrance to exit. Run the BFS proof (section 7) and regenerate or patch. Karth and Smith discuss adding global constraints and backtracking [KS17].
 - Stdlib: the tiled model is short (sets plus a deque); fine for `gen dungeon --method wfc` with a tileset defined in JSON.
+- No book read so far covers wave function collapse (eight books checked 2026-11-15); this section rests on web sources. The nearest covered method is a grid of blocks with a per-side exit flag, placed so exits match and open edges merge into halls: 7 by 7 blocks, a goal of 40 blocks, and a map with too few placements thrown away and restarted (Short and Adams, Procedural Generation in Game Design, ch. 7, p. 66-72). Wang tiles match edge colours the same way (ch. 26, p. 291-292).
 
 ### 5.5 Graph-first and cyclic generation
 
@@ -127,12 +149,23 @@ mapwright is stdlib-first Python, so this file favours methods that need only `r
 - Unexplored (Ludomotion, 2017) uses cyclic dungeon generation: start from a cycle between entrance and goal, then rewrite edges into sub-cycles with patterns such as lock-and-key, hidden shortcut, or two alternative paths [DO-CYC][BTB-CYC].
 - Boris the Brave's write-up "Dungeon Generation in Unexplored" explains the cycle patterns and how the graph is laid out on a grid afterwards [BTB-CYC].
 - For tabletop use this is the most useful method: rooms get purposes (key, lock, boss, treasure) and loops give players choices. Lay out the graph by placing rooms on a grid via search, with corridors as edges.
+- Dormans' own account of cyclic generation (Short and Adams, Procedural Generation in Game Design, ch. 9), rules as given:
+  - A cycle is a start and a goal joined by two paths, a and b. Nest cycles instead of branching. Two to five cycles per level give a readable shape; more is clutter (p. 84, p. 95). That figure is one studio's taste, not a measured optimum. Bar: cycle rank of the room graph (edges minus nodes plus 1) between 2 and 5.
+  - Pick the pattern from the two path lengths. Short a with long b: a lock at the goal and the key at the far end of b, near where b rejoins. The player may see b from the start but must not be able to enter it there (p. 89).
+  - Named patterns: two alternative paths, hidden shortcut, lock and key cycle, double key, key behind valve, patrolled cycle, dangerous route, unknown return path, lure and setback, gambit (p. 89-90).
+  - Locks are conditional, dangerous or uncertain; permanent, reversible, temporary or collapsing; a valve (one way) or asymmetrical (opens from one side). Keys are single or multi purpose, particular or not, consumed or persistent, or fixed in place; a fixed key (a lever) should open its lock for good (p. 91-93).
+  - Safety: every conditional lock on the main path has a guaranteed solution. Unsafe locks sit only on optional paths, and then the way back is safe. Consumed or multipurpose keys make a lock less safe (p. 92-93). Bars: the key-before-lock BFS below, plus a return-path BFS from goal to entrance that honours one-way edges.
+  - Work on a graph first with generic nodes, and choose exact obstacles, locks, keys and room kinds in later passes; each step outputs a model that makes sense alone. Lay the graph out on a grid from the start, so each node and edge maps to a cell, then raise the resolution and decorate (p. 84-86, p. 94-95). The chapter gives no layout algorithm beyond that.
+- Layout ruling 2026-11-15. The line above lays the graph out on a grid afterwards, by search. Dormans starts on the grid. A studio that rewrote free graphs first dropped the method: the space of graphs was far larger than the maps wanted, and drawing arbitrary graphs in the plane with even spacing became the real work (Korn and Lee, Game Dynamics, ch. 9, sec. 3.2.3, sec. 4). Two cures are named: allow only rewrite rules that keep the graph drawable, or generate on a grid of cells and derive the graph from it. mapwright takes the second. Bar: every graph edge joins cells that share a border; zero edge crossings.
+- Mission in two steps with a fixed rule sequence: a random task list first, lock and key links second. Applying each rule a set number of times controls the length; unbounded rule application does not. Mission alphabet: entrance, task, goal, lock, key (Shaker, Togelius and Nelson, Procedural Content Generation in Games, ch. 5, p. 81-84).
+- Room purposes from the graph: boss treasure in a dead-end region far from the entrance, the boss room on the only way to it, traps and stores in other dead ends (Short and Adams, Procedural Generation in Game Design, ch. 8, p. 80). Stock by breadth-first layers from the entrance: light threats first, tougher next, treasure after, exits in the last layer (Shaker, Togelius and Nelson, Procedural Content Generation in Games, ch. 9, p. 166-167). A rare feature is capped at one per map (its chance drops to 0 once one exists) and is better scheduled every 2 to 4 units, the middle most likely, than rolled at a flat chance (Shaker, Togelius and Nelson, Procedural Content Generation in Games, ch. 3, p. 50; Short and Adams, Procedural Generation in Game Design, ch. 2, p. 22).
 
 ### Proof rules for dungeons
 
 - Graph rule: every key is reachable from the entrance without passing its own lock (BFS with locked edges removed, then add keys found, repeat until no change).
 - Every room reachable from the entrance; the boss/exit reachable.
 - Rooms do not overlap (axis-aligned rectangle test or cell occupancy).
+- A gate is real: with a lock closed, BFS from the entrance must not reach what lies behind it. If any route skips the gate, reject the map (Shaker, Togelius and Nelson, Procedural Content Generation in Games, ch. 8, p. 153-155).
 
 ---
 
@@ -157,17 +190,31 @@ mapwright is stdlib-first Python, so this file favours methods that need only `r
 2. **Grid on whole pixels.** Image width = cols * pps and height = rows * pps exactly, where pps (pixels per square) is an integer. Grid line positions are integers. No fractional offset; any map origin offset is a whole number of pixels. Check by asserting `width % pps == 0` and reading the PNG header.
 3. **Export loads with walls.** Write the file, parse it back with `json.loads`, assert required keys exist, assert wall count > 0 and equals the generator's wall count, assert every wall point lies inside the map bounds, and assert every door/portal sits on a wall segment within tolerance. For Foundry, assert every wall `c` has four numbers and both endpoints are inside the scene. Manual check: import into Foundry with the Universal Battlemap Importer and see that tokens are blocked [UBI].
 4. **Walls are closed.** For each room, wall segments form a closed loop except where portals are. Light from inside a closed room cannot reach outside (segment intersection test from a light to sample points).
-5. **Determinism.** Same seed and options give byte-identical output (hash the JSON).
+5. **Determinism.** Same seed and options give byte-identical output (hash the JSON). The seed is stored with the map and reset at the start of each sub-map, so a discarded dungeon can be rebuilt (Watkins, Procedural Content Generation for Unity Game Development, ch. 1, ch. 4).
 6. **Stable seeds (ruling 2026-11-14).** Seeds are derived with a stable hash (`hashlib.blake2b(seed.encode("utf-8"), digest_size=8)`), never Python's built-in `hash()`, which is salted per process for strings. Word seeds such as `--seed "amber fox lantern"` are lower-cased, whitespace-normalised and hashed the same way, and the original words are recorded in the recipe (Pitt, Procedural Generation in Godot, p. 99). Content seeds are kept separate from runtime behaviour randomness (Pitt, p. 96).
 7. **Playability check after generation.** Every generator runs its check (reachability, openings per room, spawn on floor, direction bias of the maze) after generating; no algorithm is trusted untested (Green, Procedural Content Generation for C++ Game Development, ch. 1, ch. 9).
 8. **Endpoints reachable.** After template assembly, start, exit, waypoints and doors are marked cells, and BFS reaches every one (Pitt, Procedural Generation in Godot, p. 184, p. 241).
+9. **Solid border.** No floor cell lies on the outer row or column of a dungeon (Watkins, Procedural Content Generation for Unity Game Development, ch. 4). Both current methods close the border by construction. Caves of Qud uses a two-cell border (Short and Adams, Procedural Generation in Game Design, ch. 26).
+
+### Expressive range (books, 2026-11-15)
+
+A few good outputs say little about a generator that can make thousands. The method (Shaker, Togelius and Nelson, Procedural Content Generation in Games, ch. 12, p. 215-217; Short and Adams, Procedural Generation in Game Design, ch. 22, p. 233-243):
+
+- Choose metrics, generate many maps, normalise each metric to 0 to 1 across the sample, and plot a 2D histogram (heatmap). Hot spots show bias.
+- Sample size: keep enlarging the sample until the plot stops changing (Shaker, Togelius and Nelson, p. 216). The worked heatmap in Short and Adams used 10,000 levels per parameter setting (p. 240). A bias can hide where the same region is covered at a different frequency; a few samples will not show it.
+- Metrics measure what the generator does not already enforce and sit far from the input flags. A metric that mirrors an input only confirms that the code runs: never room count when room count is a flag.
+- Linearity, the book's platformer formula: fit a line through the platform midpoints, average the absolute vertical distance from it, then rescale across the sample to 0 to 1 (Short and Adams, p. 235, p. 240). Leniency: give each hazard type a harm weight from 0 (fatal) to 1 (harmless) and average over all elements (p. 235-236). Density (share of space filled) and the risk-to-reward ratio are named as further metrics. Metrics lose information (leniency ignores the order and spacing of hazards), so read them as rough estimates.
+- Dungeon forms are mapwright's translation, not the books': linearity from room centres regressed along the entrance-to-exit axis; loop share (extra edges over the spanning tree); dead-end share; entrance-to-exit path length over the map diagonal; open-floor share. They need their own sanity test.
+- Read four things from the plot: variety, unintended bias, response to inputs, content families. Compare plots across settings: a flag that leaves the plot unchanged is dead. A sudden change after a small code edit is a bug signal, so a stored histogram per release works as a regression test. For many metrics use box plots per metric, or clustering by a distance function.
 
 ### Book methods (2026-11-14)
 
 - **Backtracker maze dungeon.** Wall-filled grid with odd width and height, recursive backtracker with an explicit stack and shuffled directions, then carve N rooms (size range a-b), order `maze-first` or `rooms-first`; place spawns on floor cells and verify reachability. A perfect maze has no cycles, so a `loops` fraction of dead-end walls is removed afterwards (Green, Procedural Content Generation for C++ Game Development, ch. 9).
 - **Bitmask tiling.** Wall and floor tiles are picked by a 4- or 8-neighbour bitmask, shared by dungeon and cave exports (Green, ch. 9).
-- **Template assembly.** Small hand-made pieces with colour-coded cells (legend file), picked by seed, transformed only as each piece's tags allow (flip x, flip y, rotate), placed on a slot grid, then validated (Pitt, Procedural Generation in Godot, p. 105, p. 169, p. 175).
-- **Crafted anchors.** Hub and story pieces can be pinned to slots and the generator fills around them (Pitt, p. 19).
+- **Template assembly.** Small hand-made pieces with colour-coded cells (legend file), picked by seed, transformed only as each piece's tags allow (flip x, flip y, rotate), placed on a slot grid, then validated (Pitt, Procedural Generation in Godot, p. 105, p. 169, p. 175). A slot marked with a kind can take any prop of that kind (Watkins, Procedural Content Generation for Unity Game Development, ch. 10). A fixed grid of room templates with marked re-roll slots chooses its guaranteed route first and may seal side rooms (Shaker, Togelius and Nelson, Procedural Content Generation in Games, ch. 3, p. 49-50).
+- **Crafted anchors.** Hub and story pieces can be pinned to slots and the generator fills around them (Pitt, p. 19). A pinned piece can carry a checkpoint cell, and path distances between checkpoints score the layout (Shaker, Togelius and Nelson, Procedural Content Generation in Games, ch. 9, p. 163-164).
+- **Guaranteed spine.** Carve a walker route from an entrance on one edge to an exit on the opposite edge first, then hang branches and chambers on it. The route makes the map completable with no repair pass, and its length is at least the grid width (Watkins, Procedural Content Generation for Unity Game Development, ch. 4). Alone it gives a tree with dead ends, so use it as the spine inside methods that can fail connectivity.
+- **Wall-growth assembler.** Handmade rooms of irregular shape. A candidate wall tile has two wall neighbours on one axis and faces unused space; pick one, try a random room against it, add a door if it fits, else try again. Never carve a room to make it fit. Shipped numbers: a goal of 20 rooms with a cap of 1,000 tries (Short and Adams, Procedural Generation in Game Design, ch. 7, p. 64-69).
 
 
 ---
