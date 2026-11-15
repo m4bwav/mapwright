@@ -184,6 +184,41 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 - Evidence: T-20261115-4 (the 0.5.0 exports already met all three; the bar now fails each forced break)
 - Scope: skill
 
+### L-028 · 2026-11-15 · `thin-water-does-not-survive-img2img`: redraw lakes and rivers in code after the pass
+- Trigger: first style passes kept the coast and painted over the rivers and the largest lake.
+- Hypothesis: a 1 to 3 px line and a small flat patch are texture to the model; even a light repaint replaces them.
+- Rule: lakes and rivers go in the code-set layer on top of the styled picture with roads, symbols and labels, and are left out of the land IoU. Measured share the model alone kept: river lines 0.51 to 0.78 at denoise 0.35, 0.39 to 0.54 at 0.45, 0.18 to 0.34 at 0.55; lakes 0.09 to 0.76 at 0.45 (means by look, two worlds pooled).
+- Evidence: T-20261115-5
+- Scope: skill
+
+### L-029 · 2026-11-15 · `denoise-on-the-step-grid`: the denoise typed is not the denoise that runs
+- Trigger: the 0.55 and 0.65 columns of the grid ran further from the render than their names.
+- Hypothesis: below 1, KSampler takes `steps` steps from the tail of an int(steps / d) step schedule, so the run value is steps / int(steps / d).
+- Rule: at 9 steps 0.35 runs as 0.36, 0.45 as 0.45, 0.55 as 0.5625, 0.65 as 0.692. Record both in the sidecar and state a ceiling as the typed value with its run value.
+- Evidence: T-20261115-5
+- Scope: skill
+
+### L-030 · 2026-11-15 · `fixed-colour-rules-miss-parchment`: train the land and sea colours on each picture
+- Trigger: the fixed water rule of `read` (blue clearly above red) gave a land IoU of 0.26 to 0.41 on the clean ink-and-parchment render, where sea and land are both tan.
+- Hypothesis: a style changes what colour the sea is; only the picture itself knows.
+- Rule: build a colour table per picture from pixels at least 12 px from the true coast (15-bit buckets, coarser buckets for unseen colours), apply it to every pixel, clean with a 3x3 close and open. The band where a coast can drift is never used for training. On blue-sea looks it agrees with the fixed rule within 0.02 at denoise 0.45 and below.
+- Evidence: T-20261115-5
+- Scope: skill
+
+### L-031 · 2026-11-15 · `line-test-needs-the-clean-render`: a bare contrast test finds lines everywhere
+- Trigger: "is there a line here" fired on 22 to 33 percent of places with no river on the clean render (biome patches, hillshade).
+- Hypothesis: contrast with both sides is common in a textured picture; a river is contrast in one colour direction at a known place.
+- Rule: take the centre-minus-sides colour vector from the clean render at each river sample and count the river kept when the styled picture keeps a third of it in that direction. Always report the noise floor from the same test where the recipe has no line (means by look: 0.01 to 0.04 on ink and watercolour, 0.09 to 0.26 on atlas and satellite), and keep the number out of the bar.
+- Evidence: T-20261115-5
+- Scope: skill
+
+### L-032 · 2026-11-15 · `the-look-arrives-after-the-coast-leaves`: img2img alone gives a light repaint inside the bar
+- Trigger: the pictures that look most painted (denoise 0.65) failed every bar; the ones that pass (0.45 and below) sit close to the code render.
+- Hypothesis: with only the init image holding it, the model trades geometry for style one for one.
+- Rule: default and ceiling denoise 0.45; never raise it for a stronger look. A stronger look needs a second hold on the coast (a canny or depth control image drawn from the geometry), which is not built yet.
+- Evidence: T-20261115-5
+- Scope: skill
+
 ### L-006 · 2026-11-14 · Embedded RGB PNG drew blank: width passed as bytes per row
 - Trigger: map.svg showed only the sea colour.
 - Hypothesis: the PNG width was len(row) of an RGB bytearray, three times the pixel width.

@@ -788,7 +788,7 @@ def bars(d):
     Returns [(name, ok, detail)]; ok None = skipped. No sidecar, no bar."""
     out = []
     for sc_path in sidecars(d):
-        name = "aistyle %s: coast and rivers held" % os.path.basename(sc_path)[:-len(SIDECAR)]
+        name = "aistyle %s: coast held, rivers and settlements on painted land" % os.path.basename(sc_path)[:-len(SIDECAR)]
         try:
             with open(sc_path, encoding="utf-8") as f:
                 sc = json.load(f)

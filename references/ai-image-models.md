@@ -53,7 +53,21 @@ Working ranges (community practice, unverified as numbers; tune per model):
 | 0.35-0.55 | Usable style; small coast details start to move |
 | 0.6+ | Geometry drifts; islands merge or vanish |
 
-img2img alone is not enough for a strong style. Pair it with a ControlNet, or use an edit model.
+Measured for Z-Image Turbo (2026-11-15, `mpw.py aistyle`, 72 pictures, 4 looks, 2 worlds, 9 steps, cfg 1, 1024 px; [TESTS.md](../TESTS.md) T-20261115-5):
+
+| Denoise typed (as run) | Land IoU against the recipe, min to max | Pictures passing the bar | What happens |
+|---|---|---|---|
+| 0.35 (0.36) | 0.9435 to 0.9810 | 12 of 12 | Light repaint; coast holds; about half the thin rivers already gone |
+| 0.45 (0.45) | 0.9244 to 0.9736 | 24 of 24 | Light repaint; coast holds; ceiling |
+| 0.55 (0.5625) | 0.8728 to 0.9547 | 11 of 24 | Bays fill, capes move, towns end up off the land |
+| 0.65 (0.692) | 0.7301 to 0.8997 | 0 of 12 | The painted look arrives and the coast is redrawn |
+
+Two things the measurement settled:
+
+- Thin water does not survive at any useful denoise. The model alone kept 0.51 to 0.78 of river lines at 0.35 and 0.39 to 0.54 at 0.45, and lakes about as badly. `aistyle` therefore redraws lakes and rivers in code on top of the styled picture, with roads, symbols and labels.
+- KSampler's denoise runs on a step grid: steps / int(steps / typed). At 9 steps, 0.55 runs as 0.5625 and 0.65 as 0.692.
+
+img2img alone is not enough for a strong style: inside the bar it gives a light repaint. Pair it with a ControlNet, or use an edit model.
 
 ### 3.2 ControlNet
 
@@ -108,7 +122,7 @@ The pass is accepted only if geometry survived. mapwright knows the true land ma
    - A small segmenter; avoid SAM 3 (Meta-gated); SAM 2.1 is the house ungated default but SAM 2 is itself a Meta release under Apache 2.0 (check before use; unverified ruling).
 3. IoU = |A and B| / |A or B| (Jaccard index) [Jaccard].
 
-Suggested thresholds (unverified; set by testing): accept at IoU >= 0.97, warn 0.93-0.97, reject below.
+Thresholds as built (set by testing, T-20261115-5): `aistyle` accepts at land IoU >= 0.92, with lakes and a 3 px river band left out of the mask because both are redrawn in code. The clean render itself scores 0.972 to 0.988 on this measure, so 0.97 was never reachable for a repainted picture. The classifier is a colour table trained on the picture's own pixels at least 12 px from the true coast; a fixed "sea is blue" rule fails on parchment looks.
 
 IoU hides small losses: a vanished islet barely moves it. Add:
 
@@ -124,6 +138,8 @@ IoU hides small losses: a vanished islet barely moves it. Add:
 ### 4.3 Thin features
 
 Rivers and roads: dilate the true line by tolerance d, then measure the fraction of the true line covered by dark or matching-colour pixels in the output (coverage). Report breaks: count gaps longer than k pixels.
+
+As built: a bare "is there a contrasting line here" test fires on 22 to 33 percent of places with no river on a clean render (biome patches, hillshade). `aistyle` instead takes the centre-minus-sides colour vector from the clean render at each river sample and counts the river kept when the styled picture keeps a third of it within 3 px, and reports the same test's noise floor where the recipe has no line. The number is reported, not a bar: rivers are redrawn in code. The bars that remain are that code-set rivers (0.98) and settlements (0.94) have painted land within 3 px.
 
 ### 4.4 Text leakage
 
@@ -195,8 +211,9 @@ None were verified in this pass. Public-domain historical maps (Library of Congr
 ## 8. Open questions
 
 - The Apache union ControlNets for Z-Image and Qwen-Image have no segmentation mode (checked 2026-11-14); test canny plus depth as the region hold, or use SDXL seg.
-- Do Qwen-Image-Edit appearance edits keep 1-2 px rivers? Needs IoU and coverage tests.
-- Thresholds in 4.1 are guesses; set from a test batch.
+- Do Qwen-Image-Edit appearance edits keep 1-2 px rivers? Needs IoU and coverage tests. Z-Image Turbo img2img does not (measured, section 3.1).
+- A stronger look inside the coast bar: canny or depth from the geometry through the Z-Image Fun ControlNet union, at higher denoise. Not built or measured.
+- Labels and the legend keep the code style's colours; after a heavy repaint the legend swatches may no longer match the picture. Not measured.
 - Is SAM 2.1 acceptable under the Meta rule (Apache 2.0 but Meta-released)? Ask Mark, or avoid by thresholding.
 - No benchmark for cartographic correctness found; repeat the search.
 
