@@ -44,3 +44,4 @@ Newest last. One dated line per fact another session would need.
 - 2026-11-14: Step D.4 built on branch render (worktree mapwright-render): scripts/mpw_render.py, `render`, `label`, `legend`, `style`, `serve`, `sheet`; `check` gains label bars 14-16 (OCR skipped without tesseract). Tests 61/61.
 - 2026-11-14: D.4 timing: render 16k 0.7-0.9 s, 65k 1.05 s; SVG 110-460 KB by style; PNG via headless Chrome 2.3 s at 65k.
 - 2026-11-14: tesseract is not installed on this machine, so the OCR label bar is skipped with a reason. Open: curved river labels (textPath), catalogue stars for star-chart, label bars on the AI-styled picture.
+- 2026-11-14: session 8: D.4 merged (PR #2, d74212d), verified 61/61 on main, worktree removed. Mark asked for the wiki, social and hero images; subagent building them on branch images.
