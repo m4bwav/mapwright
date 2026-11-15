@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261115-2 · 2026-11-15 · 0.5.0: gen city, gen dungeon, gen battle, export to Universal VTT
+- because: user request (Step D.7), T-20261115-2, L-018, L-019, L-020
+- files: scripts/mpw_places.py (new), scripts/mpw.py, tests/test_places.py (new), skills/mapwright/SKILL.md, README.md, plugin.json, .claude-plugin/plugin.json
+- `gen city` grows rings and gate roads from a market (the Watabou ward plan reimplemented, not copied), cuts blocks into lots that each keep street frontage, puts buildings on them, a wall with gates and named districts, and can sit on a parent world's settlement (name, language, coast and river). `gen dungeon` makes BSP rooms with loops or cellular caves with doors and lights; `gen battle` makes square or hex battle maps at a whole number of pixels per square. `check` runs place bars (reachability of streets, blocks, rooms, doors and floor; lots and walls; whole-pixel grid; Universal VTT round trip; byte-identical regeneration; label bars). `export` writes a Universal VTT file. `render` draws place recipes in ink-and-parchment or blueprint.
+
 ### C-20261115-1 · 2026-11-15 · 0.4.0: find and fetch
 - because: user request (Step D.6), T-20261115-1, L-016, L-017
 - files: scripts/mpw_find.py (new), scripts/mpw.py, tests/test_find.py (new), skills/mapwright/SKILL.md, README.md, plugin.json, .claude-plugin/plugin.json

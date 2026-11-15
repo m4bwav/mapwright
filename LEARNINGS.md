@@ -4,6 +4,27 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 
 ## Active
 
+### L-018 · 2026-11-15 · Recursive lot cuts strand inner lots without a street
+- Trigger: first city check: 891 of 1001 lots had no edge on the block boundary.
+- Hypothesis: cutting across the long axis again and again leaves middle pieces whose every side is a cut.
+- Rule: keep a cut only when both halves still have an edge on the block boundary; try the other axis, else stop splitting. The bar measures frontage from the stored lots, with 0.02 m tolerance for 2-decimal coordinates.
+- Evidence: T-20261115-2
+- Scope: skill
+
+### L-019 · 2026-11-15 · A straight chord between far-apart ring nodes cuts through the wall
+- Trigger: the wall bar found 4 to 10 streets crossing the wall; the ring outside the wall has only gate nodes, 60 degrees apart, and its chords dip inside.
+- Hypothesis: a chord at radius r spanning angle a sits r cos(a/2) from the centre.
+- Rule: draw ring streets, block sides and the wall as arcs with a point every 7.5 degrees. Count a crossing only when segments properly cross; a street ending on the wall is not a crossing.
+- Evidence: T-20261115-2
+- Scope: skill
+
+### L-020 · 2026-11-15 · A replayed parameter must not skip a random draw
+- Trigger: regeneration of a city differed in features, names and map.svg.
+- Hypothesis: `spokes or rng.randint(...)` drew a number only when spokes was unset; the recipe stores the drawn value, so the replay skipped the draw and every later number shifted.
+- Rule: always draw, then override with the stored or given value. Same for battle maps: 'touches the map edge' is not one region; keep the largest edge region and fill the rest, or the entrance can sit in a cut-off strip.
+- Evidence: T-20261115-2
+- Scope: skill
+
 ### L-016 · 2026-11-15 · An API key in a URL leaks into the cache name and the credit files
 - Trigger: OpenTopography takes its key as a query parameter, so the natural URL to cache and record holds the key.
 - Hypothesis: anything keyed on the full URL (cache hash, sources.json, CREDITS.txt) would store the secret.
