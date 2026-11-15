@@ -397,7 +397,9 @@ class TestGen(unittest.TestCase):
 
     def test_world_bars_pass(self):
         out = run_cli("check", self.world)
-        self.assertEqual(out.count("PASS"), 13, out)
+        self.assertEqual(out.count("PASS") + out.count("SKIP"), 16, out)
+        self.assertEqual(out.count("FAIL"), 0, out)
+        self.assertEqual(run_cli("check", self.world, "--no-labels").count("PASS"), 13)
 
     def test_child_bars_pass(self):
         bars = mpw_gen.check(self.child)
@@ -651,6 +653,171 @@ class TestHuman(unittest.TestCase):
         self.assertTrue(all(b[2] for b in bars), [b for b in bars if not b[2]])
         with self.assertRaises(SystemExit):
             run_cli("names", self.child, "--style", "isle")
+
+
+class TestRender(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import mpw_gen
+        import mpw_render
+        cls.R = mpw_render
+        cls.tmp = tempfile.mkdtemp(prefix="mpw-render-")
+        cls.world = os.path.join(cls.tmp, "w")
+        mpw_gen.gen_world(7, 3000, cls.world, raster_px=256)
+        cls.browser = mpw.find_browser()
+
+    def out(self, name):
+        return os.path.join(self.tmp, name)
+
+    def read(self, p):
+        with open(p, "rb") as f:
+            return f.read()
+
+    def test_render_svg_deterministic_every_style(self):
+        for st in self.R.STYLES:
+            a, b = self.out("a-%s.svg" % st), self.out("b-%s.svg" % st)
+            run_cli("render", self.world, "-o", a, "--style", st)
+            run_cli("render", self.world, "-o", b, "--style", st)
+            data = self.read(a)
+            self.assertEqual(data, self.read(b), st)
+            self.assertNotIn(b"\r", data)
+            root = mpw.ET.fromstring(data)
+            self.assertEqual(root.tag, "{http://www.w3.org/2000/svg}svg")
+            for cls in (b'class="rivers"', b'class="coast"', b'class="legend"', b'class="scalebar"',
+                        b'class="north"', b'class="lbl"'):
+                self.assertIn(cls, data, (st, cls))
+
+    def test_render_json_and_bad_style(self):
+        j = json.loads(run_cli("render", self.world, "-o", self.out("j.svg"), "--json"))
+        self.assertGreater(j["placed"], 5)
+        self.assertGreater(j["svg_bytes"], 10000)
+        with self.assertRaises(SystemExit):
+            run_cli("render", self.world, "-o", self.out("x.svg"), "--style", "nope")
+        with self.assertRaises(SystemExit):
+            run_cli("render", self.world, "-o", self.out("x.bmp"))
+
+    def test_river_width_by_flow(self):
+        svg, _ = self.R.render_svg(self.world)
+        g = svg.split('class="rivers"')[1].split("</g>")[0]
+        ws = [float(x.split('"')[0]) for x in g.split('stroke-width="')[1:]]
+        self.assertGreater(max(ws), min(ws))
+
+    def test_label_bars_pass_and_catch(self):
+        out = run_cli("label", self.world)
+        self.assertIn("PASS: labels: none overlap", out)
+        self.assertIn("PASS: labels: none cut by the edge", out)
+        j = json.loads(run_cli("label", self.world, "--json"))
+        boxes = [p["box"] for p in j["placed"]]
+        for i in range(len(boxes)):
+            for k in range(i + 1, len(boxes)):
+                self.assertFalse(self.R.overlap(boxes[i], boxes[k]))
+        ocr = [b for b in j["bars"] if "OCR" in b["name"]][0]
+        if not shutil_which("tesseract"):
+            self.assertIsNone(ocr["ok"])  # skipped, never a fake pass
+            self.assertIn("skipped", ocr["detail"])
+        # the bars catch a forced overlap and an edge cut
+        svg, _ = self.R.render_svg(self.world)
+        bad = svg.replace('<g class="labels"', '<g class="labels"', 1).replace(
+            "</g>\n<rect x=", '<text class="lbl" x="2" y="5" font-size="20">EDGE</text>'
+            '<text class="lbl" x="2" y="5" font-size="20">EDGE</text></g>\n<rect x=', 1)
+        bars = self.R.label_bars(bad)
+        self.assertFalse(bars[0][1])
+        self.assertFalse(bars[1][1])
+
+    def test_width_table_is_wide_enough(self):
+        import string
+        chars = string.ascii_letters + string.digits + " .,'-"
+        fonts = [p for p in ("C:/Windows/Fonts/georgia.ttf", "C:/Windows/Fonts/arial.ttf",
+                             "C:/Windows/Fonts/pala.ttf", "C:/Windows/Fonts/times.ttf",
+                             "/Library/Fonts/Georgia.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf")
+                 if os.path.isfile(p)]
+        if not fonts:
+            self.skipTest("no system TTF to compare against")
+        for p in fonts:
+            m = self.R.TTFMetrics(p)
+            for c in chars:
+                self.assertLessEqual(m.em(c), self.R.em_width(c) + 1e-9, (p, c))
+            self.assertGreater(self.R.text_width("Hello", 10, metrics=m), 10)
+
+    def test_legend_only_symbols_on_map(self):
+        rc, m, feats = self.R.load(self.world)
+        st = self.R.style("atlas")
+        labels = [e["label"] for e in self.R.legend_entries(feats, m, st, rc)]
+        has_track = any(f["properties"].get("rank") == "track" for f in feats if f["properties"]["kind"] in ("road", "track"))
+        self.assertEqual("track" in labels, has_track)
+        no_roads = [f for f in feats if f["properties"]["kind"] not in ("road", "track", "lake")]
+        labels2 = [e["label"] for e in self.R.legend_entries(no_roads, m, st, rc)]
+        self.assertNotIn("major road", labels2)
+        self.assertNotIn("lake", labels2)
+        biomes = set(self.R.G.BIOMES[b][0] for b, o, l in zip(m["biome"], m["ocean"], m["lake"]) if not o and l < 0)
+        self.assertTrue(biomes <= set(labels))
+        out = run_cli("legend", self.world, "-o", self.out("legend.svg"))
+        self.assertIn("coast", out)
+        self.assertTrue(self.read(self.out("legend.svg")).startswith(b"<svg"))
+
+    def test_style_list(self):
+        out = run_cli("style", "--list")
+        for st in ("topographic", "atlas", "satellite", "ink-and-parchment", "blueprint", "star-chart"):
+            self.assertIn(st, out)
+        self.assertIn('"sea"', run_cli("style", "blueprint"))
+
+    def test_serve_binds_loopback(self):
+        import threading
+        import urllib.request
+        svg, _ = self.R.render_svg(self.world)
+        srv = self.R.make_server(svg, "t", 0)
+        try:
+            self.assertEqual(srv.server_address[0], "127.0.0.1")
+            threading.Thread(target=srv.serve_forever, daemon=True).start()
+            url = "http://127.0.0.1:%d/" % srv.server_address[1]
+            page = urllib.request.urlopen(url, timeout=10).read().decode()
+            self.assertIn("<svg", page)
+            self.assertIn("viewBox", page)
+            self.assertEqual(urllib.request.urlopen(url + "map.svg", timeout=10).read().decode(), svg)
+            with self.assertRaises(Exception):
+                urllib.request.urlopen(url + "etc/passwd", timeout=10)
+        finally:
+            srv.shutdown()
+            srv.server_close()
+
+    def test_sheet_styles_and_seeds(self):
+        p = self.out("sheet.svg")
+        out = run_cli("sheet", self.world, "--styles", "atlas,blueprint", "-o", p)
+        self.assertIn("2 maps", out)
+        data = self.read(p).decode()
+        self.assertEqual(data.count("<svg"), 3)
+        self.assertIn(">blueprint<", data)
+        mpw.ET.fromstring(data)
+        p2 = self.out("sheet2.svg")
+        sub_world = os.path.join(self.tmp, "small")
+        import mpw_gen
+        mpw_gen.gen_world(3, 1500, sub_world, raster_px=128)
+        run_cli("sheet", sub_world, "--seeds", "3,4", "-o", p2)
+        self.assertIn("seed 4", self.read(p2).decode())
+
+    def test_png_pdf_via_browser(self):
+        if not self.browser:
+            with self.assertRaises(SystemExit):
+                run_cli("render", self.world, "-o", self.out("m.png"))
+            return
+        run_cli("render", self.world, "-o", self.out("m.png"))
+        self.assertTrue(self.read(self.out("m.png")).startswith(b"\x89PNG"))
+        w, h = struct.unpack(">II", self.read(self.out("m.png"))[16:24])
+        self.assertEqual(w, 1000)
+        run_cli("render", self.world, "-o", self.out("m.pdf"), "--style", "ink-and-parchment")
+        self.assertTrue(self.read(self.out("m.pdf")).startswith(b"%PDF"))
+
+    def test_render_region(self):
+        import mpw_gen
+        child = os.path.join(self.tmp, "child")
+        mpw_gen.gen_region(self.world, None, 1500, child, raster_px=128)
+        out = run_cli("label", child)
+        self.assertNotIn("FAIL", out)
+
+
+def shutil_which(name):
+    import shutil
+    return shutil.which(name)
 
 
 if __name__ == "__main__":

@@ -15,7 +15,9 @@ mapwright is a skill for AI coding agents plus one small script, `mpw.py`, that 
 - **Explain** projections, symbols and methods in plain words.
 - **Generate** invented worlds (0.2.0, unreleased): plates, erosion, rivers, lakes, climate and biomes; settlements ranked city, town and village; roads by least-cost paths; place names from a sound pattern. Child maps (zoom) keep the parent's coast, rivers, settlements, roads and names. `check` runs 13 proof bars.
 
-Rendering styles, labels on curves and fetching open data come next.
+- **Render** a recipe folder to SVG, PNG or PDF in six looks (topographic, atlas, satellite, ink-and-parchment, blueprint, star-chart) with labels that never overlap, a legend of what is on the map, a scale bar and a north arrow; serve it as a pan and zoom page on 127.0.0.1; set styles or seeds side by side on one sheet.
+
+Labels on curves and fetching open data come next.
 
 ## Use
 
@@ -31,6 +33,12 @@ python scripts/mpw.py zoom isles.map --out isles-south.map
 python scripts/mpw.py check isles-south.map
 python scripts/mpw.py names --sample 10 --style desert
 python scripts/mpw.py names --list
+python scripts/mpw.py render isles.map -o isles.png --style ink-and-parchment
+python scripts/mpw.py label isles.map
+python scripts/mpw.py legend isles.map --style atlas
+python scripts/mpw.py style --list
+python scripts/mpw.py serve isles.map
+python scripts/mpw.py sheet isles.map --styles atlas,blueprint,star-chart -o pick.png
 ```
 
 ## Tests
