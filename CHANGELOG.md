@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261114-2 · 2026-11-14 · 0.2.0 (unreleased): gen world, gen region / zoom, check; Robinson as PROJ
+- because: user request (Step D.2 of ai-docs/plans/design.md), T-20261114-2, L-003, L-004, L-005, L-006
+- files: scripts/mpw_gen.py (new), scripts/mpw.py, tests/test_mpw.py, skills/mapwright/SKILL.md
+- `gen world` builds the recipe folder and map.svg from plates with distance-to-boundary uplift, domain-warped fBm, 15 steps of implicit stream-power erosion, Priority-Flood with epsilon, single receivers, one-outlet lakes, climate and biomes. `gen region` and `zoom` make a child map by IDW of 3 parent cells plus detail noise, with the parent's coast as a sign constraint and parent rivers burnt in. `check` runs seven numbered proof bars. Robinson now uses PROJ's cubic-spline coefficients (float32, as PROJ stores them) and matches PROJ's builtins.gie rows to 0.1 mm.
+
 ### C-20261114-1 · 2026-11-14 · 0.1.0 scaffold: mpw.py doctor, explain, inspect, convert, measure, project
 - because: user request (Step D.1 of ai-docs/plans/design.md), T-20261114-1
 - files: plugin.json, .claude-plugin/, skills/mapwright/SKILL.md, scripts/mpw.py, tests/, evals/evals.json, AGENTS.md, CLAUDE.md, README.md

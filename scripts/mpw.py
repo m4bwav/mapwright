@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """mapwright CLI: read, write, measure and project maps with the standard library.
 
-Subcommands: doctor, explain, inspect, convert, measure, project.
+Subcommands: doctor, explain, inspect, convert, measure, project, gen, zoom, check.
 Optional extras (numpy, shapely, pyproj, GDAL, geographiclib) are probed, never
 imported at the top level.
 """
@@ -19,7 +19,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -932,19 +932,76 @@ def _wrap(lon):
     return (lon + 180.0) % 360.0 - 180.0
 
 
-ROBINSON = [  # lat, X, Y (Snyder & Voxland 1989); linear interpolation between rows
-    (0, 1.0000, 0.0000), (5, 0.9986, 0.0620), (10, 0.9954, 0.1240), (15, 0.9900, 0.1860),
-    (20, 0.9822, 0.2480), (25, 0.9730, 0.3100), (30, 0.9600, 0.3720), (35, 0.9427, 0.4340),
-    (40, 0.9216, 0.4958), (45, 0.8962, 0.5571), (50, 0.8679, 0.6176), (55, 0.8350, 0.6769),
-    (60, 0.7986, 0.7346), (65, 0.7597, 0.7903), (70, 0.7186, 0.8435), (75, 0.6732, 0.8936),
-    (80, 0.6213, 0.9394), (85, 0.5722, 0.9761), (90, 0.5322, 1.0000)]
+# Robinson as PROJ does it (src/projections/robin.cpp, MIT): per 5-degree node the
+# value and cubic spline coefficients in degrees within the interval, stored by PROJ
+# as C floats, so they are rounded to float32 here to reproduce PROJ to 0.1 mm.
+def _f32(v):
+    return struct.unpack("<f", struct.pack("<f", v))[0]
 
 
-def _rob(alat):
-    i = min(int(alat // 5), 17)
-    t = (alat - 5 * i) / 5.0
-    (_, x0, y0), (_, x1, y1) = ROBINSON[i], ROBINSON[i + 1]
-    return x0 + t * (x1 - x0), y0 + t * (y1 - y0)
+_ROB_X = [tuple(_f32(v) for v in c) for c in (
+    (1.0, 2.2199e-17, -7.15515e-05, 3.1103e-06), (0.9986, -0.000482243, -2.4897e-05, -1.3309e-06),
+    (0.9954, -0.00083103, -4.48605e-05, -9.86701e-07), (0.99, -0.00135364, -5.9661e-05, 3.6777e-06),
+    (0.9822, -0.00167442, -4.49547e-06, -5.72411e-06), (0.973, -0.00214868, -9.03571e-05, 1.8736e-08),
+    (0.96, -0.00305085, -9.00761e-05, 1.64917e-06), (0.9427, -0.00382792, -6.53386e-05, -2.6154e-06),
+    (0.9216, -0.00467746, -0.00010457, 4.81243e-06), (0.8962, -0.00536223, -3.23831e-05, -5.43432e-06),
+    (0.8679, -0.00609363, -0.000113898, 3.32484e-06), (0.835, -0.00698325, -6.40253e-05, 9.34959e-07),
+    (0.7986, -0.00755338, -5.00009e-05, 9.35324e-07), (0.7597, -0.00798324, -3.5971e-05, -2.27626e-06),
+    (0.7186, -0.00851367, -7.01149e-05, -8.6303e-06), (0.6732, -0.00986209, -0.000199569, 1.91974e-05),
+    (0.6213, -0.010418, 8.83923e-05, 6.24051e-06), (0.5722, -0.00906601, 0.000182, 6.24051e-06),
+    (0.5322, -0.00677797, 0.000275608, 6.24051e-06))]
+_ROB_Y = [tuple(_f32(v) for v in c) for c in (
+    (-5.20417e-18, 0.0124, 1.21431e-18, -8.45284e-11), (0.062, 0.0124, -1.26793e-09, 4.22642e-10),
+    (0.124, 0.0124, 5.07171e-09, -1.60604e-09), (0.186, 0.0123999, -1.90189e-08, 6.00152e-09),
+    (0.248, 0.0124002, 7.10039e-08, -2.24e-08), (0.31, 0.0123992, -2.64997e-07, 8.35986e-08),
+    (0.372, 0.0124029, 9.88983e-07, -3.11994e-07), (0.434, 0.0123893, -3.69093e-06, -4.35621e-07),
+    (0.4958, 0.0123198, -1.02252e-05, -3.45523e-07), (0.5571, 0.0121916, -1.54081e-05, -5.82288e-07),
+    (0.6176, 0.0119938, -2.41424e-05, -5.25327e-07), (0.6769, 0.011713, -3.20223e-05, -5.16405e-07),
+    (0.7346, 0.0113541, -3.97684e-05, -6.09052e-07), (0.7903, 0.0109107, -4.89042e-05, -1.04739e-06),
+    (0.8435, 0.0103431, -6.4615e-05, -1.40374e-09), (0.8936, 0.00969686, -6.4636e-05, -8.547e-06),
+    (0.9394, 0.00840947, -0.000192841, -4.2106e-06), (0.9761, 0.00616527, -0.000256, -4.2106e-06),
+    (1.0, 0.00328947, -0.000319159, -4.2106e-06))]
+_ROB_FXC, _ROB_FYC = 0.8487, 1.3523
+
+
+def _robv(c, z):
+    return c[0] + z * (c[1] + z * (c[2] + z * c[3]))
+
+
+def _robdv(c, z):
+    return c[1] + z * (c[2] + c[2] + z * 3 * c[3])
+
+
+def _rob_fwd(lam, phi):
+    dphi = abs(phi)
+    i = min(int(math.floor(dphi * 11.45915590261646417544 + 1e-15)), 18)
+    dphi = math.degrees(dphi - 0.08726646259971647884 * i)
+    return _robv(_ROB_X[i], dphi) * _ROB_FXC * lam, math.copysign(_robv(_ROB_Y[i], dphi) * _ROB_FYC, phi)
+
+
+def _rob_inv(x, y):
+    lam = x / _ROB_FXC
+    phi = abs(y / _ROB_FYC)
+    if phi >= 1.0:
+        if phi > 1.000001:
+            raise ValueError("outside the Robinson outline")
+        return lam / _ROB_X[18][0], math.copysign(math.pi / 2, y)
+    i = int(math.floor(phi * 18))
+    while True:
+        if _ROB_Y[i][0] > phi:
+            i -= 1
+        elif _ROB_Y[i + 1][0] <= phi:
+            i += 1
+        else:
+            break
+    c = _ROB_Y[i]
+    t = 5.0 * (phi - c[0]) / (_ROB_Y[i + 1][0] - c[0])
+    for _ in range(100):  # Newton-Raphson, as PROJ
+        t1 = (_robv(c, t) - phi) / _robdv(c, t)
+        t -= t1
+        if abs(t1) < 1e-10:
+            break
+    return lam / _robv(_ROB_X[i], t), math.copysign(math.radians(5 * i + t), y)
 
 
 EE = (1.340264, -0.081106, 0.000893, 0.003796)
@@ -981,8 +1038,8 @@ def forward(name, lon, lat, R=1.0, lon0=0.0, lat0=0.0):
         return (R * k * math.cos(phi) * math.sin(lam),
                 R * k * (math.cos(p0) * math.sin(phi) - math.sin(p0) * math.cos(phi) * math.cos(lam)))
     if name == "robinson":
-        X, Y = _rob(abs(lat))
-        return 0.8487 * R * X * lam, math.copysign(1.3523 * R * Y, lat)
+        x, y = _rob_fwd(lam, phi)
+        return R * x, R * y
     if name == "equalearth":
         A1, A2, A3, A4 = EE
         th = math.asin(math.sqrt(3) / 2 * math.sin(phi))
@@ -1013,19 +1070,7 @@ def inverse(name, x, y, R=1.0, lon0=0.0, lat0=0.0):
         phi = math.asin(max(-1.0, min(1.0, math.cos(c) * math.sin(p0) + y * math.sin(c) * math.cos(p0) / rho)))
         lam = math.atan2(x * math.sin(c), rho * math.cos(p0) * math.cos(c) - y * math.sin(p0) * math.sin(c))
     elif name == "robinson":
-        yy = abs(y) / (1.3523 * R)
-        if yy > 1 + 1e-12:
-            raise ValueError("outside the Robinson outline")
-        lo, hi = 0.0, 90.0
-        for _ in range(200):  # Y is monotone in latitude: bisect
-            mid = (lo + hi) / 2
-            if _rob(mid)[1] < yy:
-                lo = mid
-            else:
-                hi = mid
-        alat = (lo + hi) / 2
-        lam = x / (0.8487 * R * _rob(alat)[0])
-        return _wrap(math.degrees(lam) + lon0), math.copysign(alat, y)
+        lam, phi = _rob_inv(x / R, y / R)
     elif name == "equalearth":
         A1, A2, A3, A4 = EE
         yy = y / R
@@ -1053,7 +1098,7 @@ PROJECTIONS = {
     "equirectangular": "plate carree (lat0 = standard parallel; R units)",
     "mollweide": "Mollweide, equal-area (R units)",
     "laea": "Lambert azimuthal equal-area centred on lon0, lat0 (sphere, R units)",
-    "robinson": "Robinson, table with linear interpolation (compromise; R units)",
+    "robinson": "Robinson, PROJ cubic-spline table (compromise; R units)",
     "equalearth": "Equal Earth, equal-area (R units)",
 }
 
@@ -1075,6 +1120,60 @@ def cmd_project(a):
     except ValueError as e:
         die(str(e))
     print(json.dumps(r) if a.json else "  ".join("%s=%.10g" % kv for kv in r.items()))
+
+
+# ---------------------------------------------------------------- generator
+def _gen():
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import mpw_gen
+    return mpw_gen
+
+
+def _window(s):
+    try:
+        v = tuple(float(t) for t in s.split(","))
+    except ValueError:
+        v = ()
+    if len(v) != 4:
+        die("--window wants x0,y0,x1,y1 in map km (0..1000, y south)")
+    return v
+
+
+def cmd_gen(a):
+    g = _gen()
+    try:
+        if a.what == "world":
+            r = g.gen_world(a.seed, a.cells, a.out, a.plates, a.erosion, a.lat_top, a.lat_bottom, a.raster, VERSION)
+        else:
+            win = _window(a.window) if a.window else None
+            r = g.gen_region(a.parent, win, a.cells, a.out, a.detail, a.raster, VERSION)
+    except (ValueError, OSError) as e:
+        die(str(e))
+    if a.json:
+        print(json.dumps(r, indent=1))
+    else:
+        print("wrote %s: %d cells, %d rivers, %d lakes in %.2f s"
+              % (r["out"], r["cells"], r["rivers"], r["lakes"], r["times"]["total"]))
+
+
+def cmd_zoom(a):
+    a.what = "region"
+    a.parent = a.dir
+    cmd_gen(a)
+
+
+def cmd_check(a):
+    g = _gen()
+    if not os.path.isfile(os.path.join(a.dir, "recipe.json")):
+        die("no recipe.json in " + a.dir)
+    bars = g.check(a.dir, determinism=not a.no_regen)
+    if a.json:
+        print(json.dumps([dict(bar=b[0], name=b[1], ok=b[2], detail=b[3]) for b in bars], indent=1))
+    else:
+        for num, name, ok, detail in bars:
+            print("bar %d %s: %s (%s)" % (num, "PASS" if ok else "FAIL", name, detail))
+    if not all(b[2] for b in bars):
+        sys.exit(1)
 
 
 # ---------------------------------------------------------------- main
@@ -1128,6 +1227,44 @@ def build_parser():
     s.add_argument("--list", action="store_true")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_project)
+
+    s = sub.add_parser("gen", help="generate a world or a child region as a recipe folder")
+    gs = s.add_subparsers(dest="what", required=True)
+    w = gs.add_parser("world", help="new world: plates, erosion, rivers, lakes, climate, biomes")
+    w.add_argument("--seed", type=int, required=True)
+    w.add_argument("--cells", type=int, default=16000)
+    w.add_argument("--plates", type=int, default=12)
+    w.add_argument("--erosion", type=int, default=15, help="stream-power steps (10-20)")
+    w.add_argument("--lat-top", type=float, default=60.0)
+    w.add_argument("--lat-bottom", type=float, default=0.0)
+    w.add_argument("--out", required=True)
+    rg = gs.add_parser("region", help="child map of a window of a parent world")
+    rg.add_argument("--parent", required=True)
+    for x in (rg,):
+        x.add_argument("--window", help="x0,y0,x1,y1 in parent map km; default: the coast-richest quarter tile")
+        x.add_argument("--cells", type=int, default=16000)
+        x.add_argument("--detail", type=float, default=0.03, help="detail noise amplitude (height units)")
+        x.add_argument("--out", required=True)
+    for x in (w, rg):
+        x.add_argument("--raster", type=int, default=512, help="heights.png width in pixels")
+        x.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_gen)
+
+    s = sub.add_parser("zoom", help="same as `gen region --parent DIR`")
+    s.add_argument("dir")
+    s.add_argument("--window")
+    s.add_argument("--cells", type=int, default=16000)
+    s.add_argument("--detail", type=float, default=0.03)
+    s.add_argument("--raster", type=int, default=512)
+    s.add_argument("--out", required=True)
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_zoom)
+
+    s = sub.add_parser("check", help="run the land proof bars on a recipe folder")
+    s.add_argument("dir")
+    s.add_argument("--no-regen", action="store_true", help="skip the byte-identical regeneration bar")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_check)
     return p
 
 
