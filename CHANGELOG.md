@@ -4,6 +4,24 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261115-4 · 2026-11-15 · 0.7.0: export to engines, Tiled, tabletop, mesh and print
+- because: user request (Step D.9), T-20261115-4, L-024, L-025, L-026, L-027
+- files: scripts/mpw_export.py (new), scripts/mpw.py, scripts/mpw_places.py, tests/test_export.py (new), skills/mapwright/SKILL.md, README.md, ai-docs/plans/design.md, plugin.json, .claude-plugin/plugin.json
+- `export` takes `--to` (or reads the target from the extension) and now writes: engine heightmaps from a world or region (`unity` RAW, `unreal` 16-bit PNG, `godot` R16 or 16-bit PNG, `roblox` heightmap plus a colormap) with an `.import.json` sidecar; Tiled maps (`.tmj`) of dungeons, square battle maps and deck plans; deck plans as Universal VTT, one file per deck; hex battle maps as PNG; a terrain mesh (`.obj`) with a polywright manifest; and print-ready PDF and PNG at a paper size with bleed and crop marks. Every writer reads its own file back and prints proof bars. The Universal VTT bars gain one: colours alpha first (AARRGGBB), every portal closed, no wall under a door (checked against the importer facts in references/cities-and-dungeons.md; the 0.5.0 dungeon and battle export already met all three). `doctor` lists the export targets and says when print is skipped for want of a browser; `explain` knows heightmap, bleed, crop-marks, tmj and uvtt.
+- Rulings:
+  - Heightmaps stretch the lowest to the highest height over the full range; the sidecar carries the scale.
+  - Unity, Unreal and the mesh take vertex samples from edge to edge; Godot and Roblox take pixel centres, the identity at the recipe's raster size.
+  - A region that is not square still gives a square Unity or Unreal heightmap, with different metres per pixel east and north (the engines set width and length apart); Roblox and Godot keep the shape.
+  - Default size is the smallest the engine takes at or above the recipe raster: 513 for Unity and 1009 for Unreal from a 512 px raster.
+  - Unity rows are written north first; `--flip` writes south first. Which one Unity expects is not verified.
+  - Godot gets `.r16` by preference: Terrain3D reads PNG as 8 bit. A 16-bit PNG is still offered.
+  - Roblox is 8 bit unless `--bits 16`; sea and lake beds are Mud and water is added with the Sea Level tool; the colour table is from the reference, not checked in Studio.
+  - Tiled gids are 1 wall, 2 floor, 3 door, 4 tree, 5 lift, 6 airlock, 0 empty; the decks of a ship are tile layers of one map; `--csv` writes Tiled's own CSV shape (local ids, -1 empty); `--encoding base64` is zlib.
+  - Deck plans to Universal VTT: space counts as wall, a lift is floor, the airlock's outer door is a portal, at least 50 px per square.
+  - The mesh is OBJ with x east, y north, z up, in real metres; `--print-mm` gives millimetres and a 2 mm base; the bottom is a fan from the centre; the manifest uses polywright's contract fields with status `model`, and `-o FOLDER` writes polywright's asset layout.
+  - Print: the page is the paper plus the bleed; crop marks sit inside the bleed on the trim lines and stop 1 mm short of the corner; `contain` with a 10 mm margin is the default and `cover` crops; PNG pixels are round(mm / 25.4 x dpi); a name with no extension writes both files.
+  - Hex battle maps get no Universal VTT (L-026) and no Tiled export yet.
+
 ### C-20261115-3 · 2026-11-15 · 0.6.0: gen sector, gen system, gen planet, gen deck
 - because: user request (Step D.8), T-20261115-3, L-021, L-022, L-023
 - files: scripts/mpw_space.py (new), scripts/data/near-stars.csv (new), scripts/mpw.py, tests/test_space.py (new), skills/mapwright/SKILL.md, README.md, plugin.json, .claude-plugin/plugin.json

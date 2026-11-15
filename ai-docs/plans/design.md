@@ -71,6 +71,8 @@ One skill, `mapwright`, with the four verbs as sections and references loaded on
 | ludowright, engine plugins, studywright | design and engine import | heightmaps, tilemaps, UVTT tabletop export, minimap images | export formats |
 | gis-mcp, qgis-mcp, fmg-mcp (outside tools) | full GIS / Azgaar FMG | stdlib, recipe-based, all three kinds, proof bars; points users to them when they need a full GIS or FMG's editor | documented in prior-art.md; not wrapped |
 
+Built in 0.7.0 (2026-11-15): the hand-offs in this table are `export --to` targets, not separate flags. polywright gets `export DIR -o terrain.obj` (or `--to mesh -o FOLDER` for its asset layout) with a manifest in its contract's fields; engines get `--to unity|unreal|godot|roblox` heightmaps with an import sidecar; pixelwright and engine tile tools get `--to tiled` (.tmj with tile ids and a flat-colour tileset to repaint); tabletops get Universal VTT for dungeons, square battle maps and deck plans; print gets `--to print`. GeoJSON for chartwright needs no export: features.geojson is already in the recipe folder. Not built: a cube map for threewright, hex maps to Tiled, PDF/X.
+
 ## 7. Order for Step D (unchanged from the prompt) and first proofs
 
 1. `doctor`, `explain`, `inspect`, `convert`, `measure` with the round-trip, distance and projection bars.

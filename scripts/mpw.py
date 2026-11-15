@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.6.0"
+VERSION = "0.7.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -90,6 +90,8 @@ def cmd_doctor(a):
             "tesseract": shutil.which("tesseract") and "tesseract on PATH",
         },
     }
+    # export targets: everything but print is standard library only
+    info["export"] = {"heightmaps": True, "tiled": True, "uvtt": True, "mesh": True, "print": bool(info["browser"])}
     if a.json:
         print(json.dumps(info, indent=2))
         return
@@ -99,6 +101,8 @@ def cmd_doctor(a):
     print("browser       %s" % (info["browser"] or "none found (PNG/PDF export needs Chrome or Edge)"))
     for k, v in info["extras"].items():
         print("%-14s%s" % (k, v or "absent (optional)"))
+    print("export        heightmaps, tiled, uvtt and mesh ready; print (PDF/PNG at a paper size) %s"
+          % ("ready" if info["browser"] else "skipped: no Chrome or Edge"))
 
 
 # ---------------------------------------------------------------- explain
@@ -149,11 +153,27 @@ GLOSSARY = {
                        "references/realistic-land.md"),
     "voronoi": ("Cells closest to each seed point; the dual of the Delaunay triangulation. The "
                 "mesh mapwright generators grow land on.", "references/realistic-land.md"),
+    "heightmap": ("A grey image whose values are elevations. Engines want set sizes: Unity a square 16-bit RAW of "
+                  "2^n + 1 samples, Unreal a 16-bit PNG of 1009, 2017 and kin, Roblox a PNG up to 4096 px. The "
+                  "file holds no scale, so `export` writes the metres per pixel and height range beside it.",
+                  "references/games-film-print.md"),
+    "bleed": ("Print that runs past the trim line, 3 mm per edge in Europe and 0.125 in in the US, so a cut that "
+              "lands a little off shows no white edge. The page is the paper plus the bleed on every side.",
+              "references/games-film-print.md"),
+    "crop-marks": ("Short lines at the corners of a printed sheet that show where to cut. `export --to print "
+                   "--bleed 3` draws them inside the bleed, on the trim lines.", "references/games-film-print.md"),
+    "tmj": ("Tiled's JSON map: tile layers of global tile ids (0 is empty, the top four bits are flip flags), "
+            "object layers for walls and doors, and a tileset with a first gid and an image.",
+            "references/games-film-print.md"),
+    "uvtt": ("Universal VTT (.dd2vtt): one JSON file with a square-grid map picture in base64, walls as line of "
+             "sight, doors as portals and lights. Foundry and other tabletops import it. It has no hex form.",
+             "references/games-film-print.md"),
 }
 ALIASES = {"epsg:3857": "web-mercator", "3857": "web-mercator", "webmercator": "web-mercator",
            "plate-carree": "equirectangular", "lambert-azimuthal-equal-area": "laea",
            "indicatrix": "tissot", "great-circle": "geodesic", "loxodrome": "rhumb-line",
-           "pgw": "world-file", "representative-fraction": "scale"}
+           "pgw": "world-file", "representative-fraction": "scale", "tiled": "tmj", "dd2vtt": "uvtt",
+           "universal-vtt": "uvtt", "trim-marks": "crop-marks", "height-map": "heightmap"}
 
 
 def cmd_explain(a):
@@ -1457,29 +1477,28 @@ def cmd_render(a):
               % (a.out, a.style, info["placed"], len(info["dropped"]), len(info["legend"]), info["times"]["total"]))
 
 
+def _export():
+    _gen()
+    import mpw_export
+    return mpw_export
+
+
+EXPORT_OPTS = ("size", "flip", "bits", "tile", "encoding", "csv", "deck", "pps", "exaggeration", "base", "print_mm",
+               "flat_sea", "paper", "landscape", "dpi", "bleed", "no_marks", "margin", "fit", "style")
+
+
 def cmd_export(a):
     _need_recipe(a.dir)
-    if _kind(a.dir) in SPACE:
-        try:
-            bars, files = _space().export(a.dir, a.out)
-        except (ValueError, OSError, KeyError) as e:
-            die(str(e))
+    try:
+        bars, files = _export().export(a.dir, a.out, a.to, VERSION, **{k: getattr(a, k) for k in EXPORT_OPTS})
+    except (ValueError, OSError, KeyError, RuntimeError) as e:
+        die(str(e))
+    if a.json:
+        print(json.dumps(dict(files=files, bars=[dict(name=n, ok=ok, detail=det) for n, ok, det in bars]), indent=1))
+    else:
         for name, ok, detail in bars:
             print("%s: %s (%s)" % ("PASS" if ok else "FAIL", name, detail))
         print("wrote %s" % ", ".join(files))
-        if any(b[1] is False for b in bars):
-            sys.exit(1)
-        return
-    P = _places()
-    try:
-        P.write_uvtt(a.dir, a.out)
-        with open(a.out, encoding="utf-8") as f:
-            bars = P.uvtt_bars(f.read())
-    except (ValueError, OSError, KeyError) as e:
-        die(str(e))
-    for name, ok, detail in bars:
-        print("%s: %s (%s)" % ("PASS" if ok else "FAIL", name, detail))
-    print("wrote %s" % a.out)
     if any(b[1] is False for b in bars):
         sys.exit(1)
 
@@ -1759,9 +1778,34 @@ def build_parser():
         x.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_gen)
 
-    s = sub.add_parser("export", help="dungeon/battle to Universal VTT (.dd2vtt), planet to a sphere PNG, sector to a T5 tab file")
+    s = sub.add_parser("export", help="recipe to game, tabletop, 3D and print files: engine heightmaps, Tiled maps, "
+                                      "Universal VTT, a terrain mesh, a sphere PNG, a T5 file, PDF and PNG at a paper size")
     s.add_argument("dir")
-    s.add_argument("-o", "--out", required=True, help="output .dd2vtt/.uvtt, .png (planet) or .tab (sector)")
+    s.add_argument("-o", "--out", required=True, help="output file; the extension picks the target when --to is absent "
+                                                      "(.dd2vtt .tmj .raw .r16 .obj .pdf .tab, .png for a planet or hex map)")
+    s.add_argument("--to", choices=("uvtt", "png", "sphere", "t5", "unity", "unreal", "godot", "roblox", "tiled",
+                                    "mesh", "print"))
+    s.add_argument("--size", type=int, help="heightmap or mesh samples on a side (unity 2^n+1, unreal 1009 and kin)")
+    s.add_argument("--flip", action="store_true", help="unity: write the south row first")
+    s.add_argument("--bits", type=int, choices=(8, 16), help="roblox heightmap depth (default 8)")
+    s.add_argument("--tile", type=int, help="tiled: tile size in px (default 32)")
+    s.add_argument("--encoding", choices=("csv", "base64"), help="tiled: layer data as numbers or base64 + zlib")
+    s.add_argument("--csv", action="store_true", help="tiled: also write each tile layer as a .csv")
+    s.add_argument("--deck", type=int, help="uvtt: one deck of a deck plan (default every deck)")
+    s.add_argument("--pps", type=int, help="uvtt for a deck: pixels per square (default 50 or the recipe's if larger)")
+    s.add_argument("--exaggeration", type=float, help="mesh: vertical exaggeration (default 1)")
+    s.add_argument("--base", type=float, help="mesh: close it with a base this thick under the lowest point")
+    s.add_argument("--print-mm", type=float, help="mesh: a print tile this many mm on its longer side (base 2 mm)")
+    s.add_argument("--flat-sea", action="store_true", help="mesh: flatten everything below sea level")
+    s.add_argument("--paper", help="print: A0..A5, Letter, Legal, Tabloid or WxH in mm (default A4)")
+    s.add_argument("--landscape", action="store_true")
+    s.add_argument("--dpi", type=int, help="print: PNG resolution (default 300)")
+    s.add_argument("--bleed", type=float, help="print: bleed in mm on every edge, with crop marks")
+    s.add_argument("--no-marks", action="store_true", help="print: no crop marks")
+    s.add_argument("--margin", type=float, help="print: margin in mm inside the trim (default 10)")
+    s.add_argument("--fit", choices=("contain", "cover"), help="print: whole map inside the margin, or map over the bleed")
+    s.add_argument("--style", help="print and png: the look to draw")
+    s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_export)
 
     s = sub.add_parser("zoom", help="same as `gen region --parent DIR`")

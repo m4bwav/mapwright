@@ -156,6 +156,34 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 - Evidence: T-20261115-3
 - Scope: skill
 
+### L-024 · 2026-11-15 · `chrome-rounds-pdf-page`: a browser PDF page is rounded, so cut the box back yourself
+- Trigger: the print bar failed on A3 (MediaBox 841.92 x 1191.12 pt for 841.89 x 1190.55, off 0.57 pt) and A5 with bleed (0.505 pt), and the drawing lost up to one CSS pixel on its right and bottom edges.
+- Hypothesis: headless Chrome rounds an `@page` size to whole points, then to 1/300 inch, and lays the page out on a viewport floored to whole CSS pixels, so the page is neither the size asked for nor always as large as the drawing.
+- Rule: ask for a page 2 pt larger than needed, then set MediaBox (and BleedBox, TrimBox) to the drawing's rectangle, which hangs from the page's top-left corner, with an incremental update appended to the file; never edit the browser's bytes in place.
+- Evidence: T-20261115-4 (60 PDFs, worst difference 0.0001 pt; pypdf, PyMuPDF, mutool and poppler read the update)
+- Scope: skill
+
+### L-025 · 2026-11-15 · `sidecar-rounding-eats-the-step`: a scale written with too few digits breaks the read-back
+- Trigger: heightmaps read back through their own sidecar missed the half-step bar by 0.0002 m.
+- Hypothesis: metres per step rounded to 8 decimals is multiplied by up to 65535 on the way back, and min_m rounded to 4 decimals adds its own error.
+- Rule: write metres_per_step with 12 decimals and min_m and max_m with 6; the test reads the file with the sidecar's numbers only, never the exporter's variables.
+- Evidence: T-20261115-4
+- Scope: skill
+
+### L-026 · 2026-11-15 · `hex-has-no-uvtt`: skip the hex Universal VTT export, it has no honest form
+- Trigger: the open item "hex battle maps to VTT" from Step D.7.
+- Hypothesis: a .dd2vtt holds one `pixels_per_grid` number for a square grid and no grid type, so an importer would lay squares over the hexes and every wall and door would sit on the wrong cell.
+- Rule: refuse hex with the reason and send it to `export --to png` (same canvas as map.svg). Tiled's hexagonal orientation (staggeraxis y, staggerindex odd) is the honest hex target and is not built yet.
+- Evidence: T-20261115-4
+- Scope: skill
+
+### L-027 · 2026-11-15 · `uvtt-alpha-first-closed-doors`: Universal VTT colours are AARRGGBB and an open portal is a window
+- Trigger: source pass 3 read the Foundry importer: it drops the first two characters of a colour, reads `closed: false` as a window, and builds its own door wall from a portal's bounds.
+- Hypothesis: a colour written RRGGBBAA still parses and only looks wrong in play, and an open door or a wall left under a door loads without any error.
+- Rule: write `ffRRGGBB`, `closed: true` for every door, and leave the wall gap at each portal; `uvtt_bars` checks all three on dungeon, battle and deck exports.
+- Evidence: T-20261115-4 (the 0.5.0 exports already met all three; the bar now fails each forced break)
+- Scope: skill
+
 ### L-006 · 2026-11-14 · Embedded RGB PNG drew blank: width passed as bytes per row
 - Trigger: map.svg showed only the sea colour.
 - Hypothesis: the PNG width was len(row) of an RGB bytearray, three times the pixel width.

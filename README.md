@@ -6,7 +6,7 @@ An agent plugin for maps of real places, fantasy worlds and science fiction sett
 
 mapwright is a skill for AI coding agents plus one small script, `mpw.py`, that needs nothing but Python's standard library.
 
-## What works in 0.6.0
+## What works in 0.7.0
 
 - **Inspect** a map file: GeoJSON, GPX, KML and KMZ, shapefiles, dBASE, PNG heightmaps with world files, GeoPackage and MBTiles. Feature counts, extent, properties and the CRS when the file states one.
 - **Convert** between GeoJSON, GPX and KML, and read shapefiles into GeoJSON. Ring order is fixed on the way (shapefiles clockwise, GeoJSON counter-clockwise).
@@ -26,6 +26,13 @@ mapwright is a skill for AI coding agents plus one small script, `mpw.py`, that 
 - **Cities, dungeons and battle maps** (0.5.0): `gen city` (streets, blocks, lots, wall and gates, districts, optionally sited on a world's settlement), `gen dungeon` (BSP rooms or caves, doors, lights), `gen battle` (square or hex grid, pixels per square), checked by reachability, whole-pixel grid and byte-identical regeneration bars, and `export` to Universal VTT (.dd2vtt) for Foundry and other tabletops.
 
 - **Space** (0.6.0): `gen sector` (hex subsector or sector, worlds, connected jump routes, a T5 tab-delimited file; `--real` for twelve near stars placed by parallax), `gen system` (star, planets on stable orbits, moons, schematic and to-scale diagrams), `gen planet` (rocky, ice, ocean, gas giant, cratered moon or tidally locked sphere textures with no seam and no pole pinch), `gen deck` (ship or station deck plans, every room reachable from the airlock). `check` proves the route graph connected, star distances, orbit spacing, the seam and poles, and deck reachability; `export` writes a planet as a sphere PNG with a hand-off note for three.js and Blender.
+
+- **Export** (0.7.0) to the tools that take a map further, each file read back and checked before it is reported:
+  - engine heightmaps from a world or region: Unity RAW (16 bit, 2^n + 1), Unreal 16-bit PNG at landscape sizes, R16 or 16-bit PNG for Godot, a Roblox heightmap with a colormap of material colours, and a sidecar with metres per pixel, the height range and the import settings;
+  - Tiled maps (.tmj) of dungeons, square battle maps and deck plans with a generated tileset, walls and doors as object layers and an optional CSV;
+  - deck plans to Universal VTT and hex battle maps to PNG;
+  - a terrain mesh (OBJ) with optional vertical exaggeration and a base that makes it a watertight print tile, plus a manifest in polywright's asset format;
+  - print-ready PDF and PNG at A4, A3, Letter, Tabloid or a custom size, at a chosen DPI, with bleed and crop marks, through headless Chrome or Edge.
 
 Labels on curves come next.
 
@@ -49,6 +56,11 @@ python scripts/mpw.py legend isles.map --style atlas
 python scripts/mpw.py style --list
 python scripts/mpw.py serve isles.map
 python scripts/mpw.py sheet isles.map --styles atlas,blueprint,star-chart -o pick.png
+python scripts/mpw.py export isles.map -o isles.raw --size 1025
+python scripts/mpw.py export isles.map -o tile.obj --print-mm 100 --exaggeration 20
+python scripts/mpw.py export crypt.map -o crypt.tmj --csv
+python scripts/mpw.py export ship.map -o ship.dd2vtt
+python scripts/mpw.py export isles.map --to print -o poster --paper A3 --bleed 3
 ```
 
 ## Tests

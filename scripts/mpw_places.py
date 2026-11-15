@@ -1133,6 +1133,20 @@ def uvtt_bars(text):
         iw, ih = png_size(img)
         bars.append(("uvtt: image matches the grid", (iw, ih) == (mx * ppg, my * ppg),
                      "%dx%d px for %dx%d squares at %d" % (iw, ih, mx, my, ppg)))
+        # colours are AARRGGBB (the Foundry importer drops the first two characters); a portal with closed false
+        # imports as a window; a wall under a portal doubles the door wall the importer builds from its bounds
+        cols = [u["environment"]["ambient_light"]] + [L["color"] for L in u["lights"]]
+        badc = [c for c in cols if not (isinstance(c, str) and len(c) == 8 and c[:2].lower() == "ff"
+                                        and all(ch in "0123456789abcdefABCDEF" for ch in c))]
+        opened = sum(1 for p in u["portals"] if p.get("closed") is not True)
+        over = 0
+        for p in u["portals"]:
+            b0, b1 = p["bounds"][0], p["bounds"][-1]
+            mid = ((b0["x"] + b1["x"]) / 2.0, (b0["y"] + b1["y"]) / 2.0)
+            if any(seg_dist(mid[0], mid[1], *a, *c) <= 1e-6 for a, c in segs):
+                over += 1
+        bars.append(("uvtt: colours alpha first, doors closed, no wall over a door", not badc and not opened and not over,
+                     "%d colours not ffRRGGBB, %d portals not closed, %d doors under a wall" % (len(badc), opened, over)))
     except (ValueError, KeyError, TypeError) as e:
         bars.append(("uvtt: loads", False, str(e)))
     return bars
