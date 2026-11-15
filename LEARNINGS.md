@@ -4,6 +4,28 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 
 ## Active
 
+### L-013 · 2026-11-14 · A 3x3 majority filter rounds square corners
+- Trigger: a traced 20x20 square came back with corners cut (x 1.1 and 2.9 instead of 1 and 3) after `clean` with "5 of 9".
+- Hypothesis: a corner pixel has only 4 set in its 3x3, so a plain majority clears it.
+- Rule: vote with hysteresis: 6+ sets, 3 or fewer clears, otherwise keep. Specks and one-pixel strokes still go.
+- Evidence: T-20261114-4
+- Scope: script
+
+### L-014 · 2026-11-14 · Filling small holes in a water mask also fills small islands
+- Trigger: `--fill-holes 2000` cut label-halo noise on a full render but pushed recipe-to-traced p95 from 3 px to 19 px.
+- Hypothesis: an island is a hole in the water polygon, the same shape as a label box.
+- Rule: keep `--fill-holes` at 0 by default; state that label, legend and scale boxes over the sea show as holes.
+- Evidence: T-20261114-4
+- Scope: script
+
+### L-015 · 2026-11-14 · Lakes are vector overlays, not in the land raster
+- Trigger: tracing the stdlib land raster gave recipe-to-traced p95 of 46 px when lake rings were in the reference.
+- Hypothesis: `land_rows` paints only z < 0 as sea; lakes are drawn later as SVG paths.
+- Rule: compare a raster trace with coast lines only; compare a full browser render with coast plus lakes.
+- Evidence: T-20261114-4
+- Scope: tests
+
+
 ### L-001 · 2026-11-14 · Web Mercator y: use atanh(sin phi), not log(tan(pi/4 + phi/2))
 - Trigger: `project webmercator 0 0` gave y = -7.1e-10 m with the log-tan form (T-20261114-1).
 - Hypothesis: tan(pi/4) is not exactly 1 in float64; atanh(sin 0) is exactly 0.

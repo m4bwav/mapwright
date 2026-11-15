@@ -1,6 +1,6 @@
 # HANDOFF: mapwright
 
-Status: Step D.4 done (2026-11-14): render/label/legend/style/serve/sheet in mpw_render.py, check bars 14-16 (OCR bar skips: no tesseract); PR #2 merged (d74212d); tests 61/61. Banner, social preview (set in repo settings) and wiki 0.2.0 done (PRs #3, #4). Next: D.5 read/trace.
+Status: Step D.4 done (2026-11-14): render/label/legend/style/serve/sheet in mpw_render.py, check bars 14-16 (OCR bar skips: no tesseract); PR #2 merged (d74212d); tests 61/61. Banner, social preview (set in repo settings) and wiki 0.2.0 done (PRs #3, #4). D.5 read/trace done (0.3.0, mpw_read.py, tests 81/81; see TESTS T-20261114-4). Next: D.6 find/fetch.
 
 Continue prompt: [plans/mapwright-continue-prompt.md](plans/mapwright-continue-prompt.md)
 
@@ -10,7 +10,7 @@ Continue prompt: [plans/mapwright-continue-prompt.md](plans/mapwright-continue-p
 
 ## Next
 
-1. Images and wiki done 2026-11-14 (PR #3 banner + social preview, set in Settings; wiki live at 0.2.0, note ai-docs/notes/2026-11-14-github-wiki.md). At each release rerun the wiki verify script and diff. Next: D.5 `read`/`trace`. D.4 open items (LEARNINGS L-010..012): OCR bar untested (no tesseract), straight river labels, star-chart has no catalogue stars, blueprint labels garble when a sheet shrinks.
+1. Images and wiki done 2026-11-14 (PR #3 banner + social preview, set in Settings; wiki live at 0.2.0, note ai-docs/notes/2026-11-14-github-wiki.md). At each release rerun the wiki verify script and diff. D.5 done; open: OCR on real maps (no tesseract), a measured reading set for names/legend/scale (Step D "Reading pictures" share), wiki not yet updated to 0.3.0. D.4 open items (LEARNINGS L-010..012): OCR bar untested (no tesseract), straight river labels, star-chart has no catalogue stars, blueprint labels garble when a sheet shrinks.
 2. Open issues from D.3 (LEARNINGS L-009): a grandchild window with no sea fails bar 1 (predates D.3); one dry child sits on bar 7's 20-sample edge; no ferries yet (islands get their own road nets).
 3. Done: hero banner, social preview, wiki (see 1).
 4. Run evergreen-convert on mapwright (adds evergreen.json) so `harvest targets` picks up harvest.json.
