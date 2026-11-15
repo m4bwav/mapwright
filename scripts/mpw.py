@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -1125,6 +1125,47 @@ def cmd_project(a):
     print(json.dumps(r) if a.json else "  ".join("%s=%.10g" % kv for kv in r.items()))
 
 
+# ---------------------------------------------------------------- find / fetch
+def _find():
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import mpw_find
+    return mpw_find
+
+
+def cmd_find(a):
+    F = _find()
+    if a.list:
+        for s in F.CATALOGUE:
+            print("%-19s %-40s %s | %s" % (s["id"], s["name"][:40], s["licence"], s["credit"]))
+        return
+    if not a.query:
+        die("find QUERY (a place, a time or a subject); --list shows the catalogue")
+    http = F.Http(VERSION, cache_dir=a.cache) if a.online else None
+    out = F.find(" ".join(a.query), http=http, online=a.online, limit=a.limit)
+    if a.json:
+        print(json.dumps(out, indent=1, ensure_ascii=False))
+        return
+    print("query: %s  (kinds: %s)" % (out["query"], ", ".join(out["kinds"])))
+    for r in out["results"]:
+        print("- [%s] %s\n    %s\n    licence: %s\n    credit: %s" % (r["source"], r["title"], r["url"], r["licence"], r["credit"]))
+        if r.get("key"):
+            print("    key: " + r["key"])
+    for e in out["errors"]:
+        print("lookup failed: " + e)
+
+
+def cmd_fetch(a):
+    F = _find()
+    try:
+        http = F.Http(VERSION, cache_dir=a.cache, cap_mb=a.max_mb)
+        e = F.fetch(a.url, a.out, http, source_id=a.source, name=a.name, licence=a.licence, credit=a.credit)
+    except F.Refused as ex:
+        die(str(ex))
+    print("%s  %d bytes  (%s, cache %s)\ncredit: %s\nwrote %s and %s" % (
+        os.path.join(a.out, e["file"]), e["bytes"], e["source"], e["cache"], e["credit"],
+        os.path.join(a.out, "sources.json"), os.path.join(a.out, "CREDITS.txt")))
+
+
 # ---------------------------------------------------------------- generator
 # ---------------------------------------------------------------- read / trace
 def _read():
@@ -1552,6 +1593,26 @@ def build_parser():
     s.add_argument("--style", default="topographic", help="style the label bars render with")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_check)
+
+    s = sub.add_parser("find", help="maps and data for a place, time or subject, each with licence and credit")
+    s.add_argument("query", nargs="*")
+    s.add_argument("--online", action="store_true", help="also ask Nominatim, Wikimedia Commons and the Library of Congress")
+    s.add_argument("--list", action="store_true", help="print the source catalogue")
+    s.add_argument("--limit", type=int, default=8)
+    s.add_argument("--cache", help="cache folder (default MAPWRIGHT_CACHE or ~/.cache/mapwright)")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_find)
+
+    s = sub.add_parser("fetch", help="download one file politely and cached; writes sources.json and CREDITS.txt")
+    s.add_argument("url")
+    s.add_argument("-o", "--out", required=True, help="folder the file, sources.json and CREDITS.txt go in")
+    s.add_argument("--source", help="catalogue id when the host alone does not say")
+    s.add_argument("--name", help="file name to save as")
+    s.add_argument("--licence", help="licence, required for a host not in the catalogue")
+    s.add_argument("--credit", help="credit line, required for a host not in the catalogue")
+    s.add_argument("--max-mb", type=float, default=200, help="size cap; bigger downloads are refused")
+    s.add_argument("--cache", help="cache folder (default MAPWRIGHT_CACHE or ~/.cache/mapwright)")
+    s.set_defaults(fn=cmd_fetch)
 
     s = sub.add_parser("names", help="place names from a sound pattern: sample, list styles, or rename a world")
     s.add_argument("dir", nargs="?", help="world recipe folder: print its names, or rename with --style/--pattern")

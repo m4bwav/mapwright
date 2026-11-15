@@ -4,6 +4,16 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 
 ## Active
 
+### L-016 · 2026-11-15 · An API key in a URL leaks into the cache name and the credit files
+- Trigger: OpenTopography takes its key as a query parameter, so the natural URL to cache and record holds the key.
+- Hypothesis: anything keyed on the full URL (cache hash, sources.json, CREDITS.txt) would store the secret.
+- Rule: add the key only to the outgoing request; strip key-like parameters (api_key, key, token) before hashing or recording. A test checks the files.
+
+### L-017 · 2026-11-15 · A rate limit kept in memory resets every run
+- Trigger: Nominatim's 1 request per second covers the application, but each `mpw.py` call is a new process.
+- Hypothesis: back-to-back CLI calls would each send at once and break the policy.
+- Rule: keep the last request time per source in the cache folder (rate.json) and wait against it. A test runs two Http objects on one clock.
+
 ### L-013 · 2026-11-14 · A 3x3 majority filter rounds square corners
 - Trigger: a traced 20x20 square came back with corners cut (x 1.1 and 2.9 instead of 1 and 3) after `clean` with "5 of 9".
 - Hypothesis: a corner pixel has only 4 set in its 3x3, so a plain majority clears it.
