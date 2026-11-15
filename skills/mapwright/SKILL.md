@@ -3,7 +3,7 @@ name: mapwright
 description: "Cartography for real, fantasy and sci-fi worlds: read, write, find and generate maps of places. Inspects and converts GeoJSON, GPX, KML, shapefiles, GeoPackage, MBTiles and heightmap PNGs, measures geodesic distance, bearing, area and scale, projects points (Web Mercator, Mollweide, Lambert equal-area, Robinson, Equal Earth), explains map terms, and grows invented worlds as recipe folders. Use whenever the user wants a map of a place or world: 'what is in this GPX', 'convert this KML to GeoJSON', 'how far is it from A to B', 'which projection for a world map', 'make a fantasy continent map', 'star map for my sci-fi setting'. Also 'refresh mapwright'. Not for code or repository maps (evergreen-map), charts of data on a map such as choropleths (chartwright) or 3D models of places (polywright)."
 license: MIT
 metadata:
-  version: 0.6.0
+  version: 0.7.0
 ---
 
 # mapwright
@@ -68,12 +68,11 @@ Privacy guard: never send a home address, or any private address or location of 
 - `MPW names --sample N [--style S | --pattern 'C=..;V=..;F=..;S=CV CVF;N=2-3']`: print names from a sound pattern. `MPW names --list` shows the styles (soft, harsh, nordic, latinate, desert, isle). `MPW names DIR` prints a world's names; with `--style` or `--pattern` it renames the world (zoom its children again after).
 - `MPW gen city --seed N [--parent WORLD --settlement ID] [--bands 6 --wall 4 | --no-walls] [--sea RAD --river RAD] --out DIR`: rings and gate roads grown from a market, blocks between them, lots cut so each fronts a street, buildings on the lots, a wall on one ring with gates only where the gate roads cross it, districts with names. With `--parent` it takes the settlement's name and language, and a coast or river when the world has one within 1.5 cell spacings. About 0.15 s.
 - `MPW gen dungeon --seed N [--method bsp|cave] [--w 48 --h 36 --pps 70] --out DIR`: BSP rooms with corridors and about 12 percent extra loops, or cellular caves (largest cave kept); doors at one-wide room openings, a light per room; grid.json, map.png (whole pixels per square) and map.svg.
-- `MPW gen battle --seed N [--grid square|hex] [--w 30 --h 20 --pps 100] --out DIR`: ruins with doors, rocks, trees, torches; pockets cut off from the main open ground become rock. Hex needs an even `--pps` and gives map.svg only.
-- `MPW export DIR -o map.dd2vtt`: Universal VTT for a square dungeon or battle map (walls, doors as portals, lights, the PNG in base64), loaded back and checked before it is reported. Foundry's own scene JSON is not written: the Universal Battlemap Importer reads this file.
+- `MPW gen battle --seed N [--grid square|hex] [--w 30 --h 20 --pps 100] --out DIR`: ruins with doors, rocks, trees, torches; pockets cut off from the main open ground become rock. Hex needs an even `--pps` and writes map.svg; `export --to png` draws the PNG.
 - `MPW check DIR` on a city, dungeon or battle recipe runs the place bars: every street reached from the market, every block fronts a reached street, lots simple and inside their block, every built lot has frontage, streets cross the wall only at gates; every floor square, room and door reached, rooms never overlap, walls closed, map.png exactly squares x pps, the Universal VTT round trip; byte-identical regeneration; the label bars.
 - `MPW gen sector --seed N [--size subsector|sector] [--density 0.5] [--jump 2] --out DIR`: one world per occupied hex (flat-topped columns, 0-based odd columns half a hex lower), routes as the relative neighbourhood graph joined with the minimum spanning tree (always connected), routes beyond `--jump` hexes marked long; sector.json, sector.tab (T5 tab-delimited, read back by header) and map.svg. The UWP-shaped codes are random filler, never a published setting's data. `--real [--radius-pc 6 --jump 2.5]` places the twelve near stars in scripts/data/near-stars.csv by parallax instead.
 - `MPW gen system --seed N [--star M|K|G|F] [--planets N] --out DIR`: star mass, luminosity and radius, habitable zone (0.95 to 1.67 AU times sqrt L), snow line, planets kept at least 12 mutual Hill radii apart, moons inside the Hill sphere; each body names the `gen planet --kind` that fits it. map.svg is a schematic (not to scale), orbits.svg is to scale (`render --view scale`).
-- `MPW gen planet --seed N --kind rocky|ice|ocean|gas|moon|locked [--width 1024] --out DIR`: equirectangular texture.png from 3D noise sampled on the sphere (no seam, no pole pinch; width 512 or more). Moon craters follow N(>D) ~ D^-2; a locked world has its substellar point at the texture's centre. About 4 s at 1024, 1 s at 512. `MPW export DIR -o planet.png` copies it and writes planet.sphere.json, a hand-off note for threewright (sphere material) and polywright (UV sphere in Blender).
+- `MPW gen planet --seed N --kind rocky|ice|ocean|gas|moon|locked [--width 1024] --out DIR`: equirectangular texture.png from 3D noise sampled on the sphere (no seam, no pole pinch; width 512 or more). Moon craters follow N(>D) ~ D^-2; a locked world has its substellar point at the texture's centre. About 4 s at 1024, 1 s at 512. `MPW export DIR -o planet.png` copies it with a hand-off note for threewright and polywright.
 - `MPW gen deck --seed N [--hull ship|station] [--w 40 --h 21 --decks 2] --out DIR`: 1.5 m squares, spine corridor, rooms each with a door, an airlock with inner and outer doors, lifts on the same square on every deck; deck.json and map.svg.
 - `MPW check DIR` on a sector, system, planet or deck: route graph connected, jump labels right, T5 file reads back, near stars at 1000/parallax within 1e-6 pc; orbits outside the star, neighbours 10+ mutual Hill radii apart, moons inside the Hill sphere, habitable zone; texture 2:1, seam (col 0 vs last within 2.5 x the 90th percentile adjacent-column difference), pole rows (std within 0.5 x the texture's), crater slope within 0.35; every room and floor square reached from the airlock across lifts, doors join two floors, the airlock opens to space, lifts line up; byte-identical regeneration; the label bars.
 - `MPW check DIR`: 13 land proof bars, then 3 label bars, (downhill rivers, no splits, one outlet per lake, byte-identical regeneration, child coast and rivers within 1 parent spacing, climate sanity, settlements on dry land, settlements of a landmass joined by roads, no road through water, names unique and present, names and features byte-identical, child keeps parent settlements and roads within 1 parent + 1 child spacing). Exit 1 on any failure; run it before handing a map over.
@@ -90,11 +89,34 @@ Privacy guard: never send a home address, or any private address or location of 
 
 There are no ferries yet: islands get their own road networks. Cities and dungeons: [references/cities-and-dungeons.md](../../references/cities-and-dungeons.md). AI image models for a styled look: [references/ai-image-models.md](../../references/ai-image-models.md). Games, film and print exports: [references/games-film-print.md](../../references/games-film-print.md).
 
+## Export: games, tabletop, 3D and print
+
+`MPW export DIR -o FILE [--to TARGET]` writes the file, reads it back and prints its proof bars (exit 1 when one fails). The extension picks the target; a .png needs `--to`.
+
+| Recipe | Command | Gives |
+|---|---|---|
+| world, region | `-o t.raw [--size 1025] [--flip]` | Unity RAW: 16 bit, little-endian, square, 2^n + 1 |
+| world, region | `--to unreal -o t.png [--size 1009]` | 16-bit PNG at an Unreal landscape size |
+| world, region | `-o t.r16`, or `--to godot -o t.png` | R16 for Terrain3D, or a 16-bit PNG |
+| world, region | `--to roblox -o t.png [--size N] [--bits 16]` | heightmap (4096 px at most) and `t.colormap.png` in Roblox material colours |
+| world, region | `-o t.obj [--size 257] [--exaggeration Z] [--base T] [--print-mm 100] [--flat-sea]`, or `--to mesh -o FOLDER` | terrain mesh and a polywright manifest; with a base it is one watertight solid |
+| dungeon, square battle, deck | `-o map.tmj [--tile 32] [--encoding base64] [--csv]` | Tiled map, flat-colour tileset PNG, walls and doors as object layers, one tile layer per deck |
+| dungeon, square battle, deck | `-o map.dd2vtt [--deck N] [--pps 50]` | Universal VTT (walls, doors as closed portals, lights, the PNG in base64); one file per deck |
+| battle, dungeon | `--to png -o map.png` | the grid picture; the only raster export for a hex map |
+| planet, sector | `-o p.png`, `-o s.tab` | sphere texture with `p.sphere.json`; T5 tab file |
+| any | `--to print -o NAME[.pdf or .png] [--paper A4] [--landscape] [--dpi 300] [--bleed 3] [--fit cover]` | PDF and PNG at the paper size plus bleed, crop marks in the bleed |
+
+- Heightmaps stretch the lowest to the highest height over the whole range. `t.import.json` beside the file gives metres per pixel, min and max height in metres and the numbers to type into the engine. A 1000 km world is past Unity's 100 km limit; the sidecar's `fit` block gives the even shrink.
+- Not verified in the engines: which way Unity reads RAW rows (swapped north and south: `--flip`), the Roblox colour table and 8-bit default, Terrain3D's field names. Say so when handing the files over.
+- Hex battle maps have no Universal VTT (the format has one square `pixels_per_grid`) and no Tiled export yet.
+- The mesh is OBJ with x east, y north, z up, real metres unless `--print-mm`. Foundry reads the .dd2vtt through the Universal Battlemap Importer; its own scene JSON is not written.
+- Print needs Chrome or Edge and stops with the reason when neither is found. Paper is A0 to A5, Letter, Legal, Tabloid or `WxH` in mm. Colour is RGB and the PDF sets MediaBox, BleedBox and TrimBox but is not PDF/X: say so before it goes to a press.
+
 ## Hand-offs
 
 - Code and repository maps: evergreen-map. mapwright never maps a codebase.
 - Statistical maps of data (choropleth, bubble, cartogram): chartwright; mapwright supplies the boundaries as GeoJSON.
-- A real place as a 3D scene or print: polywright-capture. Sprites and tiles: pixelwright. Game level design: ludowright.
+- A real place as a 3D scene or print: polywright-capture. An invented terrain as a mesh or print tile: `export -o t.obj`, then polywright-print or polywright-finish. Sprites and tiles: pixelwright. Game level design: ludowright.
 - A full desktop GIS: QGIS. mapwright points to it and does not wrap it ([references/prior-art.md](../../references/prior-art.md)).
 
 ## Traps
