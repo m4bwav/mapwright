@@ -1,6 +1,6 @@
 # HANDOFF: mapwright
 
-Status: Step D.4 done (2026-11-14): render/label/legend/style/serve/sheet in mpw_render.py, check bars 14-16 (OCR bar skips: no tesseract); PR #2 merged (d74212d); tests 61/61. Banner, social preview (set in repo settings) and wiki 0.2.0 done (PRs #3, #4). D.5 read/trace done (0.3.0, mpw_read.py, tests 81/81; see TESTS T-20261114-4). Next: D.6 find/fetch.
+Status: Step D.6 done (2026-11-15): find/fetch in mpw_find.py, PR #6 merged (6c1ec8f), 0.4.0 released; tests 98 pass + 1 live skip. Open D.6 items: LoC/Commons parsers only mock-tested, address guard is doc-only, Overpass fixed 10 s gap. Next: D.7 gen city/dungeon/battle.
 
 Continue prompt: [plans/mapwright-continue-prompt.md](plans/mapwright-continue-prompt.md)
 
