@@ -1,6 +1,6 @@
 # mapwright
 
-<!-- Banner owed: .github/images/banner.jpg (1536x640), made once the renderer can draw a map. -->
+![mapwright: a generated world painted as an atlas](.github/images/banner.jpg)
 
 An agent plugin for maps of real places, fantasy worlds and science fiction settings. It reads, writes, finds and generates maps, and checks its own numbers against published values.
 
