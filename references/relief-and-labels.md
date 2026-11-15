@@ -69,7 +69,7 @@ Pure-Python note: a 1000x1000 grid is a million `math` calls per term; precomput
 
 ### 1.6 Azimuth 315, altitude 45
 
-The default light is from the north-west (azimuth 315 degrees, clockwise from north) at 45 degrees above the horizon; Esri and GDAL both default to it [EsriHS][GDAL]. Light from the upper left matches how readers expect shadow to fall; lit from the south (bottom), many readers see relief inverted, valleys as ridges [Imhof1982, ch. on light direction][Patterson-SR]. Imhof and Patterson recommend adjusting the azimuth locally (roughly between 270 and 360) so that major ridges running along the light direction still get shaded on one side [Imhof1982][Patterson-SR].
+The default light is from the north-west (azimuth 315 degrees, clockwise from north) at 45 degrees above the horizon; Esri and GDAL both default to it [EsriHS][GDAL]. Light from the upper left matches how readers expect shadow to fall; lit from the south (bottom), many readers see relief inverted, valleys as ridges [Imhof1982, ch. on light direction][Patterson-SR]. Imhof and Patterson recommend adjusting the azimuth locally (roughly between 270 and 360) so that major ridges running along the light direction still get shaded on one side [Imhof1982][Patterson-SR]. The habit is older than computed hillshade: Thrower ties north-west light to the 19th-century Swiss Dufour map, which drew heavier hachures on south and east slopes (Maps and Civilization, ch. 6) (book fact, not cross-checked).
 
 ### 1.7 Multidirectional hillshade
 
@@ -93,6 +93,8 @@ Esri's own table lists 0.00000898 at the equator and 0.00001792 at 60 degrees [E
 - Aerial perspective: Imhof makes high peaks more contrasty and low land paler and hazier [Imhof1982]; Jenny and Patterson describe implementing this digitally [Jenny-Patterson2007].
 
 ## 2. Contours
+
+Depth contours are older than land contours: manuscript ones in 1584 and 1697 and an engraved river chart in 1729, against 1791 for land contours over a large area, which became usual in national surveys only from about 1850 (Thrower, Maps and Civilization, ch. 6-7) (book facts, not cross-checked). First-use years for every relief method: [cartography-design.md](cartography-design.md) section 1.6.
 
 ### 2.1 Marching squares
 
@@ -134,6 +136,8 @@ Implementation rules:
 - Water is not a tint class; bathymetric tints darken with depth [Patterson-SR].
 - Shade on top with multiply; tints must stay distinguishable after shading (test with a contrast check per class against its darkest shaded value).
 - Pick the ramp by climate, not elevation alone: arid lowlands get tan cross-blended tints so green is not read as lush; record whether tints are discrete bands or continuous, since discrete bands read better for values and continuous for form (Kimerling et al., Map Use, ch. 10).
+- Period preset: the International Map of the World at 1:1,000,000 (proposed 1891, specified 1909) used contours at 200, 500 and 1,000 m and then every thousand, with tints from green lowland through ochre to brown (Thrower, Maps and Civilization, ch. 8) (book fact, not cross-checked). It is a period look, not a default: the green-to-brown warning above still holds.
+- A tint legend is titled as elevation, so that green is not read as lush and brown as barren (Monmonier, How to Lie with Maps, 1991 ed., ch. 2, ch. 10).
 
 ## 4. Hachures
 
@@ -212,7 +216,7 @@ Some authorities rank lower right above upper left, or right-centre second (Sloc
 - Labels placed left of the symbol are right-justified, so the ragged edge is away from the symbol (Brewer, Designing Better Maps, ch. 7).
 - Coastal places are labelled in the water where there is room; no label crosses a land-water edge (Brewer, Designing Better Maps, ch. 7).
 - A water-area label lies wholly inside or wholly outside the water body, never across the shoreline; water labels are italic (Tyner, Principles of Map Design, ch. 3).
-- When no candidate fits, fall back to a callout: the label moved to open space with a thin leader line to the symbol (Tyner, Principles of Map Design, ch. 3).
+- When no candidate fits, fall back to a callout: the label moved to open space with a thin leader line to the symbol (Tyner, Principles of Map Design, ch. 3). Monmonier names the same fix for a label moved away from its feature: a tie line or a key number (How to Lie with Maps, 1991 ed., ch. 3).
 
 ### 7.3 Line labels
 
@@ -223,6 +227,7 @@ Rules from Imhof and later systems [Imhof1975][Edmondson1996]:
 - Repeat long features' names at intervals (rivers, roads) rather than one huge spacing.
 - Rivers: label upstream-readable direction is less important than not being upside down (rule: flip the path if the mean direction points leftward).
 - Line labels sit a small offset gap from the line, on a smoothed copy of the path; no glyph is upside down, and the angle change between adjacent glyphs is bounded (default 30 degrees) (Brewer, Designing Better Maps, ch. 7).
+- Period label mode for chart styles: on a portolan chart the place names sit on the land side at right angles to the shore, in one unbroken run round the coast; names of nearby islands run the other way; the more important places are in red, and these are not only ports (Harley and Woodward, History of Cartography vol. 1, ch. 19, p. 377) (book fact, not cross-checked). Check: label angle within a limit of the local coast normal, anchor on land.
 
 ### 7.3a Lines under labels (ruling)
 
@@ -308,7 +313,7 @@ Each is a pure function over the rendered geometry:
 1. No label-label overlap: rectangles (or glyph boxes for curved text) intersect pairwise with zero area. Allow an optional padding of 0.5 mm.
 2. No edge cut: every label box lies inside the map frame minus a margin (default 1 mm).
 3. Minimum size: every text element's size >= 6 pt (print profile) or >= 10 px (screen profile); halo width <= 0.4 x font size (unverified ratio).
-4. Association: for each point label, the nearest point symbol to the label's anchor is its own feature, and the gap is <= 2 mm.
+4. Association: for each point label, the nearest point symbol to the label's anchor is its own feature, and the gap is <= 2 mm. Swapped labels are a classic slip (Monmonier, How to Lie with Maps, 1991 ed., ch. 4).
 5. Feature overlap: point labels do not cover other point symbols; optional limit on covered line length.
 6. Line labels: total turning angle within limit (section 8); text not upside down (glyph rotation in [-90, 90] degrees).
 7. Curved text fits: path length >= text length + 2 x padding.

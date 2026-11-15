@@ -73,6 +73,7 @@ Use it twice: once to make sure flow directions exist, and to find lakes: cells 
 - Make the coast a function of the base height field plus deterministic noise keyed by world position (not by zoom level), so a coarse coast and a fine coast agree where they overlap.
 - Features to aim for: continental shelf (shallow water to about 130-200 m depth then a slope) [20]; capes at hard rock, bays at soft rock; deltas where large rivers meet low-energy coasts; fjords in high-latitude mountain coasts (glacial). Deltas are the one place rivers split (distributaries) [24].
 - Red Blob's mapgen2 [25] decides land vs water first on the polygon graph (radial or noise shape), then sets elevation from distance to coast; this gives clean islands but no tectonic structure.
+- Archipelago by boxes: drop island rectangles of random size, reject any that overlaps an earlier one, and give each a safety margin, so a sea lane always runs between islands and no island touches the map edge. Decorative sea-floor noise keeps its maximum below sea level, so it never cuts off part of the sea. Bars: sea cells form one connected region; no land on the map border; the land mask is the same with and without the sea-floor layer (Korn and Lee, Game Dynamics, ch. 8, sec. 3.1). Only the margin and the bars are taken: the chapter's noise-in-a-box islands have no drainage, and its printed formulas were unreadable.
 
 ## 8. Wind, rain and rain shadows
 
@@ -131,10 +132,10 @@ Jenny's 1941 state factors: soil = f(climate, organisms, relief, parent material
 ### Settlements
 - Classic siting factors: fresh water, flat fertile land, defence, river crossings and confluences, harbours, trade routes [31]. Christaller's central place theory gives a hierarchy with roughly hexagonal spacing of market towns and a k=3 ratio between levels [32].
 - Azgaar [22] scores cells by habitability (biome), river flux, coast and confluence, then places capitals with a minimum spacing and towns after (unverified details). Same idea in O'Leary [21]: score = flux + flatness + coast, penalise near existing cities.
-- Recommendation: score per cell, then greedy pick with minimum spacing (Poisson-disc-like), capitals first. Deterministic if ties break by cell id.
+- Recommendation: score per cell, then greedy pick with minimum spacing (Poisson-disc-like), capitals first. Deterministic if ties break by cell id. An influence map does the same job: after the fixed features, put each new site on the least influenced cell and update the map; extra weight along the map edge pulls sites inward (Korn and Lee, Game Dynamics, ch. 9, sec. 6; no numbers given). Uniform random placement clumps by chance, so keep the minimum spacing (Short and Adams, Procedural Generation in Game Design, ch. 2, p. 17-18).
 
 ### Roads
-Least-cost paths: Dijkstra or A* over the cell graph, cost = distance x (1 + k·slope²) x terrain factor (water crossing, forest, swamp), with bridges allowed only at narrow river points [33]. Reuse: once a road exists, lower its cost so later roads merge into trunk routes (Azgaar does a version, unverified). Build a minimum spanning tree or Delaunay subset between towns first so the network does not become all-to-all.
+Least-cost paths: Dijkstra or A* over the cell graph, cost = distance x (1 + k·slope²) x terrain factor (water crossing, forest, swamp), with bridges allowed only at narrow river points [33]. Reuse: once a road exists, lower its cost so later roads merge into trunk routes (Azgaar does a version, unverified). Build a minimum spanning tree or Delaunay subset between towns first so the network does not become all-to-all. A pure spanning tree leaves dead ends: real networks loop round forests, lakes and mountains, with riskier shortcuts across and notable sites where loops cross (Short and Adams, Procedural Generation in Game Design, ch. 9, p. 96). Bar: the road graph has a cycle rank above 0.
 
 ### Borders
 Natural borders follow rivers, watersheds and ridge lines [34]. Generator approach (Azgaar [22], O'Leary [21]): multi-source Dijkstra expansion from capitals with costs for crossing rivers, mountains and biome changes; each cell joins the state that reaches it cheapest. This yields borders on rivers and ridges for free and is deterministic.
@@ -150,12 +151,14 @@ Johnson, Yannakakis and Togelius 2010, "Cellular automata for real-time generati
 - Walls are rock cells touching floor; disconnected floor regions get group numbers and are joined by carved tunnels. Adjacent grids are generated from stored seeds and blended with 2 more CA passes over the joined grids, so the map is infinite and reproducible per seed.
 - Cost is n·w·h·(2M+1)²; the paper reports 3x3 grids in 349 ms on a 2010 laptop in C#.
 - Proof rules for mapwright: same seed and (r, n, T, M) give the same cave; after joining, a flood fill from any floor cell reaches every floor cell.
+- Shaker, Togelius and Nelson quote the same paper with 2 to 4 steps (Procedural Content Generation in Games, ch. 3, p. 43-44). Settings side by side with mapwright's code and Caves of Qud: [cities-and-dungeons.md](cities-and-dungeons.md) 5.2.
 
 ### Noise terrain: fBm and domain warping
 
 - fBm sums octaves of a band-limited noise: f(p) = Σ a^i · noise(l^i · p), lacunarity l about 2, gain a about 0.5, which relates to the Hurst exponent by a = 2^-H (Musgrave in Ebert et al., Texturing and Modeling, 3rd ed. 2003; Quilez, https://iquilezles.org/articles/fbm/, gain/Hurst relation recalled, page not fetched: unverified). Ridged variants use 1 - |noise| per octave for crests.
 - Domain warping evaluates f(p + h(p)) instead of f(p). Quilez's form: q = (fbm(p), fbm(p + (5.2, 1.3))), result fbm(p + 4·q); a second layer r = (fbm(p + 4q + (1.7, 9.2)), fbm(p + 4q + (8.3, 2.8))), result fbm(p + 4·r). The offsets only decorrelate the components (https://iquilezles.org/articles/warp/, content via search snippet 2026-11-14; direct fetch returned 404).
 - Use: noise is the base and detail layer; it never makes drainage networks, so run Priority-Flood and stream power after it (sections 3-5).
+- Per-cell random heights look like spikes, because real heights depend on their neighbours. Lattice noise eased with 3x^2 - 2x^3 and summed over scales with falling amplitude is the textbook cure, which fBm already is (Shaker, Togelius and Nelson, Procedural Content Generation in Games, ch. 4, p. 59-63). No book read so far adds to the fBm or domain-warping notes above.
 
 ## 11. Prior art
 
@@ -174,7 +177,7 @@ Johnson, Yannakakis and Togelius 2010, "Cellular automata for real-time generati
 
 ## 12. Recommended approach for mapwright
 
-1. Cells: jittered grid or Poisson-disc points keyed by integer world coordinates so the same point appears at every zoom; neighbours from a jittered-grid adjacency (cheap) rather than a full Delaunay (a pure-Python Bowyer-Watson for 50k points is slow, roughly a minute, estimate).
+1. Cells: jittered grid or Poisson-disc points keyed by integer world coordinates so the same point appears at every zoom; neighbours from a jittered-grid adjacency (cheap) rather than a full Delaunay (a pure-Python Bowyer-Watson for 50k points is slow, roughly a minute, estimate). A relaxed hex grid is the same idea: hex centroids nudged a little, then Voronoi, with optional Lloyd passes and a minimum edge length (Korn and Lee, Game Dynamics, ch. 9, sec. 3.2.2, sec. 6).
 2. Plates: Voronoi of few seeds; uplift field from convergent boundaries.
 3. Erosion: Braun-Willett stream power on the graph, 20-100 steps, plus a light thermal pass.
 4. Priority-Flood with epsilon; lakes from filled minus original; lake outlets; evaporation check.
@@ -220,6 +223,7 @@ Each should be a test function returning failures.
 18. Landform plausibility (warn): glacial forms (U troughs, hanging tributaries, cirques facing away from the sun and wind at one snowline band, moraines and eskers along flow) need a cold climate (Huggett, Fundamentals of Geomorphology, ch. 10); dune slip faces all agree with the wind field and dune type follows wind regime and sand supply (Huggett, Fundamentals of Geomorphology, ch. 12); spits and bars sit only downdrift of a drift source and wave-cut platforms only below retreating cliffs (Huggett, Fundamentals of Geomorphology, ch. 13).
 19. Generator inputs are uplift, precipitation and rock resistance; the output drifts toward steady state but is not run to it (Huggett, Fundamentals of Geomorphology, ch. 2).
 20. Terrain and climate inferred by rule carry a reasons log (rule, inputs, result), and hand overrides are logged beside it (Fonstad, The Atlas of Middle-Earth, p. 196, 198).
+21. No stub rivers (warn): a river under a set minimum length is dropped, not drawn (Shaker, Togelius and Nelson, Procedural Content Generation in Games, ch. 4, p. 67; the book gives no number).
 
 ## 14. Open questions
 

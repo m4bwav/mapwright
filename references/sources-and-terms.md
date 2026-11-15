@@ -10,7 +10,7 @@ Reference for mapwright: what each source holds, how to get it, its licence, the
 2. One request at a time per host unless the policy says otherwise. Back off on HTTP 429 and 503 and honour `Retry-After`.
 3. Cache every response on disk and never fetch the same thing twice within the provider's cache period.
 4. Prefer bulk downloads (extracts, dumps, single archives) over many API calls.
-5. Write a sidecar next to every file: source id, URL, access date, licence, credit line, and any share-alike or non-commercial flag.
+5. Write a sidecar next to every file: source id, URL, access date, licence, credit line, and any share-alike or non-commercial flag. Also the data date (not only the access date) and whether the source is a primary survey or derived from other maps; a chain of derived maps warns, since copying a derived map copies its mistakes (Monmonier, How to Lie with Maps, 1991 ed., ch. 4).
 6. Never fetch from a source in the "never scrape" list below.
 
 ## OpenStreetMap

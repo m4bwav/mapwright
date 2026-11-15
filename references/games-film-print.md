@@ -35,6 +35,8 @@ Objects carry `x`, `y` in pixels, `width`, `height`, `rotation` in degrees clock
 
 Practical export choice: write TMJ, since every target has a JSON parser; write TMX only when a loader needs it (some engine plugins read only TMX, unverified per plugin).
 
+Chunk-stable rule for infinite or chunked maps: a cell is the same whatever order the map was generated in, and a cell already made is never overwritten. Test: generate region A, then A plus B; A's cells are byte-identical. One shared random stream fails this, so each chunk or coordinate gets its own seed (Watkins, Procedural Content Generation for Unity Game Development, ch. 3; Short and Adams, Procedural Generation in Game Design, ch. 26, p. 272-273).
+
 ### 1.2 LDtk
 
 LDtk saves a single `.ldtk` JSON file, optionally with one `.ldtkl` file per level ("save levels to separate files") [S3][S4]. The JSON schema is published and versioned [S4].
@@ -149,7 +151,7 @@ Most engines build navmeshes with Recast-style voxelisation [S18]. Parameters th
 | Step height | 0.4 m (Unity default 0.75 in older versions, unverified) | |
 | Cell size | about radius / 2 to / 3 | Recast guidance |
 
-mapwright does not need to bake navmeshes; engines bake from geometry. What helps is exporting clean collision geometry and walkability/area masks (water, road with lower cost) that the engine can turn into navmesh areas or modifiers [S19].
+mapwright does not need to bake navmeshes; engines bake from geometry. What helps is exporting clean collision geometry and walkability/area masks (water, road with lower cost) that the engine can turn into navmesh areas or modifiers [S19]. A tile export carries a blocking layer for anything that stops movement, apart from the ordered draw layers (Watkins, Procedural Content Generation for Unity Game Development, ch. 3).
 
 ## 5. Film: animated routes and zoom shots
 

@@ -114,6 +114,36 @@ Each entry gives the property kept, what breaks, and the source. "Conformal" kee
 - `cos c` as above; `x = R cos φ sin(λ-λ0)/cos c`, `y = R (cos φ1 sin φ - sin φ1 cos φ cos(λ-λ0))/cos c`; visible only for `cos c > 0` (Snyder 1987 eq. 22-4, 22-5).
 - Used for great-circle route planning and as the face projection of cube-sphere planets in games.
 
+### 3.14 Projections by first use (for period styles)
+
+A `since` year per projection lets a period style refuse a later one. All years are from Thrower, Maps and Civilization, ch. 5-9 (book facts, not cross-checked).
+
+| Projection | Since |
+|---|---|
+| Ptolemy's projections in print | 1470s |
+| Heart-shaped (cordiform) and oval world maps | 1507 to 1521; a polar azimuthal world map 1511; a double heart-shaped world map 1538 |
+| Conic with two standard parallels | 1554 |
+| Mercator | 1569; the mathematics published 1599; usual on sea charts only from the 17th century |
+| Sinusoidal | regular use in the 17th century |
+| Lambert conformal conic, Lambert azimuthal equal-area, transverse Mercator | 1770s (1772 in the reader's summary) |
+| Bonne | the French survey from 1803 (Cassini's projection before that) |
+| Gnomonic for land maps | 1803 |
+| Mollweide | 1805; Albers equal-area conic about the same time |
+| Polyconic | 1820 |
+| Eckert's six | 1906 |
+| Goode's interrupted homolosine | 1923 |
+| Robinson | 1963 (section 3.8 cites the 1974 paper) |
+
+Gall's cylindrical projections are left out: Thrower dates them to an 1885 publication and Monmonier to 1855. The distortion ellipse (section 5) was published in 1881.
+
+### 3.15 Ptolemy's first projection (historical note)
+
+- Before Ptolemy, Marinus of Tyre used a rectangular grid in which the parallel of Rhodes (36 north) stood to the meridian as 4 to 5. Ptolemy faulted it for making every parallel the same length.
+- Ptolemy's first projection: meridians are straight lines meeting at a point that is not the pole, and parallels are arcs about that point. Scale is kept along the Rhodes parallel and along the meridians, and the proportion of the Thule parallel (63 north) to the equator is right. The meridians kink at the equator; his second projection curves them to cure that.
+- His inhabited world spans 180 degrees of longitude from a prime meridian at the Fortunate Isles and runs from 63 north to about 16.5 south, on a degree of 500 stades (the smaller earth).
+- The maps we have are Byzantine or later; whether Ptolemy drew any himself is unsettled. The notes hold no formula, so a `ptolemy1` preset needs the chapter itself.
+
+Source: Harley and Woodward, History of Cartography vol. 1, ch. 11 (book facts, not cross-checked).
 ## 4. Picking a projection
 
 Snyder's rule of thumb, which mapwright can apply automatically from the bounding box (Snyder 1987 p.33-35; Snyder 1993; also the Projection Wizard by Šavrič, Jenny, White, Strebe 2016, https://projectionwizard.org, Cartography and GIS 43(4)):
@@ -221,8 +251,9 @@ Each rule is checkable by a test.
 12. **Planetary bodies** use the IAU radius and longitude direction of their CRS; never Earth's ellipsoid for Mars or Moon data.
 13. **No measurement on raw lat/lon.** Distance, area and buffer never run on unprojected degrees; project to a fitting CRS or use geodesic formulas (Longley et al., Geographic Information Science and Systems, ch. 4).
 14. **Print the property.** The map or sidecar says whether its projection is conformal, equal-area or compromise, chosen by task (Longley et al., Geographic Information Science and Systems, ch. 4).
-15. **No scale bar on world Web Mercator or Mercator.** Refuse a single scale bar on a Mercator or 3857 map spanning more than about 20 degrees of latitude; a Mercator world map with area claims warns, since Mercator is for constant-bearing navigation, not area comparison (Longley et al., Geographic Information Science and Systems, ch. 4) (Brotton, A History of the World in Twelve Maps, ch. 7).
+15. **No scale bar on world Web Mercator or Mercator.** Refuse a single scale bar on a Mercator or 3857 map spanning more than about 20 degrees of latitude; a Mercator world map with area claims warns, since Mercator is for constant-bearing navigation, not area comparison (Longley et al., Geographic Information Science and Systems, ch. 4) (Brotton, A History of the World in Twelve Maps, ch. 7). On any projection the stated scale is true only on the standard lines, and distortion grows with distance from them (Monmonier, How to Lie with Maps, 1991 ed., ch. 2).
 16. **UTM zone straddle.** Data spanning more than one UTM zone is not drawn in one zone's CRS without a warning (Longley et al., Geographic Information Science and Systems, ch. 4).
+17. **Range rings are geodesic.** On a small-scale map a range or distance ring is a geodesic circle, sampled and projected, never a circle drawn in map units: a circle on the globe seldom stays a circle on a flat map (Monmonier, How to Lie with Maps, 1991 ed., ch. 7). Test: every ring vertex lies at the stated geodesic distance from the centre.
 
 ### Test values
 

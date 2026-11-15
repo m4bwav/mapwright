@@ -112,6 +112,7 @@ A GCP pairs a pixel (column, row) with a world coordinate (longitude, latitude o
 - RMS needs more points than the minimum to mean anything. With exactly 3 points an affine fit is exact and RMS is 0. TPS is always exact on its points (GDAL and QGIS docs both note TPS honours every GCP).
 - Therefore mapwright should hold out points: fit on some, measure error on the rest (leave-one-out). Report held-out error in metres, not only RMS in pixels. This is standard model validation and mapwright's design choice; no map tool above enforces it.
 - Practical guidance: use 6-10 or more well-spread points for affine on a scan; points clustered in one corner give a fit that is wrong elsewhere (QGIS Georeferencer docs advise spreading points; numbers unverified).
+- A period pass mark in sheet units: the mid-century US accuracy standard for scales of 1:20,000 and smaller tested well-defined points against a fiftieth of an inch (about 0.5 mm) on the sheet; nine in ten had to pass, and displaced symbols were excused (Monmonier, How to Lie with Maps, 1991 ed., ch. 3). It is not the current US standard, and it needs the sheet size or the scan DPI. On a picture of unknown size report held-out error in metres instead.
 
 ### 5.4 Where GCPs come from
 1. Printed graticule or grid labels (best: exact numbers on the map).
@@ -120,6 +121,8 @@ A GCP pairs a pixel (column, row) with a world coordinate (longitude, latitude o
 4. A person clicking points (Map Warper and Allmaps editors).
 
 A VLM saying "this is central Paris" is a search hint, never a GCP.
+
+Two sources never supply GCPs. An inset: find inset boxes first and leave them out, since a feature inside one is at the inset's scale, and islands have been copied onto main maps at inset size. Public Soviet maps from the late 1930s on, more so from the mid 1960s: towns, coasts, rivers and roads were shifted on purpose, by up to about 25 miles, and city maps often had no scale (Monmonier, How to Lie with Maps, 1991 ed., ch. 4, ch. 8).
 
 ### 5.5 When a georeference is "earned"
 Proposed rule for mapwright: report a georeference only when there are at least affine-minimum + 2 GCPs (5 or more), from sources 1, 2 or 4, with held-out error below a threshold set per map scale (for example under 1% of the map's width on the ground). Otherwise output `georeference: null` with the reason and any candidate GCPs found. The thresholds are proposals to calibrate in section 9.
@@ -155,6 +158,15 @@ The question has three parts, and mapwright should answer each separately:
 
 Output: `place_reality: real | fictional | mixed | undetermined` with a list of evidence items, each pointing to crops and gazetteer hits. Default is `undetermined`.
 
+### 7.1 Period tells and persuasive-map tells (books, 2026-11-15)
+
+Years are book facts, not cross-checked. HW = Harley and Woodward, History of Cartography vol. 1.
+
+- Dating: the youngest convention on a map gives its earliest possible date. A ratio scale means after 1806, land contours after 1791, a Greenwich prime meridian after 1884, the name America after 1507 (Thrower, Maps and Civilization, ch. 5-7). The table is in [cartography-design.md](cartography-design.md) section 1.6.
+- Names on a medieval map can span a thousand years (the Hereford map mixes fourth-century Roman names with its own day), so the youngest name dates it. A scale inside a circle (the four earliest charts only), a drawn compass rose (not before 1375), Jerusalem at the centre (about 1250 to 1400) and the count of lines at the centre of a rhumb network (16, or 32 after 1449) each narrow the range (HW ch. 18-19; Monmonier, How to Lie with Maps, 1991 ed., ch. 4).
+- Suspect as an old map: a mappa mundi with a graticule or bar scale before 1400, or rhumb lines before 1300; a portolan chart with a latitude scale, graticule or north arrow before 1500; a Latin or western map with Ptolemaic coordinates or projection before about 1400 (HW ch. 18-19).
+- Tells of a persuasive map: a thick straight line for one party and a thin crooked one for the other, arrows across a border, concentric rings with alarming labels, one language's names only, tight cropping that leaves out the neighbours, stamped trees and other decoration, a projection that enlarges the subject. `read` lists the tells it sees. Whether the map misleads is a judgement it does not make (Monmonier, ch. 5-7).
+
 ## 8. A "not sure" output that avoids inventing
 
 ### 8.1 Rules
@@ -166,6 +178,7 @@ Output: `place_reality: real | fictional | mixed | undetermined` with a list of 
 - Gazetteer matches and VLM guesses go in separate fields from what is printed.
 - Lines, boundaries and colours read off a map are reported as symbols, not as features on the ground: maps carry generalised, displaced or invented artefacts that readers take as real, and image-model maps add more (Kimerling et al., Map Use, ch. 12).
 - Hue is not magnitude, counts are not rates, and green is not lush: `read` does not infer these from colour alone (Kimerling et al., Map Use, ch. 6, 9, 10).
+- A feature seen in one source only is reported as unconfirmed. Commercial maps may hold streets and towns planted to catch copying, official plans hold streets that were never built, and a map compiled from other maps copies their mistakes (Monmonier, How to Lie with Maps, 1991 ed., ch. 4).
 
 ### 8.2 Example
 

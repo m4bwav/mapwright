@@ -14,11 +14,31 @@ Reference for mapwright, a Python plugin that renders fantasy maps in hand-drawn
 | Style | Look | Key marks | Notes for a renderer |
 |---|---|---|---|
 | Ink and parchment ("Tolkien-like" endpaper) | Black or sepia ink on cream/tan, one colour or two | Profile mountains with shaded side hatched, tree-clump forests, ripple coast lines, serif or uncial labels | Easiest to fake well: line weight variation and paper texture carry it [S5] |
-| Antique atlas (16th-17th c.) | Watercoloured washes along borders and coasts, ornate frame | Cartouche, compass rose with fleur-de-lis north, rhumb lines, sea monsters, ships | Rhumb lines radiating from roses are a strong period signal [S1][S2] |
+| Antique atlas (16th-17th c.) | Watercoloured washes along borders and coasts, ornate frame | Cartouche, compass rose with fleur-de-lis north, rhumb lines, sea monsters, ships | Rhumb lines radiating from roses are a strong period signal [S1][S2]. Hand wash, a cartouche with a bar scale, ships, sea creatures and molehill relief belong together to about 1570 to 1700 (Thrower, Maps and Civilization, ch. 5) (book fact, not cross-checked) |
 | Painted / digital painterly (Inkarnate, Wonderdraft look) | Full colour, textured land and sea, soft shadows | Raster stamp assets, coastal glow, bevelled land | Readers associate it with VTT and D&D homebrew [S6][S7] |
 | Hex / gaming map | Hex grid over simple terrain icons | Hex icons per terrain type, numbered hexes | Classic in old-school RPGs; Worldographer and Hexographer [S10] |
 | Dungeon blueprint | Blue or white grid, black walls, hatched rock | Cross-hatching around walls, door and stair glyphs | "Old school blue" dungeon look; Dyson Logos popularised hand-hatched dungeon style [S17] (unverified attribution of the trend) |
 | Isometric / bird's-eye city | Rooftops, walls, streets as blocks | Building blocks, walls with towers, fields | Watabou MFCG is the reference generator [S12] |
+
+### 2.1 Period looks with fixed structure (books, 2026-11-15)
+
+Each look has a year range and a structure that does not vary. Years are book facts, not cross-checked. The first-use table is in [cartography-design.md](cartography-design.md) section 1.6. HW = Harley and Woodward, History of Cartography vol. 1; T = Thrower, Maps and Civilization.
+
+| Look | Years | Fixed structure | Source |
+|---|---|---|---|
+| Mappa mundi, T-O | Isidore's pattern, over 660 examples; paradise and its four rivers added from at least the 13th century | Circular or oval, east up, Asia the top half, the T made of the Don, the Nile and the Mediterranean. No graticule, no bar scale, no rhumb lines | HW ch. 18 |
+| Mappa mundi, zonal | 9th to 15th century, over 150 survive | North or south up, five bands of 36, 30, 48 (24 + 24), 30 and 36 degrees, an ocean river across the tropics | HW ch. 18 |
+| Mappa mundi, quadripartite | medieval | East up, a fourth continent in the south, paradise in a square frame with four rivers, bright opaque colours, an ocean ring with fish | HW ch. 18 |
+| Mappa mundi, transitional | 14th and 15th century | Circular frame with a chart-style Mediterranean. Rhumb lines only after 1300, a bar scale only after 1400. Jerusalem at the centre is an option for about 1250 to 1400, never a default | HW ch. 18 |
+| Portolan chart, Italian | late 13th century, the pattern copied for some four centuries | One skin about a metre long at roughly 1:6 million, the neck of the skin kept. Coast only, plain. No top, no graticule, no north arrow; no latitude scale before 1500; no drawn compass rose before 1375 | HW ch. 19 |
+| Portolan chart, Catalan | 14th century on | As the Italian, plus a filled interior: mountain chains in green, the Red Sea in red, a drawn compass rose | HW ch. 19 |
+| Ptolemaic | Greek manuscripts, then Latin from the 15th century | World 180 degrees wide from a prime meridian at the western islands, from 63 north to about 16.5 south, straight meridians meeting above the map and parallels as arcs ([projections.md](projections.md) 3.15). An atlas is a world map plus 26 regions: Europe 10, Africa 4, Asia 12. Coordinate lists give longitude first | HW ch. 11 |
+| Roman strip map | original AD 335 to 366 | Height to length about 1 to 20 (34 cm by 6.75 m). Roads as lines with staging posts and stage distances, no true scale, seas squeezed to ribbons, seats of power as seated figures, forests as groups of trees, mountains pale brown, main rivers green | HW ch. 14; T ch. 4 |
+| Medieval picture map (local) | to the 15th century | No scale. Anything above ground is drawn in elevation; a town is a ring of walls with towers. A bar scale on a local map not before 1421-22 | HW ch. 20 |
+| Printed sea chart | from 1584 | Soundings in fathoms, standard signs and coastal views, still with compass roses and rhumb lines. French charts from the 1693 sea atlas drop the many roses and use Mercator's projection with latitude and longitude | T ch. 5-6 |
+| City view | city atlases of 1572 to 1618; again in 19th-century town views | Oblique bird's-eye view. The other form is a measured plan | T ch. 5, ch. 7 |
+
+Mappa mundi colour varies, but water is blue or green and the Red Sea red (HW ch. 18).
 
 ## 3. Symbol vocabulary
 
@@ -37,12 +57,14 @@ Reference for mapwright, a Python plugin that renders fantasy maps in hand-drawn
 - Alternative: stippled shallows, or a darker band of wash along the coast (atlas style) [S2].
 - Coasts should be fractal-ish: rough at every scale, smoother on beaches and sandbars, jagged on fjords [S5][S9].
 - Rivers drawn as a single tapering line, thicker downstream, meandering more on flat land [S5].
+- Portolan hazard signs: a cross or black dots for rocks, red dots for shallows, and no other depth information. Soundings come with the printed sea atlas of 1584 (Harley and Woodward, History of Cartography vol. 1, ch. 19; Thrower, Maps and Civilization, ch. 5) (book facts, not cross-checked).
 
 ### 3.4 Compass roses, cartouches, borders
 - Compass rose: 4, 8, 16 or 32 points; fleur-de-lis at north and a cross at east in older maps [S1][S2].
 - Cartouche: decorative frame holding the title, scale and maker; scrolls, strapwork, figures [S1].
 - Neatline border with a graduated or chequered band; antique maps put lat/long ticks there [S2].
 - Scale bar, often in leagues or days of travel in fantasy maps [S3].
+- Rhumb network of a portolan chart. It is built, not sprinkled: sixteen evenly spaced points on one hidden circle that fills the skin (sometimes two touching circles), each joined to most of the others, which gives thirty-two directions. Sixteen lines leave the centre until 1449, thirty-two after. Colour follows wind rank: the eight winds black or brown, the eight half winds green, the sixteen quarter winds red. The bar scale has large divisions, one or more split into five parts of ten miles each, and names no unit (Harley and Woodward, History of Cartography vol. 1, ch. 19) (book facts, not cross-checked). Thrower describes sixteen roses on the circle, with the same three colours (Maps and Civilization, ch. 4); Harley and Woodward's sixteen bare crossings are kept, since the drawn rose only comes in 1375.
 
 ### 3.5 Sea monsters, ships, decorations
 - Sea serpents, whales and ships fill empty sea and signal danger or trade routes; Chet Van Duzer's *Sea Monsters on Medieval and Renaissance Maps* (2013) is the standard survey [S8].
@@ -104,12 +126,12 @@ Sources: Jonathan Roberts' Fantastic Maps posts [S5]; the Cartographers' Guild f
 | R9 | Deserts do not sit next to rainforests without a cause (range, cold current, large latitude change) | Biome adjacency table: forbid desert-rainforest adjacency unless a mountain or latitude gap separates them [S20][S21] |
 | R10 | Biomes follow latitude and moisture (Whittaker-style) | Biome given temperature and moisture falls in an allowed set [S12] |
 | R11 | Coastlines are rough at all scales; no smooth circles or straight runs | Fractal dimension or tortuosity of coast above threshold [S5] |
-| R12 | Scale and travel are consistent: places a "week apart" in text sit a plausible distance apart (about 30-40 km/day on foot by road) | Distance at map scale vs stated days [S3] (walking speed figure unverified, standard estimate) |
+| R12 | Scale and travel are consistent: places a "week apart" in text sit a plausible distance apart (about 30-40 km/day on foot by road) | Distance at map scale vs stated days [S3] (walking speed figure unverified, standard estimate). Upper figure: Roman official couriers with relays averaged about fifty Roman miles (74 km) a day (Harley and Woodward, History of Cartography vol. 1, ch. 14) (book fact, not cross-checked) |
 | R13 | Cities sit on water: rivers, coasts, confluences, fords | Each city within d of water or flagged [S16] |
 | R14 | Labels do not overlap symbols or each other; names follow the feature (curved on rivers and ranges) | Bounding-box overlap test; label placement scoring as in O'Leary [S16] |
 | R15 | Too many fonts or font sizes; hierarchy unclear | Count distinct faces <= 2-3; size ranks match feature rank [S5] |
 | R16 | Symbol scale is consistent across the map | Same symbol type within a size band [S5] |
-| R17 | Empty map filled with uniform clutter (every hex a forest, every gap a mountain) | Density variance across the land above threshold [S5] (unverified as a stated rule) |
+| R17 | Empty map filled with uniform clutter (every hex a forest, every gap a mountain) | Density variance across the land above threshold [S5] (unverified as a stated rule). Even spread leaves no breathing room: cluster features into sites with empty ground between, and jitter, rotate and clump symbols so no grid shows (Short and Adams, Procedural Generation in Game Design, ch. 2) |
 
 Rules adopted from books (2026-11-14):
 
@@ -127,6 +149,8 @@ Rules adopted from books (2026-11-14):
 | R27 | A world meant to grow keeps deliberate blank or beyond-the-edge regions, flagged `unmapped` (Lewis-Jones, The Writer's Map, sec. 4) | Flagged regions are not filled by the generator |
 | R28 | A plot-hooks pass lists notable features (ruins, fords, mills, ferries, standing stones) for writers (Lewis-Jones, The Writer's Map, sec. 2) | Hook list in the sidecar |
 | R29 | Historical presets set orientation (north, east, south up) and period frame (disc, oval, graticule); an optional square reference grid of fixed cell size indexes places (Brotton, A History of the World in Twelve Maps, intro., ch. 1-5) | Preset fields present; grid labels both axes |
+| R30 | A history series states a date on every sheet, as a moment or a span, and the recipe says which scheme the series follows: even intervals or turning points (Goffart, Historical Atlases, Introduction and Conclusion, p. 443 ff.) | Date field per sheet; scheme field per series |
+| R31 | A map of movement (a journey or migration over years) is labelled as spanning time, and features on it that belong to another date are marked as such (Goffart, Historical Atlases, Conclusion, p. 443 ff.) | Journey layer has start and end dates; warn when it lies over boundaries of another date |
 
 Lines under labels follow the per-style `label_line_knockout` setting (see relief-and-labels.md 7.3a); fantasy styles default to knocking art out under labels (Blando, Fantasy Mapmaker, ch. 6).
 
