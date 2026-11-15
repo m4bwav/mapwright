@@ -40,6 +40,27 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 - Evidence: T-20261114-2 (70 child maps, max 0.841)
 - Scope: skill
 
+### L-007 · 2026-11-14 · A child map floods parent settlements into new lakes and sea
+- Trigger: bar 13 failed in a 20-seed sweep: parent settlements sat up to 38 km (2.4 parent spacings) inside a lake the finer child surface made, and parent road vertices snapped onto 2-cell islets in a child inlet.
+- Hypothesis: settlements score high on lake shores and coasts, and the child's IDW plus detail noise fills shore valleys and shifts the coast inside its band.
+- Rule: before child hydrology, lift child cells under parent settlements and sampled parent road points to just above sea level; after it, lift any of them a new lake covers to lake level + 1e-4 and route again (up to 3 passes). Snap within 1 parent + 1 child spacing; a road piece that crosses into another child landmass starts a new piece instead of dropping the road.
+- Evidence: 20 seeds x 5 maps at 4k cells and 4 seeds at 16k: bar 13 max shift 3 km, road points max 3 km.
+- Scope: skill
+
+### L-008 · 2026-11-14 · Name and road layers must run on the rounded mesh
+- Trigger: design: check and child maps rebuild sea, land, range and river-stem ids from mesh.json to match parent names by id.
+- Hypothesis: build_mesh neighbours come from unrounded points; mesh.json stores 6 decimals, so a near-cocircular quad can flip and component ids could differ.
+- Rule: build the human layer from the mesh dict as written (rounded values, _neighbours), never from the in-memory arrays.
+- Evidence: bars 11 and 13 pass across the sweeps.
+- Scope: skill
+
+### L-009 · 2026-11-14 · Open: grandchild of a landlocked window fails bar 1; arid windows sit on bar 7's sample limit
+- Trigger: sweep: a grandchild whose window holds no sea fails bar 1 for every river cell (origin/main does the same, so it predates D.3). One arid child had exactly 20 windward samples after the causeway lift, so bar 7 judged a 4.9 vs 5.2 cm/yr desert and failed; before, it had 19 and was skipped.
+- Hypothesis: Priority-Flood in a region seeds only from sea cells, so with no sea nothing drains; bar 7 has no margin at its 20-sample floor.
+- Rule: open. Fix region hydrology to drain through the window edge, and give bar 7 a minimum precipitation difference or sample size measured on a sweep, written in TESTS.md before changing it.
+- Evidence: scratch sweep 2026-11-14
+- Scope: skill
+
 ### L-006 · 2026-11-14 · Embedded RGB PNG drew blank: width passed as bytes per row
 - Trigger: map.svg showed only the sea colour.
 - Hypothesis: the PNG width was len(row) of an RGB bytearray, three times the pixel width.
