@@ -2,7 +2,7 @@
 
 Reference for mapwright: what each source holds, how to get it, its licence, the credit line to save beside each file, and the usage rules a polite fetcher must follow.
 
-**Verification status.** Drafted 2026-11-14 from memory, then source-checked the same day: claims tagged "(checked 2026-11-14)" were confirmed against the linked primary page. Claims marked "(unverified)" could not be confirmed from a primary page in that pass; untagged claims were not re-fetched. Rate limits change more often than licences.
+**Verification status.** Drafted 2026-11-14 from memory, then source-checked the same day: claims tagged "(checked 2026-11-14)" were confirmed against the linked primary page. Claims marked "(unverified)" could not be confirmed from a primary page in that pass; untagged claims were not re-fetched. Rate limits change more often than licences. Pass 3 on 2026-11-15 tagged what it confirmed "(checked 2026-11-15)" and what it corrected "fixed 2026-11-15"; a mark it could not clear now says why.
 
 ## Rules mapwright applies to every source
 
@@ -54,7 +54,7 @@ https://wiki.openstreetmap.org/wiki/Overpass_API and server status https://overp
 
 ### Geofabrik extracts
 
-https://download.geofabrik.de/ — daily regional `.osm.pbf` files, ODbL, credit OSM. Polite: do not re-download a region more than daily (unverified as a written rule; it is the update cadence).
+https://download.geofabrik.de/ — daily regional `.osm.pbf` files, ODbL, credit OSM. Polite: do not re-download a region more than daily. This is the update cadence, not a written rule: the index says extracts are "normally updated every day", and neither it nor https://download.geofabrik.de/technical.html states a download limit (checked 2026-11-15).
 
 ## Natural Earth
 
@@ -76,7 +76,7 @@ https://download.geofabrik.de/ — daily regional `.osm.pbf` files, ODbL, credit
 
 - **Holds:** open administrative boundaries ADM0-ADM5 for ~200 countries, plus simplified global composites (CGAZ).
 - **Access:** REST API returning download links, e.g. `https://www.geoboundaries.org/api/current/gbOpen/USA/ADM1/`; GitHub repository wmgeolab/geoBoundaries.
-- **Licence:** CC BY 4.0, acknowledgement required in any product (websites: name "geoBoundaries" with a link; apps/films: name in credits). https://www.geoboundaries.org/ (checked 2026-11-14) Per-boundary source licences in metadata and stricter gbHumanitarian/gbAuthoritative terms (unverified).
+- **Licence:** CC BY 4.0, acknowledgement required in any product (websites: name "geoBoundaries" with a link; apps/films: name in credits). https://www.geoboundaries.org/ (checked 2026-11-14) Each boundary carries its own source licence in the API metadata fields `boundaryLicense`, `licenseDetail` and `licenseSource`, and it is not always CC BY 4.0: gbOpen LIE ADM0 reports "Open Data Commons Open Database License 1.0" from OpenStreetMap (https://www.geoboundaries.org/api/current/gbOpen/LIE/ADM0/, checked 2026-11-15). mapwright must read `boundaryLicense` for every file it fetches and record that, not assume CC BY 4.0. Stricter gbHumanitarian/gbAuthoritative terms (unverified: the home page names neither release type, 2026-11-15; read the `boundaryLicense` of those releases in the API instead).
 - **Credit line:** `geoBoundaries (www.geoboundaries.org)`; written works cite `Runfola et al. (2020) geoBoundaries: A global database of political administrative boundaries. PLoS ONE 15(4): e0231866`. (checked 2026-11-14)
 - mapwright: read the `boundarySource` and `boundaryLicense` fields and copy them to the sidecar.
 
@@ -104,7 +104,7 @@ https://download.geofabrik.de/ — daily regional `.osm.pbf` files, ODbL, credit
 
 - **Holds:** global 30 m and 90 m digital surface model from TanDEM-X.
 - **Access:** AWS open data bucket `copernicus-dem-30m` / `-90m` (no key), Copernicus Data Space, OpenTopography.
-- **Licence:** GLO-30 licence ("Full, Free & Open") grants free, worldwide, perpetual rights to reproduce, distribute, communicate to the public and adapt; no commercial restriction stated; no implied endorsement; the licence's no-liability sentence must accompany redistribution. https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Data/DEM/resources/license/License-COPDEM-30.pdf (checked 2026-11-14) GLO-90 terms and withheld tiles (Armenia, Azerbaijan per Earth Engine catalogue) (unverified).
+- **Licence:** GLO-30 licence ("Full, Free & Open") grants free, worldwide, perpetual rights to reproduce, distribute, communicate to the public and adapt; no commercial restriction stated; no implied endorsement; the licence's no-liability sentence must accompany redistribution. https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Data/DEM/resources/license/License-COPDEM-30.pdf (checked 2026-11-14) GLO-90 has its own licence with the same grant ("Licence for COP-DEM-GLO-90-F Global 90m Full, Free & Open": worldwide, without limitation in time, free of charge, covering reproduction, distribution and adaptation, with the same DLR/Airbus source notice), printed in the licence set at https://dataspace.copernicus.eu/sites/default/files/media/files/2025-06/copernicus_contributing_mission_data_access_v2_cop_dem_licenses.pdf (checked 2026-11-15). Fixed 2026-11-15: Armenia and Azerbaijan are no longer withheld from GLO-30. The December 2023 release (2023_1) is listed as "GLO-30: Free & Open release of the restricted countries: Armenia, Azerbaijan and Moldova" (https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM, checked 2026-11-15). The Sentinel Hub DEM page still says tiles missing from GLO-30 Public "are not yet released to the public" and are filled from GLO-90 (https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Data/DEM.html, checked 2026-11-15), so a fetch should still fall back to GLO-90 when a 30 m tile is absent from the bucket.
 - **Credit line:** `© DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved`; for modified data prefix `produced using Copernicus WorldDEM-30 `. (checked 2026-11-14)
 
 ### SRTM
@@ -175,8 +175,8 @@ https://download.geofabrik.de/ — daily regional `.osm.pbf` files, ODbL, credit
 
 ### Others worth listing
 
-- Newberry Library Atlas of Historical County Boundaries (US): https://digital.newberry.org/ahcb/ ; free use with credit (unverified licence terms).
-- Euratlas: commercial, not free (unverified).
+- Newberry Library Atlas of Historical County Boundaries (US): https://publications.newberry.org/ahcb/ (the old digital.newberry.org/ahcb/ address redirects there). Fixed 2026-11-15: the data is not "free use with credit" but CC0 1.0, "You may use it without requesting permission"; credit is a courtesy. https://publications.newberry.org/ahcb/about/ (checked 2026-11-15)
+- Euratlas: not free. The legal notice says the maps and images are the property of Euratlas-Nüssli, visitors may copy or print them only where the site says so, and any other use is forbidden; the site sells its maps and GIS data through its shop. https://www.euratlas.net/infos_legales.html (in French, checked 2026-11-15)
 
 ## Historical map scans
 
@@ -192,14 +192,14 @@ https://download.geofabrik.de/ — daily regional `.osm.pbf` files, ODbL, credit
 - **Holds:** large map collection, Sanborn fire insurance maps, panoramic maps.
 - **Access:** loc.gov JSON API (`?fo=json`), IIIF image service; no key.
 - **Licence:** most items have no known restrictions (public domain); check each item's "Rights & Access". https://www.loc.gov/legal/
-- **Limits:** loc.gov API documents burst limits (e.g. collections/items endpoints about 20-80 requests per 10 seconds; exceeding them blocks the IP for an hour). https://www.loc.gov/apis/json-and-yaml/working-within-limits/
+- **Limits:** fixed 2026-11-15 (the draft's "20-80 requests per 10 seconds" was wrong, the real ceiling is far lower): JSON/YAML API 20 requests per minute, text services 150, image services 150, streaming services 60; exceeding a rate blocks access for 1 hour. The limits may drop under heavy traffic, so pause on a 429 or a CAPTCHA page. https://www.loc.gov/apis/json-and-yaml/working-within-limits/ (checked 2026-11-15)
 - **Credit line:** `Library of Congress, Geography and Map Division` plus item URL.
 
 ### Old Maps Online
 
 - **Holds:** a search portal over other libraries' scans; no data of its own.
 - **Access:** website. https://www.oldmapsonline.org/
-- **Licence:** each holding institution's own terms; mapwright follows the link to the holder and records its licence. No scraping of the portal (no published API; unverified).
+- **Licence:** each holding institution's own terms; mapwright follows the link to the holder and records its licence. No scraping of the portal (no published API; unverified: oldmapsonline.org answered 403 to curl and WebFetch and gave fetchwright only JavaScript chunks on 2026-11-15, so this needs a browser).
 
 ### NYPL Digital Collections
 
@@ -219,7 +219,7 @@ https://download.geofabrik.de/ — daily regional `.osm.pbf` files, ODbL, credit
 ### Map Warper (mapwarper.net)
 
 - **Holds:** user-georeferenced historical maps with WMS/XYZ tile and GeoTIFF export.
-- **Licence:** per uploaded map; site content generally CC BY-SA (unverified). https://mapwarper.net/
+- **Licence:** per uploaded map. Fixed 2026-11-15: the site states no content licence, so the draft's "generally CC BY-SA" is dropped. Its terms say only that maps and contributions "are public and available for others to view and use" and that an uploader must be entitled to license the map to mapwarper.net; the rights stay with each map's original holder. https://mapwarper.net/privacy (checked 2026-11-15)
 - Service is volunteer-run: small requests only.
 
 ## Planetary
@@ -255,15 +255,15 @@ https://download.geofabrik.de/ — daily regional `.osm.pbf` files, ODbL, credit
 ### Gaia DR3 (ESA archive)
 
 - **Holds:** ~1.8 billion sources with positions, parallaxes, proper motions, photometry.
-- **Access:** ADQL/TAP at https://gea.esac.esa.int/archive/ (astroquery.gaia); anonymous async jobs limited in rows and storage, registered users get more (anonymous sync 2,000 rows by default, unverified current caps). Bulk CSV at https://cdn.gea.esac.esa.int/Gaia/gdr3/.
+- **Access:** ADQL/TAP at https://gea.esac.esa.int/archive/ (astroquery.gaia); quotas, fixed 2026-11-15 (the draft's 2,000-row figure is not in the current table): anonymous users get at most 50,000 rows per query, a 60 s synchronous and a 1 min asynchronous time-out, 24 h job retention and no storage; signed-in users get unlimited rows, a 120 min asynchronous time-out, 20 GB of job output and 1 GB of user tables ("Gaia archive user quotas", https://www.cosmos.esa.int/web/gaia-users/archive/collaborate, checked 2026-11-15). Bulk CSV at https://cdn.gea.esac.esa.int/Gaia/gdr3/.
 - **Licence:** **CC BY-NC 3.0 IGO (non-commercial)**; commercial use falls under the ESA space science archive terms and conditions (https://www.cosmos.esa.int/web/esdc/terms-and-conditions). https://www.cosmos.esa.int/web/gaia-users/license (checked 2026-11-14)
-- **Credit line:** `This work has made use of data from the European Space Agency (ESA) mission Gaia (https://www.cosmos.esa.int/gaia), processed by the Gaia Data Processing and Analysis Consortium (DPAC).` (wording unverified); per-release acknowledgements are linked from https://www.cosmos.esa.int/web/gaia-users/credits (DR3: https://gea.esac.esa.int/archive/documentation/GDR3/Miscellaneous/sec_acknowl/). (checked 2026-11-14)
+- **Credit line:** `This work has made use of data from the European Space Agency (ESA) mission Gaia (https://www.cosmos.esa.int/gaia), processed by the Gaia Data Processing and Analysis Consortium (DPAC).` (wording unverified: gea.esac.esa.int refused connections on 2026-11-15 and the cosmos credits page only links to it, so read the DR3 page below before printing this line); per-release acknowledgements are linked from https://www.cosmos.esa.int/web/gaia-users/credits (DR3: https://gea.esac.esa.int/archive/documentation/GDR3/Miscellaneous/sec_acknowl/). (checked 2026-11-14)
 
 ### Hipparcos
 
 - **Holds:** 118,218 stars (main catalogue), Tycho-2 2.5 million.
 - **Access:** VizieR (I/239, I/311), ESA archive.
-- **Licence:** ESA data free with acknowledgement; VizieR terms https://cds.unistra.fr/vizier-org/licences_vizier.html (CDS data freely usable with citation, ODbL for VizieR metadata; unverified).
+- **Licence:** ESA data free with acknowledgement; VizieR terms https://cds.unistra.fr/vizier-org/licences_vizier.html (CDS data freely usable with citation, ODbL for VizieR metadata; unverified: this URL and every vizier.cds.unistra.fr page answered 404 to curl, WebFetch and fetchwright on 2026-11-15, so the URL itself may be wrong).
 - **Credit line:** `ESA (1997) The Hipparcos and Tycho Catalogues, ESA SP-1200` or van Leeuwen 2007 for the new reduction.
 
 ### HYG database
@@ -271,7 +271,7 @@ https://download.geofabrik.de/ — daily regional `.osm.pbf` files, ODbL, credit
 - **Holds:** ~120,000 stars merging Hipparcos, Yale Bright Star and Gliese, with XYZ coordinates.
 - **Access:** moved to Codeberg https://codeberg.org/astronexus/hyg (the GitHub repo says so); CSV. Current release v4.4. (checked 2026-11-14)
 - **Licence:** CC BY-SA 4.0 for v4.0 onward; earlier versions CC BY-SA 2.5. Share-alike applies to derived databases. https://codeberg.org/astronexus/hyg (checked 2026-11-14)
-- **Credit line:** `HYG Database (astronexus.com/hyg), CC BY-SA 4.0`; CC BY-SA 4.0 confirmed for v4.0+ (earlier versions CC BY-SA 2.5); the repo moved to https://codeberg.org/astronexus/hyg (GitHub copy archived). Requested credit form is in its ACKNOWLEDGMENTS.md (not read; unverified wording). (checked 2026-11-14)
+- **Credit line:** `HYG Database (astronexus.com/hyg), CC BY-SA 4.0`; CC BY-SA 4.0 confirmed for v4.0+ (earlier versions CC BY-SA 2.5); the repo moved to https://codeberg.org/astronexus/hyg (GitHub copy archived). (checked 2026-11-14) Fixed 2026-11-15: ACKNOWLEDGMENTS.md holds no requested credit form, it only lists the project's contributors, and the README asks for no set wording, so the CC BY-SA 4.0 attribution above is enough. https://codeberg.org/astronexus/hyg/raw/branch/main/ACKNOWLEDGMENTS.md (checked 2026-11-15)
 
 ### NASA Exoplanet Archive
 
@@ -286,13 +286,15 @@ mapwright refuses these as sources of data or tiles, even when a URL works witho
 
 | Service | Clause | Source |
 |---|---|---|
-| Google Maps / Earth | Maps Platform terms forbid pre-fetching, caching, storing or exporting Google Maps Content except as the service-specific terms allow, and scraping content for use outside the services. Google Earth additional terms forbid extracting imagery for derived data. | https://cloud.google.com/maps-platform/terms (section 3.2.3) ; https://www.google.com/help/terms_maps/ |
-| Apple Maps (MapKit, Look Around) | Apple Developer Program License Agreement / MapKit terms forbid scraping, bulk download and caching beyond the API's caching; data only inside Apple's map display. | https://developer.apple.com/support/terms/ (Apple Maps service terms within; unverified section number) |
+| Google Maps / Earth | Maps Platform terms forbid pre-fetching, caching, storing or exporting Google Maps Content except as the service-specific terms allow, and scraping content for use outside the services. Google Earth additional terms forbid extracting imagery for derived data. | https://cloud.google.com/maps-platform/terms (section 3.2.3 (a) No Scraping: "Customer will not export, extract, or otherwise scrape Google Maps Content for use outside the Services", naming bulk download of tiles, Street View images, geocodes and elevation values; (b) No Caching; (c) No Creating Content From Google Maps Content, naming tracing and terrain models from the Elevation API; checked 2026-11-15) ; https://www.google.com/help/terms_maps/ (not re-read) |
+| Apple Maps (MapKit, Look Around) | Apple Developer Program License Agreement, Attachment 6 (Additional Terms for the use of the Apple Maps Service). Section 2.2: no use "that enables or permits bulk downloads or feeds of the Map Data" or that "attempts to extract, scrape or reutilize any portions of the Map Data", and no secondary or derived database. Section 2.5: Map Data "may not be cached, pre-fetched, or stored" except briefly for the service's own performance, then deleted. | https://developer.apple.com/support/terms/apple-developer-program-license-agreement/ (Attachment 6, sections 2.2 and 2.5; checked 2026-11-15) |
 | Bing Maps / Azure Maps | Microsoft Bing Maps platform terms forbid copying, storing, archiving or creating a database of content, and using content outside the service; Bing Maps for Enterprise is being retired in favour of Azure Maps: free and Basic accounts ended 2025-06-30, Enterprise licences end 2028-06-30 (https://blogs.bing.com/maps/2025-01/What-are-my-options-regarding-Bing-Maps-for-Enterprise-Retirement, checked 2026-11-14). | https://www.microsoft.com/en-us/maps/bing-maps/product (TOU link) ; https://www.microsoft.com/licensing/terms (Azure Maps) |
-| Mapbox | Product terms: no scraping, no bulk caching beyond allowed offline limits, no use of tiles without an access token; Mapbox data is OSM-based but Mapbox-styled tiles are its property. | https://www.mapbox.com/legal/tos |
-| MapTiler | Terms require an API key; no tile harvesting outside the SDKs; offline only with paid plan or self-hosted data (unverified details). | https://www.maptiler.com/terms/ |
-| HERE, TomTom, Esri basemaps | API terms require a key and forbid storing or redistributing map content beyond allowed caching. | https://legal.here.com/ ; https://developer.tomtom.com/legal ; https://www.esri.com/legal/terms (unverified sections) |
-| Stadia / Stamen / Thunderforest tiles | Need a key; free tiers forbid bulk download. | https://stadiamaps.com/terms-of-service/ ; https://www.thunderforest.com/terms/ |
+| Mapbox | Product Terms (last updated 2026-10-20) section 1.9: customers shall "not perform bulk or automated queries", "not scrape or systematically download Licensed Map Content" and "not export, download, cache or store Licensed Map Content". Section 1.6 forbids tracing or extracting content (tracing satellite imagery is allowed only for non-commercial use or for OpenStreetMap). Section 2.8.1 limits caching to 30 days on the end user's device. The Terms of Service require an API key on every request. | https://www.mapbox.com/legal/product-terms (the PDF linked there; checked 2026-11-15). Fixed 2026-11-15: these clauses are in the Product Terms, not in https://www.mapbox.com/legal/tos |
+| MapTiler | MapTiler Cloud Terms. Section 3: the service "must be always used with your own API key(s)". Section 6: without a written agreement it is prohibited "to export map content for usage outside the Service" and "to batch or excessive bulk download of map tiles" (geocoding results excepted). Section 7: it is prohibited "to store, save, and/or redistribute any map content from a server-side cache" or from a screenshot. Section 5 allows only a single end user's temporary device cache. | https://www.maptiler.com/terms/cloud/ (checked 2026-11-15). Fixed 2026-11-15: the general https://www.maptiler.com/terms/ holds none of these rules |
+| HERE | HERE Platform Terms (effective 2023-09-18). Section 6.4 (j): no caching or storing of results outside the platform for more than 30 days. Exhibit 2 (Location Services) section 1.3: no use "in a manner that pre-fetches, caches, or stores data or Results" beyond what the HTTP caching headers allow. | https://legal.here.com/en-gb/terms/here-platform-terms (checked 2026-11-15) |
+| Esri basemaps | Master Agreement E204 (revised 2026-08-14) section 3.2 (c): "Customer may not otherwise scrape, download, or store Data", except basemaps taken offline through Esri Content Packages and geocoded results stored under the agreement. | https://www.esri.com/content/dam/esrisites/en-us/media/legal/ma-full/ma-full.pdf (linked from https://www.esri.com/en-us/legal/terms/full-master-agreement; checked 2026-11-15) |
+| TomTom | API terms require a key and forbid storing or redistributing map content beyond allowed caching (unverified: https://developer.tomtom.com/legal now lands on https://docs.tomtom.com/legal/terms-and-conditions/, which renders by JavaScript only; curl, WebFetch and fetchwright got no terms text on 2026-11-15, so this needs a browser). | https://docs.tomtom.com/legal/terms-and-conditions/ |
+| Stadia / Stamen / Thunderforest tiles | Stadia Maps terms (effective 2026-11-09) section 8 forbid "bulk downloading of data" on every plan, except a mobile offline cache of at most 100 MB per device, and forbid server-side caching, proxying and "creating derivative databases". Thunderforest: "Absolutely no bulk-downloading scraping, pre-downloading, pre-caching or anything similar without an appropriate plan" (Small Business or higher); registration is required and caching proxies are not permitted. | https://stadiamaps.com/terms-of-service/ ; https://www.thunderforest.com/terms/ (both checked 2026-11-15) |
 | OSM tile.openstreetmap.org for bulk | Tile usage policy forbids bulk download (see above). | https://operations.osmfoundation.org/policies/tiles/ |
 
 Data with an open licence behind a keyed commercial service (for example OSM data in Mapbox vector tiles) is still fetched from the open source, never from the commercial tiles.
@@ -324,10 +326,10 @@ Rates are the published ceiling; mapwright runs at or below them. `bulk` = downl
 | historical-basemaps | GPL-3.0 | A. Ourednik, Historical Basemaps | git clone | no |
 | cshapes | CC BY-NC-SA 4.0 | Schvitz et al. 2022 | bulk | no |
 | rumsey | CC BY-NC-SA 3.0 | David Rumsey Map Collection | per image, polite | no |
-| loc | mostly public domain, per item | Library of Congress, G&M Division | documented burst limits | no |
+| loc | mostly public domain, per item | Library of Congress, G&M Division | 20 req/min JSON API, 150 req/min images; 1 h block | no |
 | nypl | PD items free, per item | NYPL Digital Collections | 10k/day per token | yes (token, API only) |
 | commons | per file | author + licence per file | serial, maxlag | no (UA required) |
-| mapwarper | per map (unverified) | Map Warper + original holder | light | no |
+| mapwarper | per map, no site licence | Map Warper + original holder | light | no |
 | usgs-astro | public domain | USGS Astrogeology + mission | bulk | no |
 | nasa-pds | public domain | NASA/PDS dataset citation | bulk | no |
 | lola | public domain | NASA/GSFC/LOLA Science Team | bulk | no |
