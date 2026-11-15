@@ -49,3 +49,4 @@ Newest last. One dated line per fact another session would need.
 - 2026-11-14: social preview uploaded in repo Settings through the logged-in Chrome (og:image now a repository-images URL). Wiki written and pushed at 0.2.0 (7 pages + sidebar + footer, live check 0 failures); verify script and output in ai-docs/notes. README heading 'What works in 0.1.0' still lists 0.2.0 features.
 - 2026-11-14: images + wiki done (PRs #3, #4); social preview set via Chrome; README heading fixed to 0.2.0.
 - 2026-11-14: D.5 read and trace built (0.3.0, branch read-trace): 81/81 tests; raster round trip median 0.26-0.29 px; tesseract absent so OCR covered by a fake only. Open: OCR on real maps, legend and names need an agent reading (read --prompt), lines mode untested on full renders.
+- 2026-11-14: session 9: D.5 merged (PR #5, 20820e6), verified 81/81 on main, worktree removed; Next = D.6 find/fetch. Wrap-up minimal (nothing new beyond L-013..015).
