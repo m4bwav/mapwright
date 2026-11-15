@@ -1,6 +1,6 @@
 # HANDOFF: mapwright
 
-Status: Step D.6 done (2026-11-15): find/fetch in mpw_find.py, PR #6 merged (6c1ec8f), 0.4.0 released; tests 98 pass + 1 live skip. Open D.6 items: LoC/Commons parsers only mock-tested, address guard is doc-only, Overpass fixed 10 s gap. Next: D.7 gen city/dungeon/battle.
+Status: Step D.7 done (2026-11-15): gen city/dungeon/battle, place bars in check, export to Universal VTT, in mpw_places.py; 0.5.0 (not tagged); tests 115 pass + 1 live skip. Open D.7 items: graph-first and WFC dungeons, Foundry scene JSON, hex PNG/VTT, real Foundry import untried. Next: D.8 (space generators: gen sector, system, planet, deck).
 
 Continue prompt: [plans/mapwright-continue-prompt.md](plans/mapwright-continue-prompt.md)
 

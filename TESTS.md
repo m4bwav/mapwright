@@ -6,6 +6,12 @@ Entry shape: `### T-YYYYMMDD-n · date · harness · env · passed/total`, then 
 
 ## Runs
 
+### T-20261115-2 · 2026-11-15 · unittest (tests/) + place sweep · Windows, Python 3.14 · 115/115 passed, 1 skipped (live) in 15 s
+- New (17, tests/test_places.py): city, dungeon (bsp, cave) and battle (square, hex) bars pass with byte-identical regeneration; a city from a parent world takes its settlement's name and language and stores `../world`; forced failures fail their bar (an isolated street, a street through the wall, a walled-off room, a loose wall end, a PNG one pixel per square off, a wall outside the image, a door end off a wall, a fractional pixels_per_grid, broken JSON, a label on top of the title); hex with odd pps and Universal VTT for a city or hex map are refused.
+- Sweep: 20 seeds x (city, city with sea and river, city without wall, bsp, cave, square battle, hex battle) = 1241 bars; after the fixes in L-019 and L-020, 0 failures; 60 more battle seeds per grid, 0 failures.
+- Timings (generate, then check with regeneration): city 6 rings 0.14 s + 0.19 s, 10 rings 0.20 s + 0.37 s; dungeon bsp 48x36 at 70 px 0.06 s + 0.09 s; cave 80x60 at 70 px 0.16 s + 0.21 s; battle 30x20 at 100 px 0.04 s + 0.08 s, 40x30 at 140 px 0.12 s + 0.15 s; hex 30x20 0.01 s + 0.03 s.
+- led to: L-018, L-019, L-020
+
 ### T-20261115-1 · 2026-11-15 · unittest (tests/) · Windows, Python 3.14 · 98/98 passed, 1 skipped (live) in 13 s
 - New (18, tests/test_find.py, network mocked): every catalogue entry and every result of 11 offline queries and of an online query (mocked Nominatim, Commons, LoC) has a licence and a credit; Commons per-file licence and author read from extmetadata; ten rapid Nominatim requests never closer than 1 s apart; the rate holds across two processes through rate.json; 429 reports Retry-After; 14 never-scrape URLs refused with no request made; look-alike hosts not refused; planet and global GEBCO refused; 300 MB Content-Length refused and a stream past the cap stopped with no file left; a second fetch is a cache hit with no request; sources.json and CREDITS.txt hold both sources' credits; an unknown host needs --licence and --credit; the OpenTopography key reaches the request but not sources.json or CREDITS.txt; CLI exits non-zero on a refusal.
 - Live smoke (MAPWRIGHT_LIVE=1, one Nominatim request for Reykjavik): passed 2026-11-15.

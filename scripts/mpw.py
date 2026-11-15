@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -1238,7 +1238,46 @@ def _window(s):
     return v
 
 
+def _places():
+    _gen()
+    import mpw_places
+    return mpw_places
+
+
+def _kind(d):
+    try:
+        with open(os.path.join(d, "recipe.json"), encoding="utf-8") as f:
+            return json.load(f).get("kind")
+    except (OSError, ValueError):
+        return None
+
+
+def cmd_gen_place(a):
+    P = _places()
+    try:
+        if a.what == "city":
+            r = P.gen_city(a.seed, a.out, a.bands, None if a.no_walls else a.wall, a.spokes, a.ring_m, a.lot_m2,
+                           a.parent, a.settlement, a.sea, a.river, a.style, VERSION, a.name_style)
+        else:
+            r = P.gen_grid(a.what, a.seed, a.out, a.w, a.h, getattr(a, "method", "bsp"), getattr(a, "grid", "square"),
+                           a.pps, a.style, VERSION, a.name_style)
+    except (ValueError, OSError, KeyError) as e:
+        die(str(e))
+    if a.json:
+        print(json.dumps(r, indent=1))
+    elif a.what == "city":
+        print("wrote %s: %s, %d streets, %d blocks, %d lots, %d districts, %d gates, %d bridges in %.2f s"
+              % (r["out"], r["name"], r["streets"], r["blocks"], r["lots"], r["districts"], r["gates"], r["bridges"],
+                 r["times"]["total"]))
+    else:
+        print("wrote %s: %s, %dx%d %s squares at %d px, %d rooms, %d doors, %d wall runs, %d lights in %.2f s"
+              % (r["out"], r["name"], r["w"], r["h"], r["grid"], r["pps"], r["rooms"], r["doors"], r["walls"],
+                 r["lights"], r["times"]["total"]))
+
+
 def cmd_gen(a):
+    if a.what in ("city", "dungeon", "battle"):
+        return cmd_gen_place(a)
     g = _gen()
     try:
         if a.what == "world":
@@ -1267,8 +1306,11 @@ def cmd_check(a):
     g = _gen()
     if not os.path.isfile(os.path.join(a.dir, "recipe.json")):
         die("no recipe.json in " + a.dir)
-    bars = g.check(a.dir, determinism=not a.no_regen)
-    if not a.no_labels:
+    if _kind(a.dir) in ("city", "dungeon", "battle"):
+        bars = _places().check(a.dir, determinism=not a.no_regen, labels=not a.no_labels)
+    else:
+        bars = g.check(a.dir, determinism=not a.no_regen)
+    if not a.no_labels and _kind(a.dir) not in ("city", "dungeon", "battle"):
         r = _render()
         try:
             lb = r.check_labels(a.dir, a.style)
@@ -1342,6 +1384,14 @@ def _need_recipe(d):
 def cmd_render(a):
     r = _render()
     _need_recipe(a.dir)
+    if _kind(a.dir) in ("city", "dungeon", "battle"):
+        try:
+            svg = _places().render_svg(a.dir, None if a.style == "topographic" else a.style)
+            r.write_out(svg, a.out)
+        except (ValueError, RuntimeError, OSError) as e:
+            die(str(e))
+        print("wrote %s" % a.out)
+        return
     try:
         svg, info = r.render_svg(a.dir, a.style, a.font, a.title)
         r.write_out(svg, a.out)
@@ -1355,6 +1405,22 @@ def cmd_render(a):
     else:
         print("wrote %s: style %s, %d labels (%d dropped), %d legend entries, %.2f s"
               % (a.out, a.style, info["placed"], len(info["dropped"]), len(info["legend"]), info["times"]["total"]))
+
+
+def cmd_export(a):
+    _need_recipe(a.dir)
+    P = _places()
+    try:
+        P.write_uvtt(a.dir, a.out)
+        with open(a.out, encoding="utf-8") as f:
+            bars = P.uvtt_bars(f.read())
+    except (ValueError, OSError, KeyError) as e:
+        die(str(e))
+    for name, ok, detail in bars:
+        print("%s: %s (%s)" % ("PASS" if ok else "FAIL", name, detail))
+    print("wrote %s" % a.out)
+    if any(b[1] is False for b in bars):
+        sys.exit(1)
 
 
 def cmd_label(a):
@@ -1574,7 +1640,41 @@ def build_parser():
     for x in (w, rg):
         x.add_argument("--raster", type=int, default=512, help="heights.png width in pixels")
         x.add_argument("--json", action="store_true")
+    c = gs.add_parser("city", help="seeded city: streets, blocks, lots, wall and gates, districts, names")
+    c.add_argument("--seed", type=int, required=True)
+    c.add_argument("--bands", type=int, default=6, help="rings of blocks around the market")
+    c.add_argument("--wall", type=int, default=4, help="ring the wall stands on (1..bands-1)")
+    c.add_argument("--no-walls", action="store_true")
+    c.add_argument("--spokes", type=int, help="gate roads from the market (default 5-7 by seed)")
+    c.add_argument("--ring-m", type=float, default=55.0, help="metres between rings")
+    c.add_argument("--lot-m2", type=float, default=300.0, help="target lot area inside the wall")
+    c.add_argument("--parent", help="world recipe folder: the city takes a settlement's name, coast and river")
+    c.add_argument("--settlement", type=int, help="settlement id in the parent (default: the top-scored one)")
+    c.add_argument("--sea", type=float, help="direction of the sea in radians (0 east, pi/2 south)")
+    c.add_argument("--river", type=float, help="direction a river runs through the city, radians")
+    d = gs.add_parser("dungeon", help="seeded dungeon on a square grid: BSP rooms or cellular caves, doors, lights")
+    d.add_argument("--seed", type=int, required=True)
+    d.add_argument("--method", choices=("bsp", "cave"), default="bsp")
+    d.add_argument("--w", type=int, default=48, help="width in squares")
+    d.add_argument("--h", type=int, default=36, help="height in squares")
+    d.add_argument("--pps", type=int, default=70, help="pixels per square (whole number)")
+    b = gs.add_parser("battle", help="gridded battle map (square or hex): ruins, rocks, trees, torches")
+    b.add_argument("--seed", type=int, required=True)
+    b.add_argument("--grid", choices=("square", "hex"), default="square")
+    b.add_argument("--w", type=int, default=30, help="width in squares or hexes")
+    b.add_argument("--h", type=int, default=20, help="height in squares or hex rows")
+    b.add_argument("--pps", type=int, default=100, help="pixels per square (hex: hex width, even)")
+    for x in (c, d, b):
+        x.add_argument("--out", required=True)
+        x.add_argument("--style", choices=("ink-and-parchment", "blueprint"))
+        x.add_argument("--name-style", help="name sound pattern (`names --list`)")
+        x.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_gen)
+
+    s = sub.add_parser("export", help="dungeon or battle recipe to Universal VTT (.dd2vtt) with walls, doors, lights")
+    s.add_argument("dir")
+    s.add_argument("-o", "--out", required=True, help="output .dd2vtt or .uvtt file")
+    s.set_defaults(fn=cmd_export)
 
     s = sub.add_parser("zoom", help="same as `gen region --parent DIR`")
     s.add_argument("dir")
@@ -1586,7 +1686,7 @@ def build_parser():
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_zoom)
 
-    s = sub.add_parser("check", help="run the land proof bars on a recipe folder")
+    s = sub.add_parser("check", help="run the proof bars on a recipe folder (world, region, city, dungeon, battle)")
     s.add_argument("dir")
     s.add_argument("--no-regen", action="store_true", help="skip the byte-identical regeneration bar")
     s.add_argument("--no-labels", action="store_true", help="skip the label bars (overlap, edge, OCR)")
