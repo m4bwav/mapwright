@@ -397,7 +397,7 @@ class TestGen(unittest.TestCase):
 
     def test_world_bars_pass(self):
         out = run_cli("check", self.world)
-        self.assertEqual(out.count("PASS"), 7, out)
+        self.assertEqual(out.count("PASS"), 13, out)
 
     def test_child_bars_pass(self):
         bars = mpw_gen.check(self.child)
@@ -453,6 +453,204 @@ class TestGen(unittest.TestCase):
         self.assertGreater(mpw_gen.sea_level_temp(0), mpw_gen.sea_level_temp(45))
         self.assertEqual(mpw_gen.wind_dir(45), 1)
         self.assertEqual(mpw_gen.wind_dir(15), -1)
+
+
+import mpw_names  # noqa: E402
+import mpw_human  # noqa: E402
+
+
+class TestNames(unittest.TestCase):
+    def test_sample_deterministic_unique_clean(self):
+        for st in sorted(mpw_names.STYLES):
+            lang, a = mpw_names.sample(200, 5, st)
+            _, b = mpw_names.sample(200, 5, st)
+            self.assertEqual(a, b, st)
+            self.assertEqual(len({x.lower() for x in a}), 200, st)
+            for x in a:
+                self.assertTrue(mpw_names.ok_name(x.lower()), (st, x))
+            self.assertEqual(lang["style"], st)
+        self.assertNotEqual(mpw_names.sample(20, 5, "soft")[1], mpw_names.sample(20, 6, "soft")[1])
+
+    def test_custom_pattern(self):
+        lang, names = mpw_names.sample(30, 1, pattern="C=t k m;V=a o;F=n;S=CV CVF;N=2-3")
+        self.assertEqual(lang["style"], "custom")
+        for x in names:
+            self.assertTrue(set(x.lower()) <= set("tkmaon"), x)
+        for bad in ("V=a", "C=t;V=a;S=CVX", "C=t;V=a;S=CVF", "Q=x;C=t;V=a;S=CV"):
+            with self.assertRaises(ValueError):
+                mpw_names.parse_pattern(bad)
+        with self.assertRaises(ValueError):
+            mpw_names.make_language(1, "nosuch")
+
+    def test_filter(self):
+        for bad in ("aaab", "xy", "kkkra", "abcdefghijk", "brrrt", "ptk", "aeiou"):
+            self.assertFalse(mpw_names.ok_name(bad), bad)
+        self.assertTrue(mpw_names.ok_name("valdor"))
+
+    def test_names_cli(self):
+        out = run_cli("names", "--sample", "5", "--style", "nordic", "--seed", "3")
+        self.assertEqual(len(out.split()), 5)
+        self.assertIn("isle", run_cli("names", "--list"))
+        with self.assertRaises(SystemExit):
+            run_cli("names", "--pattern", "C=t")
+
+
+class TestHuman(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.mkdtemp(prefix="mpw-hum-")
+        cls.world = os.path.join(cls.tmp, "w")
+        run_cli("gen", "world", "--seed", "11", "--cells", "2500", "--raster", "64", "--style", "latinate",
+                "--out", cls.world)
+        cls.child = os.path.join(cls.tmp, "kids", "c")
+        run_cli("gen", "region", "--parent", cls.world, "--window", "100,100,400,400", "--cells", "2500",
+                "--raster", "64", "--out", cls.child)
+
+    @classmethod
+    def tearDownClass(cls):
+        import shutil
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def feats(self, d):
+        with open(os.path.join(d, "features.geojson")) as f:
+            return [x["properties"] for x in json.load(f)["features"]]
+
+    def load(self, d, fn):
+        with open(os.path.join(d, fn)) as f:
+            return json.load(f)
+
+    def test_world_has_settlements_roads_names(self):
+        fs = self.feats(self.world)
+        kinds = {f["kind"] for f in fs}
+        for k in ("settlement", "road", "land"):
+            self.assertIn(k, kinds)
+        self.assertTrue(kinds & {"sea", "ocean"})
+        sets = [f for f in fs if f["kind"] == "settlement"]
+        self.assertEqual({f["rank"] for f in sets}, {"city", "town", "village"})
+        for f in fs:
+            if f["kind"] in ("settlement", "lake", "sea", "ocean", "range", "land", "river"):
+                self.assertTrue(f.get("name"), f)
+        nj = self.load(self.world, "names.json")
+        self.assertEqual(nj["language"]["style"], "latinate")
+        self.assertEqual(self.load(self.world, "recipe.json")["language"], nj["language"])
+        low = [e["name"].lower() for e in nj["names"]]
+        self.assertEqual(len(low), len(set(low)))
+
+    def test_settlement_spacing_and_sites(self):
+        m = self.load(self.world, "mesh.json")
+        sets = [f for f in self.feats(self.world) if f["kind"] == "settlement"]
+        sp = max(mpw_human.SPACING_WORLD, 3 * m["sp"])
+        for i, a in enumerate(sets):
+            for b in sets[i + 1:]:
+                d = math.hypot(m["x"][a["cell"]] - m["x"][b["cell"]], m["y"][a["cell"]] - m["y"][b["cell"]])
+                self.assertGreaterEqual(d, sp - 1e-9)
+        scores = [f["score"] for f in sets]
+        self.assertEqual(scores[0], max(scores))
+
+    def test_river_named_once_per_stem(self):
+        fs = [f for f in self.feats(self.world) if f["kind"] == "river"]
+        by = {}
+        for f in fs:
+            by.setdefault(f["name"], set()).add(f["stem"])
+        for nm, stems in by.items():
+            self.assertEqual(len(stems), 1, nm)
+
+    def test_main_stem_follows_biggest_branch(self):
+        # toy: 2 -> 1 -> 0 -> sea (4), and a small branch 3 -> 1
+        m = dict(x=[0] * 5, y=[0] * 5, river=[1, 1, 1, 1, 0], rcv=[4, 0, 1, 1, -1],
+                 acc=[30, 25, 20, 4, 0], ocean=[0, 0, 0, 0, 1], lake=[-1] * 5)
+        stem, mouths = mpw_human.river_stems(m, None)
+        self.assertEqual(mouths, [0])
+        self.assertEqual(stem[0], stem[1])
+        self.assertEqual(stem[1], stem[2])
+        self.assertNotEqual(stem[3], stem[2])
+
+    def test_rng_connected(self):
+        pts = [(math.cos(i) * i, math.sin(i * 1.7) * i) for i in range(15)]
+        uf = mpw_human.UF()
+        for _, a, b in mpw_human.rng_edges(pts):
+            uf.union(a, b)
+        self.assertEqual(len({uf.find(i) for i in range(15)}), 1)
+
+    def test_bars_world_and_child(self):
+        for d in (self.world, self.child):
+            bars = mpw_gen.check(d)
+            self.assertEqual(len(bars), 13)
+            self.assertTrue(all(b[2] for b in bars), [b for b in bars if not b[2]])
+        b13 = mpw_gen.check(self.child, determinism=False)[12]
+        self.assertIn("parent settlements in window", b13[3])
+
+    def test_child_inherits(self):
+        pf = {f["id"]: f for f in self.feats(self.world) if f["kind"] == "settlement"}
+        cs = [f for f in self.feats(self.child) if f["kind"] == "settlement"]
+        inh = [f for f in cs if "parent_id" in f]
+        self.assertTrue(inh)
+        for f in inh:
+            self.assertEqual(f["name"], pf[f["parent_id"]]["name"])
+            self.assertEqual(f["rank"], pf[f["parent_id"]]["rank"])
+        self.assertTrue(any(f["rank"] == "village" and "parent_id" not in f for f in cs))
+        cn = self.load(self.child, "names.json")
+        pn = self.load(self.world, "names.json")
+        self.assertEqual(cn["language"], pn["language"])
+        mine = {e["name"] for e in cn["names"] if "parent_id" not in e and e["kind"] != "settlement"}
+        mine |= {f["name"] for f in cs if "parent_id" not in f}
+        self.assertFalse(mine & {e["name"] for e in pn["names"]})
+
+    def test_parent_path_relative(self):
+        rc = self.load(self.child, "recipe.json")
+        self.assertEqual(rc["parent"]["path"], "../../w")
+        self.assertEqual(os.path.normcase(mpw_gen.parent_dir(self.child, rc)), os.path.normcase(self.world))
+        # old recipes stored an absolute path: still read
+        rc2 = dict(rc, parent=dict(rc["parent"], path=os.path.abspath(self.world)))
+        self.assertEqual(mpw_gen.parent_dir("elsewhere", rc2), os.path.abspath(self.world))
+
+    def test_moved_pair_still_checks(self):
+        import shutil
+        dst = os.path.join(self.tmp, "moved")
+        shutil.copytree(self.world, os.path.join(dst, "w"))
+        shutil.copytree(self.child, os.path.join(dst, "kids", "c"))
+        bars = mpw_gen.check(os.path.join(dst, "kids", "c"))
+        self.assertTrue(all(b[2] for b in bars), [b for b in bars if not b[2]])
+
+    def test_bars_catch_breakage(self):
+        import shutil
+        bad = os.path.join(self.tmp, "bad")
+        shutil.copytree(self.world, bad)
+        p = os.path.join(bad, "features.geojson")
+        with open(p) as f:
+            fc = json.load(f)
+        sea = self.load(bad, "mesh.json")["ocean"].index(1)
+        sets = [f for f in fc["features"] if f["properties"]["kind"] == "settlement"]
+        sets[0]["properties"]["cell"] = sea                          # settlement in the sea
+        road = next(f for f in fc["features"] if f["properties"]["kind"] == "road")
+        road["properties"]["cells"].append(sea)                      # road into the sea
+        with open(p, "w") as f:
+            json.dump(fc, f)
+        bars = {b[0]: b for b in mpw_gen.check(bad, determinism=False)}
+        self.assertFalse(bars[8][2])
+        self.assertFalse(bars[10][2])
+        # drop every road: settlements of one landmass are no longer connected
+        sets[0]["properties"]["cell"] = road["properties"]["cells"][0]
+        fc["features"] = [f for f in fc["features"] if f["properties"]["kind"] not in ("road", "track")]
+        with open(p, "w") as f:
+            json.dump(fc, f)
+        self.assertFalse({b[0]: b for b in mpw_gen.check(bad, determinism=False)}[9][2])
+        nj = self.load(bad, "names.json")
+        nj["names"].append(dict(nj["names"][0]))
+        with open(os.path.join(bad, "names.json"), "w") as f:
+            json.dump(nj, f)
+        self.assertFalse({b[0]: b for b in mpw_gen.check(bad, determinism=False)}[11][2])
+
+    def test_rename_world(self):
+        import shutil
+        d = os.path.join(self.tmp, "ren")
+        shutil.copytree(self.world, d)
+        out = run_cli("names", d, "--style", "isle")
+        self.assertIn("language: isle", out)
+        bars = mpw_gen.check(d)
+        self.assertTrue(all(b[2] for b in bars), [b for b in bars if not b[2]])
+        with self.assertRaises(SystemExit):
+            run_cli("names", self.child, "--style", "isle")
 
 
 if __name__ == "__main__":

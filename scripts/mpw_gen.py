@@ -724,11 +724,26 @@ def dump(path, obj):
         f.write("\n")
 
 
-def write_folder(out, recipe, M, H, hyd, temp, prec, biome, window, R, deltas=()):
+def write_folder(out, recipe, M, H, hyd, temp, prec, biome, window, R, deltas=(), parent_ctx=None):
+    import mpw_human
     os.makedirs(out, exist_ok=True)
     X, Y, tris = M["X"], M["Y"], M["tris"]
     x0, y0, x1, y1 = window
     n = len(X)
+    mesh = dict(nx=M["nx"], ny=M["ny"], sp=M["sp"], gx0=M["gx0"], gy0=M["gy0"],
+                x=[rnd(v) for v in X], y=[rnd(v) for v in Y], h=[rnd(v, 7) for v in H],
+                f=[rnd(v, 9) for v in hyd["F"]], rcv=hyd["rcv"], acc=[rnd(v, 3) for v in hyd["acc"]],
+                river=[1 if v else 0 for v in hyd["river"]], ocean=[1 if v else 0 for v in hyd["ocean"]],
+                lake=hyd["lake"], temp=[rnd(v, 3) for v in temp], prec=[rnd(v, 2) for v in prec],
+                biome=biome, deltas=list(deltas))
+    # human layer and names work on the stored (rounded) mesh, so files alone rebuild them
+    thr = recipe["params"]["river_threshold"]
+    if parent_ctx:
+        hum = mpw_human.human_child(mesh, thr, parent_ctx, window)
+    else:
+        hum = mpw_human.human_world(mesh, thr)
+    labels, entries, stem, stem_names, lake_names = mpw_human.name_features(mesh, hum, recipe["language"],
+                                                                            parent_ctx)
     # features
     feats = []
     for line in coast_lines(X, Y, H, tris):
@@ -736,7 +751,9 @@ def write_folder(out, recipe, M, H, hyd, temp, prec, biome, window, R, deltas=()
                       "geometry": {"type": "LineString", "coordinates": [to_geo(*p) for p in line]}})
     rl = river_lines(X, Y, hyd)
     for i, rv in enumerate(rl):
+        sid = stem[rv["cells"][0]]
         feats.append({"type": "Feature", "properties": {"kind": "river", "id": i, "acc": rnd(rv["acc"], 3),
+                                                        "stem": sid, "name": stem_names.get(sid),
                                                         "cells": rv["cells"]},
                       "geometry": {"type": "LineString",
                                    "coordinates": [to_geo(X[c], Y[c]) for c in rv["cells"]]}})
@@ -744,18 +761,14 @@ def write_folder(out, recipe, M, H, hyd, temp, prec, biome, window, R, deltas=()
     for lid, comp in enumerate(hyd["lakes"]):
         outs = [c for c in comp if hyd["lake"][hyd["rcv"][c]] != lid]
         geom = {"type": "MultiPolygon", "coordinates": [[[to_geo(*p) for p in r]] for r in rings[lid]]}
-        feats.append({"type": "Feature", "properties": {"kind": "lake", "id": lid, "cells": len(comp),
+        feats.append({"type": "Feature", "properties": {"kind": "lake", "id": lid, "name": lake_names.get(lid),
+                                                        "cells": len(comp),
                                                         "outlets": outs,
                                                         "level_m": rnd(elev_m(hyd["F"][comp[0]]), 1)},
                       "geometry": geom})
+    human = mpw_human.features(mesh, hum, stem, stem_names)
+    feats += labels + human
     dump(os.path.join(out, "features.geojson"), {"type": "FeatureCollection", "features": feats})
-    # mesh
-    mesh = dict(nx=M["nx"], ny=M["ny"], sp=M["sp"], gx0=M["gx0"], gy0=M["gy0"],
-                x=[rnd(v) for v in X], y=[rnd(v) for v in Y], h=[rnd(v, 7) for v in H],
-                f=[rnd(v, 9) for v in hyd["F"]], rcv=hyd["rcv"], acc=[rnd(v, 3) for v in hyd["acc"]],
-                river=[1 if v else 0 for v in hyd["river"]], ocean=[1 if v else 0 for v in hyd["ocean"]],
-                lake=hyd["lake"], temp=[rnd(v, 3) for v in temp], prec=[rnd(v, 2) for v in prec],
-                biome=biome, deltas=list(deltas))
     dump(os.path.join(out, "mesh.json"), mesh)
     # heights.png + world file
     Z, B, px = raster(M, H, biome, x0, y0, x1, y1, R)
@@ -766,17 +779,18 @@ def write_folder(out, recipe, M, H, hyd, temp, prec, biome, window, R, deltas=()
     tl = to_geo(x0 + px / 2, y0 + px / 2)
     with open(os.path.join(out, "heights.pgw"), "w", newline="\n") as f:
         f.write("%.6f\n0.0\n0.0\n%.6f\n%.6f\n%.6f\n" % (pm, -pm, tl[0], tl[1]))
-    dump(os.path.join(out, "names.json"), {"seed": recipe["seed"], "pattern": None, "names": [],
-                                           "note": "stub; names arrive with the label step"})
+    dump(os.path.join(out, "names.json"), {"seed": recipe["seed"], "language": recipe["language"],
+                                           "names": entries})
     dump(os.path.join(out, "sources.json"), {"files": [], "note": "generated; nothing fetched"})
     dump(os.path.join(out, "recipe.json"), recipe)
     # svg
     rgb = shaded_rgb(Z, B, px)
-    write_svg(os.path.join(out, "map.svg"), recipe, X, Y, H, tris, hyd, rl, rings, window, rgb)
-    return dict(rivers=len(rl), lakes=len(hyd["lakes"]))
+    write_svg(os.path.join(out, "map.svg"), recipe, X, Y, H, tris, hyd, rl, rings, window, rgb, human)
+    return dict(rivers=len(rl), lakes=len(hyd["lakes"]), settlements=len(hum["sets"]), roads=len(hum["roads"]),
+                names=len(entries))
 
 
-def write_svg(path, recipe, X, Y, H, tris, hyd, rl, rings, window, rgb):
+def write_svg(path, recipe, X, Y, H, tris, hyd, rl, rings, window, rgb, human=()):
     x0, y0, x1, y1 = window
     W = 1000.0
     s = W / (x1 - x0)
@@ -803,6 +817,26 @@ def write_svg(path, recipe, X, Y, H, tris, hyd, rl, rings, window, rgb):
     o.append("</g>")
     cd = ["M" + "L".join(P(*p) for p in line) for line in coast_lines(X, Y, H, tris)]
     o.append('<path fill="none" stroke="#24343c" stroke-width="1.1" d="%s"/>' % "".join(cd))
+    style = {"major": ("#7a3b1d", 1.6, ""), "minor": ("#8a5a3a", 1.0, ""), "track": ("#8a5a3a", 0.7, "3 2")}
+    for f in human:
+        pr = f["properties"]
+        if pr["kind"] in ("road", "track"):
+            col, w, dash = style.get(pr["rank"], style["minor"])
+            o.append('<path fill="none" stroke="%s" stroke-width="%.1f"%s d="M%s"/>'
+                     % (col, w, ' stroke-dasharray="%s"' % dash if dash else "",
+                        "L".join(P(X[c], Y[c]) for c in pr["cells"])))
+    size = {"city": (4.5, 15), "town": (3.2, 12), "village": (2.0, 9)}
+    for f in human:
+        pr = f["properties"]
+        if pr["kind"] == "settlement":
+            r, fs = size[pr["rank"]]
+            c = pr["cell"]
+            sx, sy = (X[c] - x0) * s, (Y[c] - y0) * s
+            o.append('<circle cx="%.1f" cy="%.1f" r="%.1f" fill="#222" stroke="#fff" stroke-width="0.8"/>'
+                     % (sx, sy, r))
+            o.append('<text x="%.1f" y="%.1f" font-family="Georgia,serif" font-size="%d" fill="#222" '
+                     'stroke="#fff" stroke-width="2.5" paint-order="stroke">%s</text>'
+                     % (sx + r + 2, sy + fs * 0.35, fs, pr["name"]))
     o.append('<text x="20" y="34" font-family="Georgia,serif" font-size="22" fill="#222" stroke="#fff" '
              'stroke-width="3" paint-order="stroke">%s seed %d</text>' % (recipe["kind"], recipe["seed"]))
     o.append("</svg>")
@@ -812,8 +846,10 @@ def write_svg(path, recipe, X, Y, H, tris, hyd, rl, rings, window, rgb):
 
 # ------------------------------------------------------------------ commands
 def gen_world(seed, cells, out, plates=12, erosion=15, lat_top=60.0, lat_bottom=0.0, raster_px=512,
-              version="0.2.0"):
+              version="0.2.0", style=None, pattern=None, language=None):
+    import mpw_names
     _LAT.clear()
+    lang = language or mpw_names.make_language(seed, style, pattern)
     t = {}
     t0 = time.perf_counter()
     side = max(4, int(round(math.sqrt(cells))))
@@ -845,13 +881,14 @@ def gen_world(seed, cells, out, plates=12, erosion=15, lat_top=60.0, lat_bottom=
                   heights=dict(file="heights.png", value="metres + %d" % PNG_OFFSET,
                                land_m_per_unit=ELEV_LAND, sea_m_per_unit=ELEV_SEA),
                   extent=[0, 0, WORLD, WORLD], parent=None, deltas=[],
-                  plates=dict(continental=pinfo["continental"]))
+                  plates=dict(continental=pinfo["continental"]), language=lang)
     t1 = time.perf_counter()
     info = write_folder(out, recipe, M, H, hyd, temp, prec, biome, (0.0, 0.0, WORLD, WORLD), raster_px)
     t["write_render"] = time.perf_counter() - t1
     t["total"] = time.perf_counter() - t0
     land = sum(1 for o in hyd["ocean"] if not o)
     return dict(out=out, cells=n, land_fraction=round(land / n, 3), rivers=info["rivers"], lakes=info["lakes"],
+                settlements=info["settlements"], roads=info["roads"], names=info["names"], style=lang["style"],
                 lakes_retreed=hyd["lakes_retreed"], times={k: round(v, 3) for k, v in t.items()})
 
 
@@ -908,7 +945,24 @@ def pick_window(pm, frac=0.25):
     return (ax, ay, ax + size, ay + size)
 
 
-def gen_region(parent, window, cells, out, detail=0.03, raster_px=512, version="0.2.0"):
+def parent_dir(child, rc):
+    """Parent folder of a child recipe: relative to the child folder (old recipes stored it absolute)."""
+    p = rc["parent"]["path"]
+    if os.path.isabs(p):
+        return p
+    return os.path.normpath(os.path.join(child, p))
+
+
+def parent_ref(parent, out):
+    """Parent path as stored in the child recipe: relative to the child folder, '/' separators."""
+    try:
+        return os.path.relpath(os.path.abspath(parent), os.path.abspath(out)).replace("\\", "/")
+    except ValueError:    # another drive on Windows
+        return os.path.abspath(parent).replace("\\", "/")
+
+
+def gen_region(parent, window, cells, out, detail=0.03, raster_px=512, version="0.2.0", ref=None):
+    import mpw_names
     _LAT.clear()
     t0 = time.perf_counter()
     prec_ = load(parent, "recipe.json")
@@ -1017,7 +1071,40 @@ def gen_region(parent, window, cells, out, detail=0.03, raster_px=512, version="
                 inflow[hit[0][1]] += pacc[p] / ratio
     pthr = prec_["params"]["river_threshold"]
     thr = max(8.0, pthr / ratio / 4.0)     # smaller rivers than the parent shows
+    # the parent's settlements and roads stood on dry land: where the finer child
+    # surface puts them in the sea, lift them to just above sea level; where it floods
+    # them into a new lake, lift them just above the lake level (a causeway or island)
+    pfe = load(parent, "features.geojson")["features"]
+    keep = set()
+    for f in pfe:
+        pr = f["properties"]
+        if pr.get("kind") == "settlement":
+            pts = [(PX[pr["cell"]], PY[pr["cell"]])]
+        elif pr.get("kind") in ("road", "track"):
+            pts = []
+            cs = pr["cells"]
+            for a, b in zip(cs, cs[1:]):
+                L = math.hypot(PX[b] - PX[a], PY[b] - PY[a])
+                k = max(1, int(L / (sp * 0.5)) + 1)
+                pts += [(PX[a] + (PX[b] - PX[a]) * i / k, PY[a] + (PY[b] - PY[a]) * i / k) for i in range(k + 1)]
+        else:
+            continue
+        for x, y in pts:
+            if x0 <= x <= x1 and y0 <= y <= y1:
+                hit = cg.near(x, y, 1)
+                if hit:
+                    keep.add(hit[0][1])
+    for c in sorted(keep):
+        if H[c] < 1e-4:
+            H[c] = 1e-4
     hyd = hydrology(H, M["nb"], thr, inflow)
+    for _ in range(3):
+        wet = [c for c in sorted(keep) if hyd["lake"][c] >= 0]
+        if not wet:
+            break
+        for c in wet:
+            H[c] = hyd["F"][c] + 1e-4
+        hyd = hydrology(H, M["nb"], thr, inflow)
     # parent river paths are rivers in the child, down to the sea or a lake
     for c in sorted(forced):
         cur = c
@@ -1034,10 +1121,13 @@ def gen_region(parent, window, cells, out, detail=0.03, raster_px=512, version="
                               raster_px=raster_px, eps_flood=EPS_FLOOD, lake_min=LAKE_MIN),
                   projection=prec_["projection"], heights=prec_["heights"],
                   extent=[x0, y0, x1, y1],
-                  parent=dict(path=os.path.abspath(parent).replace("\\", "/"), window=[x0, y0, x1, y1]),
-                  deltas=[])
-    info = write_folder(out, recipe, M, H, hyd, temp, prc, biome, (x0, y0, x1, y1), raster_px)
+                  parent=dict(path=ref if ref is not None else parent_ref(parent, out), window=[x0, y0, x1, y1]),
+                  deltas=[], language=prec_.get("language") or mpw_names.make_language(seed))
+    pnames = load(parent, "names.json").get("names") or []
+    ctx = dict(mesh=pm, features=pfe, names=pnames, sp=psp)
+    info = write_folder(out, recipe, M, H, hyd, temp, prc, biome, (x0, y0, x1, y1), raster_px, parent_ctx=ctx)
     return dict(out=out, cells=n, window=[x0, y0, x1, y1], rivers=info["rivers"], lakes=info["lakes"],
+                settlements=info["settlements"], roads=info["roads"], names=info["names"],
                 parent_river_segments=len(psegs), times=dict(total=round(time.perf_counter() - t0, 3)))
 
 
@@ -1124,10 +1214,10 @@ def regenerate(d, tmp):
     p = rc["params"]
     if rc["kind"] == "world":
         gen_world(rc["seed"], p["cells"], tmp, p["plates"], p["erosion_steps"], p["lat_top"], p["lat_bottom"],
-                  p["raster_px"], rc["tool_version"])
+                  p["raster_px"], rc["tool_version"], language=rc.get("language"))
     else:
-        gen_region(rc["parent"]["path"], tuple(rc["parent"]["window"]), p["cells"], tmp, p["detail"],
-                   p["raster_px"], rc["tool_version"])
+        gen_region(parent_dir(d, rc), tuple(rc["parent"]["window"]), p["cells"], tmp, p["detail"],
+                   p["raster_px"], rc["tool_version"], ref=rc["parent"]["path"])
 
 
 FILES = ("recipe.json", "features.geojson", "heights.png", "heights.pgw", "mesh.json", "names.json",
@@ -1194,6 +1284,7 @@ def check(d, determinism=True):
     # 4 determinism
     if determinism:
         tmp = tempfile.mkdtemp(prefix="mpw-check-")
+        diff = ["(not run)"]
         try:
             regenerate(d, tmp)
             diff = []
@@ -1206,10 +1297,11 @@ def check(d, determinism=True):
         bars.append((4, "same recipe gives byte-identical files", not diff,
                      "all %d files identical" % len(FILES) if not diff else "differ: " + ", ".join(diff)))
     else:
+        diff = None
         bars.append((4, "same recipe gives byte-identical files", True, "skipped (--no-regen)"))
     # 5, 6 child vs parent
     if rc.get("parent"):
-        pd = rc["parent"]["path"]
+        pd = parent_dir(d, rc)
         pm = load(pd, "mesh.json")
         psp = pm["sp"]
         x0, y0, x1, y1 = rc["parent"]["window"]
@@ -1277,4 +1369,111 @@ def check(d, determinism=True):
     bars.append((7, "climate: temperature falls poleward; lee of mountains drier", mono and shadow,
                  "sea-level temp by 10-deg band %s; windward %.0f vs leeward %.0f cm/yr%s"
                  % ("/".join("%.1f" % v for v in means), up, dn, " (too few samples, shadow not judged)" if few else "")))
+    bars += human_bars(d, rc, m, nb, feats, diff)
     return bars
+
+
+def human_bars(d, rc, m, nb, feats, diff):
+    """Bars 8-13: settlements, roads, names, determinism of names and features, child keeps parent."""
+    import mpw_human
+    X, Y, ocean, lake = m["x"], m["y"], m["ocean"], m["lake"]
+    n = len(X)
+    nbs = [set(v) for v in nb]
+    out = []
+    sets = [f["properties"] for f in feats if f["properties"]["kind"] == "settlement"]
+    roads = [f["properties"] for f in feats if f["properties"]["kind"] in ("road", "track")]
+    bad = [s["id"] for s in sets if not (0 <= s["cell"] < n) or ocean[s["cell"]] or lake[s["cell"]] >= 0]
+    out.append((8, "every settlement on land and not in a lake", not bad,
+                "%d settlements, %d in water" % (len(sets), len(bad))))
+    land, _ = mpw_human.components(n, nb, mpw_human.passable(m))
+    uf = mpw_human.UF()
+    for r in roads:
+        for a, b in zip(r["cells"], r["cells"][1:]):
+            uf.union(a, b)
+    groups = {}
+    for s in sets:
+        groups.setdefault(land[s["cell"]], set()).add(uf.find(s["cell"]))
+    split = sorted(k for k, v in groups.items() if len(v) > 1)
+    out.append((9, "all settlements of one landmass connected by roads", not split,
+                "%d landmasses with settlements, %d split" % (len(groups), len(split))))
+    wet = jump = 0
+    for r in roads:
+        cs = r["cells"]
+        wet += sum(1 for c in cs if ocean[c] or lake[c] >= 0)
+        jump += sum(1 for a, b in zip(cs, cs[1:]) if b not in nbs[a])
+    out.append((10, "roads never run through sea or lake cells (no ferries) and step cell to cell",
+                wet == 0 and jump == 0,
+                "%d roads, %d road cells, %d in water, %d jumps" % (len(roads), sum(len(r["cells"]) for r in roads),
+                                                                   wet, jump)))
+    nj = load(d, "names.json")
+    ents = nj.get("names") or []
+    named = {"settlement", "lake", "sea", "ocean", "range", "land"}
+    missing = 0
+    fnames = []
+    for f in feats:
+        pr = f["properties"]
+        if pr["kind"] in named or pr["kind"] == "river":
+            if not pr.get("name"):
+                missing += 1
+            elif pr["kind"] != "river":
+                fnames.append(pr["name"])
+    low = [e["name"].lower() for e in ents]
+    dup = len(low) - len(set(low))
+    lost = len(set(fnames) - {e["name"] for e in ents})
+    rivers_named = {f["properties"]["name"] for f in feats if f["properties"]["kind"] == "river"}
+    lost += len(rivers_named - {e["name"] for e in ents} - {None})
+    out.append((11, "names unique and present for every named feature", missing == 0 and dup == 0 and lost == 0,
+                "%d names, %d duplicates, %d features unnamed, %d feature names missing from names.json"
+                % (len(ents), dup, missing, lost)))
+    if diff is None:
+        out.append((12, "same seed gives byte-identical names.json and features.geojson", True,
+                    "skipped (--no-regen)"))
+    else:
+        bad12 = [fn for fn in ("names.json", "features.geojson") if fn in diff]
+        out.append((12, "same seed gives byte-identical names.json and features.geojson", not bad12,
+                    "identical" if not bad12 else "differ: " + ", ".join(bad12)))
+    if rc.get("parent"):
+        pd = parent_dir(d, rc)
+        pm = load(pd, "mesh.json")
+        psp = pm["sp"]
+        tol = mpw_human.TOL_PARENT * psp + m["sp"]
+        x0, y0, x1, y1 = rc["parent"]["window"]
+        pfe = load(pd, "features.geojson")["features"]
+        byp = {s["parent_id"]: s for s in sets if "parent_id" in s}
+        worst_s = 0.0
+        miss = 0
+        cnt = 0
+        for f in pfe:
+            pr = f["properties"]
+            if pr["kind"] != "settlement":
+                continue
+            px, py = pm["x"][pr["cell"]], pm["y"][pr["cell"]]
+            if not (x0 <= px <= x1 and y0 <= py <= y1):
+                continue
+            cnt += 1
+            s = byp.get(pr["id"])
+            if s is None or s["name"] != pr["name"]:
+                miss += 1
+                continue
+            worst_s = max(worst_s, math.hypot(X[s["cell"]] - px, Y[s["cell"]] - py))
+        segs = [(X[a], Y[a], X[b], Y[b]) for r in roads for a, b in zip(r["cells"], r["cells"][1:])]
+        sg = SegGrid(segs, psp) if segs else None
+        worst_r = 0.0
+        pts = 0
+        for f in pfe:
+            pr = f["properties"]
+            if pr["kind"] not in ("road", "track"):
+                continue
+            for c in pr["cells"]:
+                px, py = pm["x"][c], pm["y"][c]
+                if x0 + psp <= px <= x1 - psp and y0 + psp <= py <= y1 - psp:
+                    pts += 1
+                    worst_r = max(worst_r, sg.dist(px, py) if sg else 1e9)
+        ok = miss == 0 and worst_s <= tol and worst_r <= tol
+        out.append((13, "child keeps parent settlements and roads within 1 parent + 1 child spacing", ok,
+                    "%d parent settlements in window, %d missing or renamed, max shift %.2f km; %d parent road "
+                    "points, max %.2f km; tolerance %.2f km" % (cnt, miss, worst_s, pts, worst_r, tol)))
+    else:
+        out.append((13, "child keeps parent settlements and roads within 1 parent + 1 child spacing", True,
+                    "n/a (not a child map)"))
+    return out

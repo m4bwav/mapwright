@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """mapwright CLI: read, write, measure and project maps with the standard library.
 
-Subcommands: doctor, explain, inspect, convert, measure, project, gen, zoom, check.
+Subcommands: doctor, explain, inspect, convert, measure, project, gen, zoom, check, names.
 Optional extras (numpy, shapely, pyproj, GDAL, geographiclib) are probed, never
 imported at the top level.
 """
@@ -1143,7 +1143,8 @@ def cmd_gen(a):
     g = _gen()
     try:
         if a.what == "world":
-            r = g.gen_world(a.seed, a.cells, a.out, a.plates, a.erosion, a.lat_top, a.lat_bottom, a.raster, VERSION)
+            r = g.gen_world(a.seed, a.cells, a.out, a.plates, a.erosion, a.lat_top, a.lat_bottom, a.raster, VERSION,
+                            style=a.style, pattern=a.pattern)
         else:
             win = _window(a.window) if a.window else None
             r = g.gen_region(a.parent, win, a.cells, a.out, a.detail, a.raster, VERSION)
@@ -1152,8 +1153,9 @@ def cmd_gen(a):
     if a.json:
         print(json.dumps(r, indent=1))
     else:
-        print("wrote %s: %d cells, %d rivers, %d lakes in %.2f s"
-              % (r["out"], r["cells"], r["rivers"], r["lakes"], r["times"]["total"]))
+        print("wrote %s: %d cells, %d rivers, %d lakes, %d settlements, %d roads, %d names in %.2f s"
+              % (r["out"], r["cells"], r["rivers"], r["lakes"], r["settlements"], r["roads"], r["names"],
+                 r["times"]["total"]))
 
 
 def cmd_zoom(a):
@@ -1174,6 +1176,48 @@ def cmd_check(a):
             print("bar %d %s: %s (%s)" % (num, "PASS" if ok else "FAIL", name, detail))
     if not all(b[2] for b in bars):
         sys.exit(1)
+
+
+def cmd_names(a):
+    _gen()
+    import mpw_names
+    if a.list:
+        for k in sorted(mpw_names.STYLES):
+            st = mpw_names.STYLES[k]
+            print("%-9s %s (C=%s; V=%s; S=%s)" % (k, st["desc"], st["C"], st["V"], st["S"]))
+        return
+    try:
+        if a.dir:
+            g = _gen()
+            rc_path = os.path.join(a.dir, "recipe.json")
+            if not os.path.isfile(rc_path):
+                die("no recipe.json in " + a.dir)
+            with open(rc_path, encoding="utf-8") as f:
+                rc = json.load(f)
+            if rc["kind"] != "world":
+                die("names DIR renames a world; a child map takes its parent's language (rename the parent, "
+                    "then zoom again)")
+            if a.style or a.pattern:
+                rc["language"] = mpw_names.make_language(rc["seed"], a.style, a.pattern)
+                p = rc["params"]
+                g.gen_world(rc["seed"], p["cells"], a.dir, p["plates"], p["erosion_steps"], p["lat_top"],
+                            p["lat_bottom"], p["raster_px"], rc["tool_version"], language=rc["language"])
+            with open(os.path.join(a.dir, "names.json"), encoding="utf-8") as f:
+                nj = json.load(f)
+            if a.json:
+                print(json.dumps(nj, indent=1))
+            else:
+                print("language: %s" % nj["language"]["style"])
+                for e in nj["names"]:
+                    print("%-10s %4d  %s" % (e["kind"], e["id"], e["name"]))
+            return
+        lang, names = mpw_names.sample(a.sample, a.seed, a.style, a.pattern)
+    except ValueError as e:
+        die(str(e))
+    if a.json:
+        print(json.dumps(dict(language=lang, names=names), indent=1))
+    else:
+        print("\n".join(names))
 
 
 # ---------------------------------------------------------------- main
@@ -1238,6 +1282,8 @@ def build_parser():
     w.add_argument("--lat-top", type=float, default=60.0)
     w.add_argument("--lat-bottom", type=float, default=0.0)
     w.add_argument("--out", required=True)
+    w.add_argument("--style", help="name sound pattern (`names --list`); default: picked from the seed")
+    w.add_argument("--pattern", help="custom sound pattern 'C=..;V=..;F=..;S=CV CVF;N=2-3'")
     rg = gs.add_parser("region", help="child map of a window of a parent world")
     rg.add_argument("--parent", required=True)
     for x in (rg,):
@@ -1265,6 +1311,16 @@ def build_parser():
     s.add_argument("--no-regen", action="store_true", help="skip the byte-identical regeneration bar")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_check)
+
+    s = sub.add_parser("names", help="place names from a sound pattern: sample, list styles, or rename a world")
+    s.add_argument("dir", nargs="?", help="world recipe folder: print its names, or rename with --style/--pattern")
+    s.add_argument("--sample", type=int, default=12, help="how many names to print without a folder")
+    s.add_argument("--style", help="built-in style (see --list)")
+    s.add_argument("--pattern", help="custom 'C=p t k;V=a i u;F=n;S=CV CVF;N=2-3'")
+    s.add_argument("--seed", type=int, default=0)
+    s.add_argument("--list", action="store_true", help="list the built-in styles")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_names)
     return p
 
 

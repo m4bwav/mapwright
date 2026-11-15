@@ -13,8 +13,9 @@ mapwright is a skill for AI coding agents plus one small script, `mpw.py`, that 
 - **Measure** geodesic distance and bearing on the WGS84, GRS80 or Clarke 1866 ellipsoid, polygon area on the ellipsoid, and map scale conversions.
 - **Project** points forward and back: Web Mercator, equirectangular, Mollweide, Lambert azimuthal equal-area, Robinson and Equal Earth.
 - **Explain** projections, symbols and methods in plain words.
+- **Generate** invented worlds (0.2.0, unreleased): plates, erosion, rivers, lakes, climate and biomes; settlements ranked city, town and village; roads by least-cost paths; place names from a sound pattern. Child maps (zoom) keep the parent's coast, rivers, settlements, roads and names. `check` runs 13 proof bars.
 
-Generating worlds, rendering, labels and fetching open data come next.
+Rendering styles, labels on curves and fetching open data come next.
 
 ## Use
 
@@ -25,6 +26,11 @@ python scripts/mpw.py convert hike.gpx hike.geojson
 python scripts/mpw.py measure distance -41.32 174.81 40.96 -5.50
 python scripts/mpw.py project mollweide 100 45
 python scripts/mpw.py explain web-mercator
+python scripts/mpw.py gen world --seed 7 --style nordic --out isles.map
+python scripts/mpw.py zoom isles.map --out isles-south.map
+python scripts/mpw.py check isles-south.map
+python scripts/mpw.py names --sample 10 --style desert
+python scripts/mpw.py names --list
 ```
 
 ## Tests

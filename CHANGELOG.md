@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261114-3 · 2026-11-14 · 0.2.0 (unreleased): names, settlements, roads; relative parent path; 13 bars
+- because: user request (Step D.3), L-007, L-008, L-009
+- files: scripts/mpw_names.py (new), scripts/mpw_human.py (new), scripts/mpw_gen.py, scripts/mpw.py, tests/test_mpw.py, skills/mapwright/SKILL.md, README.md
+- `names` samples a sound pattern (six styles or a custom C/V/F/S/N pattern), lists styles and renames a world. `gen world` stores the language in recipe.json and names.json and places scored, spaced and ranked settlements, A* roads over a relative neighbourhood graph, and names for settlements, rivers (one per main stem), lakes, seas and oceans, mountain ranges and landmasses. Children keep parent settlements, roads and names, lift parent settlement and road cells out of new sea or lake cells, and add villages and tracks. The child recipe stores its parent path relative to itself; absolute paths still read. `check` gains bars 8 to 13.
+
 ### C-20261114-2 · 2026-11-14 · 0.2.0 (unreleased): gen world, gen region / zoom, check; Robinson as PROJ
 - because: user request (Step D.2 of ai-docs/plans/design.md), T-20261114-2, L-003, L-004, L-005, L-006
 - files: scripts/mpw_gen.py (new), scripts/mpw.py, tests/test_mpw.py, skills/mapwright/SKILL.md
