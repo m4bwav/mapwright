@@ -1,6 +1,6 @@
 # HANDOFF: mapwright
 
-Status: Step D.7 done (2026-11-15): gen city/dungeon/battle, place bars in check, export to Universal VTT, in mpw_places.py; 0.5.0 (not tagged); tests 115 pass + 1 live skip. Open D.7 items: graph-first and WFC dungeons, Foundry scene JSON, hex PNG/VTT, real Foundry import untried. Next: D.8 (space generators: gen sector, system, planet, deck).
+Status: Step D.7 done (2026-11-15): gen city/dungeon/battle, place bars in check, export to Universal VTT, in mpw_places.py; 0.5.0 released (tag on a000d5f); tests 115 pass + 1 live skip. Open D.7 items: graph-first and WFC dungeons, Foundry scene JSON, hex PNG/VTT, real Foundry import untried. Next: D.8 (space generators: gen sector, system, planet, deck).
 
 Continue prompt: [plans/mapwright-continue-prompt.md](plans/mapwright-continue-prompt.md)
 
