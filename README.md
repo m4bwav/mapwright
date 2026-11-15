@@ -6,7 +6,7 @@ An agent plugin for maps of real places, fantasy worlds and science fiction sett
 
 mapwright is a skill for AI coding agents plus one small script, `mpw.py`, that needs nothing but Python's standard library.
 
-## What works in 0.3.0
+## What works in 0.4.0
 
 - **Inspect** a map file: GeoJSON, GPX, KML and KMZ, shapefiles, dBASE, PNG heightmaps with world files, GeoPackage and MBTiles. Feature counts, extent, properties and the CRS when the file states one.
 - **Convert** between GeoJSON, GPX and KML, and read shapefiles into GeoJSON. Ring order is fixed on the way (shapefiles clockwise, GeoJSON counter-clockwise).
@@ -20,7 +20,10 @@ mapwright is a skill for AI coding agents plus one small script, `mpw.py`, that 
 - **Read** a map picture (0.3.0): size, colour classes, dominant colours, text when tesseract is installed and "not sure" when it is not; a georeference only from control points you give, with residuals and a world file; a checklist for an agent's own vision whose answers the script then checks.
 - **Trace** a map picture to GeoJSON: water or any colour to polygons with holes, or thin features to centre lines, simplified, in pixels or georeferenced. A rendered world traced back lands within 0.3 px (median) of its own coastline.
 
-Labels on curves and fetching open data come next.
+- **Find** maps and data for a place, a time or a subject (0.4.0): a catalogue of open sources with the licence and credit line for each, plus optional live lookups (Nominatim, Wikimedia Commons, Library of Congress, OpenTopography with your own key).
+- **Fetch** one file politely: a plain mapwright User-Agent, each source's rate kept across runs, a disk cache, and `sources.json` plus `CREDITS.txt` written beside the data. The never-scrape list (Google, Bing, Mapbox, OSM tiles and the rest) and bulk sets over a size cap are refused.
+
+Labels on curves come next.
 
 ## Use
 

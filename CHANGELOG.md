@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261115-1 · 2026-11-15 · 0.4.0: find and fetch
+- because: user request (Step D.6), T-20261115-1, L-016, L-017
+- files: scripts/mpw_find.py (new), scripts/mpw.py, tests/test_find.py (new), skills/mapwright/SKILL.md, README.md, plugin.json, .claude-plugin/plugin.json
+- `find` matches a place, time or subject against a 25-source catalogue built from references/sources-and-terms.md, each with licence, credit and rate; `--online` adds Nominatim, Wikimedia Commons (per-file licence and author), Library of Congress and a built OpenTopography request. `fetch` downloads one file with a generic `mapwright/<version>` User-Agent, a per-source rate limiter kept on disk across runs, a disk cache, a 200 MB cap, refusals for the never-scrape list and whole-planet or global sets, and writes sources.json and CREDITS.txt beside the file. API keys come from the environment and never reach the cache name or the credit files. SKILL.md documents the private-address guard.
+
 ### C-20261114-5 · 2026-11-14 · 0.3.0: read and trace
 - because: user request (Step D.5), T-20261114-4, L-013, L-014, L-015
 - files: scripts/mpw_read.py (new), scripts/mpw.py, tests/test_read.py (new), tests/roundtrip_trace.py (new), skills/mapwright/SKILL.md, README.md, plugin.json, .claude-plugin/plugin.json
