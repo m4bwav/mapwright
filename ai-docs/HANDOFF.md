@@ -1,6 +1,6 @@
 # HANDOFF: mapwright
 
-Status: Step D.1 done (2026-11-14): local git repo (main, commit 6163744, no remote), plugin scaffold, hub SKILL.md draft, scripts/mpw.py with doctor/explain/inspect/convert/measure/project, tests 24/24 (`python -m unittest discover -s tests`). Next: D.2 gen world/region/zoom.
+Status: Step D.2 done (2026-11-14): gen world/region/zoom + check (7 land bars, all pass) + Robinson PROJ spline merged to main; tests 35/35; public repo https://github.com/m4bwav/mapwright created and pushed. Next: D.3 names + settlements/roads, then find/fetch.
 
 Continue prompt: [plans/mapwright-continue-prompt.md](plans/mapwright-continue-prompt.md)
 
@@ -8,6 +8,19 @@ Continue prompt: [plans/mapwright-continue-prompt.md](plans/mapwright-continue-p
 
 - The continue prompt (passes `chain.py check`), this file, [log.md](log.md) and a starter book list in [notes/books.md](notes/books.md).
 - Backlog entry "Mapmaking plugin" in [../../plugin-backlog/new-plugins.md](../../plugin-backlog/new-plugins.md).
+
+## Mark's request (2026-11-14)
+
+"can you create a prompt for an evergreen mapmaking plugin? for reading, writing, finding, and generating life-like and fantasy maps and for science fiction"
+
+## Next
+
+1. Step D.3: `names` (sound-pattern place names, consistent per world; fill names.json) and settlements/roads (river mouths, confluences, coasts; least-cost roads) per design.md section 4. Child recipe.json stores the parent's absolute path: make it relative so child regen is location-independent.
+2. README banner (ComfyUI, 1536x640, .github/images/banner.jpg) owed before release.
+3. Run evergreen-convert on mapwright (adds evergreen.json) so `harvest targets` picks up harvest.json.
+4. Then Step D order: read/trace, find/fetch, render/label/legend/style/serve/sheet, gen city/dungeon/battle, space gens, export, aistyle.
+5. Source pass 3 in small batches (~170 unverified marks; priority never-scrape terms, tabletop formats, Snyder values).
+6. Beat: read AI rules of r/mapmaking, r/cartography, Cartographers' Guild before any asks.
 
 ## Mark's request (2026-11-14)
 
