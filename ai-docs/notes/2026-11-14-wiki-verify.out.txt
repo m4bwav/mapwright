@@ -1,0 +1,253 @@
+=== python scripts/mpw.py --version
+0.2.0
+=== python scripts/mpw.py doctor
+mapwright 0.2.0
+python        3.14.6 ok
+sqlite        3.50.4
+browser       C:\Program Files\Google\Chrome\Application\chrome.exe
+numpy         2.5.2
+shapely       2.1.2
+pyproj        absent (optional)
+gdal          absent (optional)
+geographiclib absent (optional)
+=== python scripts/mpw.py explain list
+authalic-sphere
+contour
+equal-earth
+equirectangular
+geodesic
+geojson
+hachures
+hillshade
+laea
+mercator
+mollweide
+priority-flood
+rhumb-line
+robinson
+scale
+tissot
+utm
+voronoi
+web-mercator
+world-file
+=== python scripts/mpw.py explain web-mercator
+web-mercator: EPSG:3857. Spherical Mercator on the WGS84 radius used by web tiles. Conformal, area grows as sec^2(lat); cut at about 85.0511 deg. Never use it for area.
+More: references/projections.md
+=== python scripts/mpw.py explain no-such-term
+Not in the built-in glossary: 'no-such-term'. Try `mpw.py explain list`, or search references/sources-and-terms.md and references/projections.md.
+[exit 1]
+=== python scripts/mpw.py inspect tests/fixtures/track.gpx
+format          GPX 1.1
+features        2
+geometry_types  {"Point": 1, "LineString": 1}
+extent          [-122.3492774, 47.5951518, -122.3316393, 47.6205063]
+crs             WGS84 (by schema)
+properties      ["gpx", "name"]
+points          4
+=== python scripts/mpw.py inspect tests/fixtures/heights.png
+format          PNG
+width           16
+height          12
+bit_depth       16
+colour          greyscale
+interlaced      False
+note            16-bit greyscale: likely a heightmap
+value_range     [0, 18300]
+world_file      heights.pgw
+pixel_size      [10.0, -10.0]
+rotation        [0.0, 0.0]
+extent          [500000.0, 4199880.0, 500160.0, 4200000.0]
+crs             not stated (world files carry no CRS)
+=== python scripts/mpw.py inspect tests/fixtures/square.geojson --json
+{
+  "format": "GeoJSON",
+  "features": 1,
+  "geometry_types": {
+    "Polygon": 1
+  },
+  "extent": [
+    0,
+    0,
+    1,
+    1
+  ],
+  "crs": "WGS84 lon/lat (RFC 7946)",
+  "properties": [
+    "name"
+  ]
+}
+=== python scripts/mpw.py convert tests/fixtures/track.gpx track.geojson
+wrote track.geojson: 2 features
+=== python scripts/mpw.py convert tests/fixtures/route.geojson route.kml
+wrote route.kml: 4 features
+=== python scripts/mpw.py inspect route.kml
+format          KML
+features        4
+geometry_types  {"Point": 1, "LineString": 2, "GeometryCollection": 1}
+extent          [-0.1275862, 48.856614, 13.404954, 52.5200066]
+crs             WGS84 (by spec)
+properties      ["desc", "gpx", "name"]
+=== python scripts/mpw.py measure distance -41.32 174.81 40.96 -5.50
+distance  19959679.267 m (19959.679 km)
+bearing   161.067670 deg (initial)
+final     18.825195 deg
+method    Vincenty (WGS84)
+=== python scripts/mpw.py measure distance -37.95103342 144.42486789 -37.65282114 143.92649553 --ellipsoid GRS80
+distance  54972.271 m (54.972 km)
+bearing   306.868159 deg (initial)
+final     307.173631 deg
+method    Vincenty (GRS80)
+=== python scripts/mpw.py measure area tests/fixtures/square.geojson
+area  9231319412.4 m2 (9231.319412 km2)
+method ellipsoid (WGS84) via authalic latitude; edges straight in cylindrical equal-area
+=== python scripts/mpw.py measure scale 1:50000 --map 2cm
+2cm on the map = 1000 m = 1 km on the ground at 1:50000
+=== python scripts/mpw.py measure scale 1:25000 --ground 3km
+3km on the ground = 12 cm on the map at 1:25000
+=== python scripts/mpw.py project --list
+webmercator      EPSG:3857 spherical Mercator on R = 6378137 m (metres; conformal)
+equirectangular  plate carree (lat0 = standard parallel; R units)
+mollweide        Mollweide, equal-area (R units)
+laea             Lambert azimuthal equal-area centred on lon0, lat0 (sphere, R units)
+robinson         Robinson, PROJ cubic-spline table (compromise; R units)
+equalearth       Equal Earth, equal-area (R units)
+=== python scripts/mpw.py project mollweide 100 45
+x=1.266361139  y=0.8372734721
+=== python scripts/mpw.py project webmercator 174.78 -41.29
+x=19456420.6  y=-5055211.16
+=== python scripts/mpw.py project webmercator 19456639.5 -5057944.4 --inverse
+lon=174.7819664  lat=-41.30844609
+=== python scripts/mpw.py gen world --seed 7 --style nordic --out isles.map
+wrote isles.map: 15876 cells, 48 rivers, 22 lakes, 81 settlements, 94 roads, 162 names in 1.36 s
+=== python scripts/mpw.py gen world --seed 7 --style nordic --out isles2.map
+wrote isles2.map: 15876 cells, 48 rivers, 22 lakes, 81 settlements, 94 roads, 162 names in 1.31 s
+=== cmp isles.map/features.geojson isles2.map/features.geojson
+=== python scripts/mpw.py zoom isles.map --out isles-south.map
+wrote isles-south.map: 16002 cells, 8 rivers, 3 lakes, 21 settlements, 27 roads, 37 names in 1.44 s
+=== python scripts/mpw.py gen region --parent isles.map --window 100,100,400,350 --cells 8000 --out isles-west.map
+wrote isles-west.map: 8036 cells, 32 rivers, 21 lakes, 31 settlements, 33 roads, 88 names in 0.83 s
+=== python scripts/mpw.py check isles-south.map
+bar 1 PASS: every river runs downhill to the sea or through a lake to it (42 river cells, 0 failures)
+bar 2 PASS: no river splits outside a marked delta (0 splits, 0 rivers that stop on land, 0 marked deltas)
+bar 3 PASS: each lake has at most one outlet (3 lakes, max outlets 1)
+bar 4 PASS: same recipe gives byte-identical files (all 8 files identical)
+bar 5 PASS: child coast within 1 parent spacing of the parent coast (875 child coast segments, max 0.679, mean 0.177 parent spacings)
+bar 6 PASS: parent rivers present in the child within 1 parent spacing (4 parent river points, max 0.128 parent spacings)
+bar 7 PASS: climate: temperature falls poleward; lee of mountains drier (sea-level temp by 10-deg band 25.9/22.7; windward 0 vs leeward 32 cm/yr (too few samples, shadow not judged))
+bar 8 PASS: every settlement on land and not in a lake (21 settlements, 0 in water)
+bar 9 PASS: all settlements of one landmass connected by roads (3 landmasses with settlements, 0 split)
+bar 10 PASS: roads never run through sea or lake cells (no ferries) and step cell to cell (27 roads, 758 road cells, 0 in water, 0 jumps)
+bar 11 PASS: names unique and present for every named feature (37 names, 0 duplicates, 0 features unnamed, 0 feature names missing from names.json)
+bar 12 PASS: same seed gives byte-identical names.json and features.geojson (identical)
+bar 13 PASS: child keeps parent settlements and roads within 1 parent + 1 child spacing (8 parent settlements in window, 0 missing or renamed, max shift 1.42 km; 141 parent road points, max 1.43 km; tolerance 9.91 km)
+bar 14 PASS: labels: none overlap (23 labels, 0 overlapping pairs)
+bar 15 PASS: labels: none cut by the edge (0 cut)
+bar 16 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
+=== python scripts/mpw.py names --list
+desert    long vowels, sh/kh/q (C=b d h j k m n q r s sh t z kh; V=a i u aa; S=CV CVF CV)
+harsh     clustered stops, closed syllables (C=k g d t r z kr gr dr th b; V=a o u i; S=CVF CV CVF CCVF)
+isle      no codas, small inventory (C=h k l m n p w; V=a e i o u; S=CV V CV)
+latinate  open syllables, -a/-um/-is feel (C=b c d f l m n p r s t v qu; V=a e i o u ia io; S=CV CV CVF V)
+nordic    short, consonant final (C=b d f g h k l m n r s t v sk st; V=a e i o u y aa ei; S=CVF CV CVF)
+soft      flowing, vowel rich (C=l m n r s v th h f y w; V=a e i o u ae ei ia; S=CV CVF V CV)
+=== python scripts/mpw.py names --sample 6 --style desert --seed 3
+Qabur
+Raami
+Ribud
+Saashi
+Khijish
+Hunhi
+=== python scripts/mpw.py names --sample 4 --pattern C=k t r s;V=a o i;F=n r;S=CV CVF;N=2-3 --seed 1
+Rakosir
+Sitoror
+Kansiron
+Karto
+=== python scripts/mpw.py style --list
+atlas              biome colours, soft hillshade, flat sea, serif labels
+blueprint          white line work on blueprint blue, monospace
+ink-and-parchment  parchment land, ink lines, old serif
+satellite          dark natural colour with strong relief, white labels
+star-chart         night palette with a star field (palette only for now)
+topographic        hypsometric tints, hillshade, depth-tinted sea
+=== python scripts/mpw.py style ink-and-parchment
+{
+ "desc": "parchment land, ink lines, old serif",
+ "land": "flat",
+ "landc": "#ecdcb0",
+ "sea": [
+  "#d9c896",
+  "#cbb680"
+ ],
+ "shade": 0.35,
+ "coast": "#3b2a1a",
+ "river": "#3b2a1a",
+ "lake": "#d9c896",
+ "roads": [
+  "#5a3b22",
+  "#5a3b22",
+  "#7a5a3a"
+ ],
+ "dot": "#3b2a1a",
+ "ink": "#2b1d10",
+ "halo": "#ecdcb0",
+ "font": "'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif",
+ "paper": "#e2d0a0"
+}
+=== python scripts/mpw.py render isles.map -o isles.svg --style atlas
+wrote isles.svg: style atlas, 78 labels (62 dropped), 21 legend entries, 0.60 s
+=== python scripts/mpw.py render isles.map -o isles.png --style ink-and-parchment
+wrote isles.png: style ink-and-parchment, 83 labels (57 dropped), 10 legend entries, 0.64 s
+=== python scripts/mpw.py render isles.map -o isles.pdf --style blueprint --title The Isles
+wrote isles.pdf: style blueprint, 83 labels (57 dropped), 10 legend entries, 0.64 s
+=== python scripts/mpw.py label isles.map
+82 labels placed, 58 dropped (no free spot)
+PASS: labels: none overlap (82 labels, 0 overlapping pairs)
+PASS: labels: none cut by the edge (0 cut)
+SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
+=== python scripts/mpw.py legend isles.map --style atlas
+swatch ice
+swatch tundra
+swatch boreal forest
+swatch temperate grassland
+swatch cold desert
+swatch temperate seasonal forest
+swatch temperate rainforest
+swatch subtropical desert
+swatch savanna
+swatch tropical seasonal forest
+swatch tropical rainforest
+swatch alpine
+swatch sea
+line   coast
+line   river
+swatch lake
+line   major road
+line   minor road
+dot    city
+dot    town
+dot    village
+=== python scripts/mpw.py legend isles.map --style topographic -o legend.svg
+swatch 0-200 m
+swatch 200-500 m
+swatch 500-1000 m
+swatch 1000-2000 m
+swatch 2000-3000 m
+swatch 3000-4500 m
+swatch 4500 m+
+swatch sea
+line   coast
+line   river
+swatch lake
+line   major road
+line   minor road
+dot    city
+dot    town
+dot    village
+=== python scripts/mpw.py sheet isles.map --styles atlas,blueprint,star-chart -o pick.png
+wrote pick.png: 3 maps
+=== python scripts/mpw.py sheet isles.map --seeds 1,2,3,4 --cols 2 -o seeds.svg
+wrote seeds.svg: 4 maps
+=== serve
+GET / -> 200
+serving http://127.0.0.1:8765/ (127.0.0.1 only; Ctrl+C stops)

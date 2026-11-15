@@ -10,9 +10,9 @@ Continue prompt: [plans/mapwright-continue-prompt.md](plans/mapwright-continue-p
 
 ## Next
 
-1. Check the images/wiki PR landed (log.md); if not, finish it. Then D.5 `read`/`trace`. D.4 open items (LEARNINGS L-010..012): OCR bar untested (no tesseract), straight river labels, star-chart has no catalogue stars, blueprint labels garble when a sheet shrinks.
+1. Images and wiki done 2026-11-14 (PR #3 banner + social preview, set in Settings; wiki live at 0.2.0, note ai-docs/notes/2026-11-14-github-wiki.md). At each release rerun the wiki verify script and diff. Next: D.5 `read`/`trace`. D.4 open items (LEARNINGS L-010..012): OCR bar untested (no tesseract), straight river labels, star-chart has no catalogue stars, blueprint labels garble when a sheet shrinks.
 2. Open issues from D.3 (LEARNINGS L-009): a grandchild window with no sea fails bar 1 (predates D.3); one dry child sits on bar 7's 20-sample edge; no ferries yet (islands get their own road nets).
-3. Mark (2026-11-14): "don't forget the wiki and the social and hero images". Owed before release: README hero banner (ComfyUI, 1536x640, .github/images/banner.jpg), GitHub social preview image (1280x640, set in repo settings), and the wiki (wikiwright). Make the images from real mpw.py renders once D.4 lands.
+3. Done: hero banner, social preview, wiki (see 1).
 4. Run evergreen-convert on mapwright (adds evergreen.json) so `harvest targets` picks up harvest.json.
 5. Then: read/trace, find/fetch, gen city/dungeon/battle, space gens, export, aistyle.
 6. Source pass 3 in small batches (~170 unverified marks; priority never-scrape terms, tabletop formats, Snyder values).
