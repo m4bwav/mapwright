@@ -1,6 +1,6 @@
 # HANDOFF: mapwright
 
-Status: Step C design note written (2026-11-14): [plans/design.md](plans/design.md). Next: Step D build (repo + mpw.py). No repository, script or skill yet.
+Status: Step D.1 done (2026-11-14): local git repo (main, commit 6163744, no remote), plugin scaffold, hub SKILL.md draft, scripts/mpw.py with doctor/explain/inspect/convert/measure/project, tests 24/24 (`python -m unittest discover -s tests`). Next: D.2 gen world/region/zoom.
 
 Continue prompt: [plans/mapwright-continue-prompt.md](plans/mapwright-continue-prompt.md)
 
@@ -15,7 +15,8 @@ Continue prompt: [plans/mapwright-continue-prompt.md](plans/mapwright-continue-p
 
 ## Next
 
-1. Step D in a new repo m4bwav/mapwright (public): scaffold plugin, script `mpw.py` (name checked free), first commands doctor/explain/inspect/convert/measure, then gen world/region/zoom from prototypes/gen.py with the design note's uplift, erosion and river-constrained zoom. Decisions in [plans/design.md](plans/design.md): stdlib SVG render core + headless Chrome/Edge for PNG/PDF; one hub skill (split only on evidence); chartwright keeps choropleths.
+0. Before creating public m4bwav/mapwright: privacy-check the first commit (ask/ answers and ai-docs/ went in as-is); rewrite history if anything private. Robinson uses linear table interpolation (PROJ: cubic spline) - fix before world maps.
+1. Step D.2: gen world/region/zoom from prototypes/gen.py with the design note's uplift, erosion and river-constrained zoom. Decisions in [plans/design.md](plans/design.md): stdlib SVG render core + headless Chrome/Edge for PNG/PDF; one hub skill (split only on evidence); chartwright keeps choropleths.
 2. Run evergreen-convert on mapwright (adds evergreen.json) so `harvest targets` picks up the existing harvest.json.
 3. Source pass 3, in small batches (agents stop after ~15-40 calls): ~170 (unverified) marks remain over 13 references; priority = never-scrape terms (Google/Apple/MapTiler), tabletop formats (UVTT/Owlbear/Roll20/Dungeondraft), Snyder values (pubs.usgs.gov 403s scripts: try a mirror or Chrome).
 4. Beat: read AI rules of r/mapmaking, r/cartography, Cartographers' Guild before any asks there. Beat at Ai/indie-ai-scout/beats/mapmaking, data ~/.everscout/data/mapmaking.
