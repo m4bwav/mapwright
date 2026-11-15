@@ -6,6 +6,13 @@ Entry shape: `### T-YYYYMMDD-n · date · harness · env · passed/total`, then 
 
 ## Runs
 
+### T-20261115-3 · 2026-11-15 · unittest (tests/) + space sweep · Windows, Python 3.14 · 131/131 passed, 1 skipped (live) in 28 s
+- New (16, tests/test_space.py): sector, real-star, system, planet (all six kinds) and deck bars pass with byte-identical regeneration; forced failures fail their bar (a world cut off from the routes, a jump route labelled long, a star moved 0.01 pc, two planets squeezed together, moons flung out of the Hill sphere, a texture sampled in (u, v) fails both the seam and the pole bar, a room walled off, a lift moved on one deck, the outer airlock door sealed); T5 file read by header in any column order; planet export to PNG with its sphere note.
+- Planet tolerances measured on 20 seeds x 6 kinds at 512 px: correct sphere sampling worst seam ratio 1.54 (gas), worst pole ratio 0.375 (ice); (u, v) sampling seam 5 to 20, pole 0.8 to 1.0. Bars set at seam 2.5 x the 90th percentile adjacent-column difference (+0.5 grey level) and pole row std 0.5 x the texture std, width 512 or more. At 256 px the ice pole ratio reached 0.49 (2 of 120 failed at 0.25), so 256 is refused. Crater slope fitted -1.84 to -2.26 for b = 2 (limit 0.35).
+- Sweep: 20 seeds x (subsector, sparse subsector jump 1, full sector, system any/M/F, ship, 3-deck ship, station) = 1545 bars, 0 failures; 40 seeds x 4 deck shapes, 0 failures after L-023.
+- Timings (generate, then check with regeneration): subsector 0.04 s + 0.05 s; sector 32x40 0.28 s + 0.32 s; real near stars 0.01 s + 0.03 s; system under 0.01 s + 0.04 s; deck 40x21x2 0.03 s + 0.04 s; planet 512 px about 0.9 s (+1 s check), 1024 px about 4.3 s.
+- led to: L-021, L-022, L-023
+
 ### T-20261115-2 · 2026-11-15 · unittest (tests/) + place sweep · Windows, Python 3.14 · 115/115 passed, 1 skipped (live) in 15 s
 - New (17, tests/test_places.py): city, dungeon (bsp, cave) and battle (square, hex) bars pass with byte-identical regeneration; a city from a parent world takes its settlement's name and language and stores `../world`; forced failures fail their bar (an isolated street, a street through the wall, a walled-off room, a loose wall end, a PNG one pixel per square off, a wall outside the image, a door end off a wall, a fractional pixels_per_grid, broken JSON, a label on top of the title); hex with odd pps and Universal VTT for a city or hex map are refused.
 - Sweep: 20 seeds x (city, city with sea and river, city without wall, bsp, cave, square battle, hex battle) = 1241 bars; after the fixes in L-019 and L-020, 0 failures; 60 more battle seeds per grid, 0 failures.

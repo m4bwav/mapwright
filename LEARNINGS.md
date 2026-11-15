@@ -135,6 +135,27 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 - Evidence: scratch renders 2026-11-14
 - Scope: skill
 
+### L-021 · 2026-11-15 · `pole-row-scales-with-width`: a pole bar must name its resolution
+- Trigger: sweep: the pole bar (top row std vs texture std) failed 2 of 120 textures at 256 px and passed all at 512.
+- Hypothesis: with pixel centres the top row is a circle about pi equator pixels round, so its spread is the texture's local detail at that scale; a sharp feature (an ice crack, a crater rim) crossing the pole raises it, more so at low width.
+- Rule: state the width the pole tolerance was measured at and refuse narrower textures; set the limit between the worst correct texture and the best wrong (u, v) one, both measured.
+- Evidence: T-20261115-3
+- Scope: skill
+
+### L-022 · 2026-11-15 · `seam-bar-needs-a-percentile`: compare the seam with the 90th percentile, not the median
+- Trigger: a gas giant with smooth bands failed the seam bar at 1.5 x the median adjacent-column difference while its seam was continuous.
+- Hypothesis: most columns of a banded texture barely change, so the median is near zero, while a storm or crater crossing the seam makes one column pair as large as any interior pair with a feature.
+- Rule: compare the seam with the 90th percentile of interior adjacent-column differences (2.5 x, +0.5 grey level); a (u, v) sampled texture still fails it by 5 to 20 times.
+- Evidence: T-20261115-3
+- Scope: skill
+
+### L-023 · 2026-11-15 · `hull-needs-a-space-row`: a hull that fills the grid leaves no outside for the airlock
+- Trigger: every 16x11 deck failed with no airlock: the hull reached row 1, its wall row 0, and the outer door had no space square beyond it.
+- Hypothesis: the half-beam was (H - 3) // 2, which leaves a wall row but no row of space.
+- Rule: keep one row of space beyond the hull wall on each side ((H - 5) // 2); the airlock bar checks the outer door opens onto a space square.
+- Evidence: T-20261115-3
+- Scope: skill
+
 ### L-006 · 2026-11-14 · Embedded RGB PNG drew blank: width passed as bytes per row
 - Trigger: map.svg showed only the sea colour.
 - Hypothesis: the PNG width was len(row) of an RGB bytearray, three times the pixel width.
