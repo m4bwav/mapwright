@@ -343,7 +343,7 @@ Has, as internal code:
 - Flood fills: every floor square, room and door reached from the entrance (dungeon, battle), every room from the airlock (deck), regions of a cave.
 - Graph tests: one connected route graph and a bridge count (sector); all settlements of a landmass joined by road (world, region).
 
-Lacked before 0.10.0: any command a user can call to get a path, a distance field, a travel time, a chokepoint list, or a navigation hand-over. Still lacks a navigation hand-over (`export --nav`) and JPS.
+Lacked before 0.10.0: any command a user can call to get a path, a distance field, a travel time, a chokepoint list, or a navigation hand-over. Both arrived after 0.10.0 (see below).
 
 Candidate commands and the proof bar each would need:
 
@@ -357,7 +357,11 @@ Candidate commands and the proof bar each would need:
 | `check DIR --fair` | Per-start distances to resources and first-reach areas | Distances equal brute-force Dijkstra. Areas sum to the passable total. The reported ratio is reproducible |
 | `export DIR --nav` | Walkable polygons and a cost grid (section 6.4) | Polygon area equals passable cells x cell area within 1e-9. Polygons are simple and do not overlap; no vertex lies inside a wall. Grid is w x h and blocked cells equal wall cells exactly. Flood fill on the re-read grid reaches the same count as `check` |
 
-Built in 0.10.0 (`scripts/mpw_path.py`, bars in TESTS.md T-20261115-7): `path`, `path --field`, `travel` (modes walk, offpath, horse), `check --chokepoints`, `check --fair`. Not built yet: `path --jps`, `export --nav`.
+Built in 0.10.0 (`scripts/mpw_path.py`, bars in TESTS.md T-20261115-7): `path`, `path --field`, `travel` (modes walk, offpath, horse), `check --chokepoints`, `check --fair`. Built after 0.10.0 (step s17):
+
+- `path DIR --from A --to B` on a cyclic dungeon now honours locks and keys: the search state is (square, keys held), a key is picked up on entering its square (the centre of its room's cell, where the map draws it), a locked door opens only with its key, one-way doors are entered from their source side only. The report lists `keys` (key, step along the path, square) and `locks`. `--ignore-locks` restores the old search with every lock open (`locks_open` in the report). Fields and the `check` commands still treat locks as open. Bar: on 30 cyclic seeds the lock-aware path from entrance to goal exists, never crosses a lock before its key, and the ignore-locks path is never longer.
+- `path DIR --from A --to B --jps`: jump point search with exactly the grid A*'s moves (8-way, diagonals sqrt(2), no corner cutting). Doors break uniform cost (no diagonal into or out of a door, one-way entry), so every square within one step of a door is a jump point expanded with all its moves; elsewhere the no-corner-cutting pruning applies. Refused on hex grids, decks, worlds and regions (weighted or non-square graphs), with `--moves 4`, and on a locked cyclic dungeon unless `--ignore-locks` is given. Bar: equal cost to A* within 1e-9 on 1,200 pairs over 48 generated maps (bsp, cave, cyclic dungeons and battle maps). Measured: 37,932 jump points expanded against 130,239 A* nodes (3.4 times fewer), but 0.39 s against 0.30 s in pure Python: each jump scans squares in the interpreter, so JPS saves memory and queue work, not wall time, at these map sizes.
+- `export DIR --nav -o FILE.json` (same as `--to nav`): see [games-film-print.md section 4.1](games-film-print.md#41-mapwright-nav-export). It hands over rectangles and portals rather than the polygon and cost-grid pair in the table above.
 
 Order suggested: `path` and its field first (everything else reuses them), then `--chokepoints`, then `travel`, then `--nav`.
 
