@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261115-8 · 2026-11-15 · Converted to an evergreen unit
+because: the plugin had companions but no schedule or research log.
+files: evergreen.json, RESEARCH.md, MAINTENANCE.md, skills/mapwright/SKILL.md
+Added evergreen.json (pointer mode, tier moderate, next due 2026-12-14), RESEARCH.md summarising references/, MAINTENANCE.md, and pointed the skill's Maintenance section at them.
+
 ### C-20261115-7 · 2026-11-15 · 0.10.0: pathfinding commands (path, path --field, travel, check --chokepoints and --fair)
 - because: user request (references/pathfinding.md section 11), T-20261115-7, L-036, L-037, L-038
 - files: scripts/mpw_path.py (new), scripts/mpw.py, tests/test_path.py (new), skills/mapwright/SKILL.md, README.md, TESTS.md, LEARNINGS.md, references/pathfinding.md, plugin.json, .claude-plugin/plugin.json
