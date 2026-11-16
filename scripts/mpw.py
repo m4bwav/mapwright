@@ -2052,8 +2052,10 @@ def build_parser():
     d.add_argument("--border", type=int, help="cave: solid border in squares (default 1)")
     d.add_argument("--branches", type=int, help="cyclic: dead-end side branches, 0 to 8 (treasure, secret doors; "
                                                 "never a key). Default none")
-    d.add_argument("--corridor", type=int, help="bsp: corridor width in squares, 1 to 3; above 1 the openings are "
-                                                "open gaps, so a body of that size reaches every room. Default 1")
+    d.add_argument("--corridor", type=int, help="bsp, cyclic: corridor width in squares, 1 to 3; above 1 the "
+                                                "openings are open gaps, so a body of that size reaches every "
+                                                "room (cyclic locks and one-way doors become gates across the "
+                                                "whole gap). Default 1")
     d.add_argument("--w", type=int, default=48, help="width in squares")
     d.add_argument("--h", type=int, default=36, help="height in squares")
     d.add_argument("--pps", type=int, default=70, help="pixels per square (whole number)")

@@ -6,6 +6,12 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 
 ## Active
 
+### L-059 · 2026-11-16 · `wide-corridor-centre-to-centre`: widen a cyclic edge from room centre to room centre, and gate the whole gap
+- Trigger: extending --corridor to cyclic; rooms are 3-5 squares and only certainly cover the cell's middle line, so a corridor widened beside that line can end on a room's outer wall, and a lock on the single door square leaks round it.
+- Rule: at corridor > 1 `_carve_edge` carves N wide (centred on the middle line) from cell centre to cell centre, so the run cuts a notch into each room; the edge keeps its lock or one-way flag and records `gap`, and `door_dist` applies the rule to every gap square. Ruling: locks and keys stay, as wide gates, rather than refusing corridor > 1 on cyclic.
+- Evidence: seeds 1-100 at 48x36: eroded agent 2 joins every room 0/100 at corridor 1, 100/100 at 2; agent 3 at corridor 3 90/100. Gate bars pass (goal sealed without the key). tests/test_path.py test_cyclic_wide_corridors_keep_the_gate; T-20261116-22
+- Scope: skill
+
 ### L-058 · 2026-11-16 · `open-coast-is-not-a-harbour`: touching open sea made 89% of settlements ports
 - Trigger: after row 21 (0.13.0) ports were every settlement touching open sea; sweep of 24 worlds (seeds 1-8 at 800/1600/3200 cells) gave 742 of 835 (0.889).
 - Hypothesis: settlement siting favours coast and rivers, so nearly every town is coastal; "touches open sea" is an eligibility test, not a port rule.
