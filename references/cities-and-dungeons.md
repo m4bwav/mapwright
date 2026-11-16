@@ -14,7 +14,7 @@ mapwright is stdlib-first Python, so this file favours methods that need only `r
 - **Global goals** set the direction and length a road wants: follow population density peaks, or a road pattern (rectangular grid, radial, or one that follows elevation) [PM01].
 - **Local constraints** then accept, trim or reject the proposal: snap to a nearby crossing, end at an existing road, stop at water, cut short on steep ground [PM01].
 - Highways and streets are two segment classes. Highways look further ahead for density; streets fill in between [PM01].
-- Plain-language rewrite as a priority queue (no grammar needed), widely used in hobby ports: pop a segment with the lowest delay, check local constraints, commit it, push branches with greater delay [SM-PORT] (unverified as to which port is canonical).
+- Plain-language rewrite as a priority queue (no grammar needed), widely used in hobby ports: pop a segment with the lowest delay, check local constraints, commit it, push branches with greater delay [SM-PORT] (practice figure, no single source; tunable default).
 - Local-constraint rules worth copying exactly: (a) if the new end is within radius r of a crossing, snap to it; (b) if it crosses an existing segment, end it at the crossing; (c) if it is within r of a segment, extend it to meet that segment [PM01].
 
 ### 1.2 Tensor fields (Chen et al. 2008)
@@ -44,7 +44,7 @@ mapwright is stdlib-first Python, so this file favours methods that need only `r
   - **OBB subdivision**: take the block's oriented bounding box, split it across its long axis near the middle (with jitter), recurse until each part is under a target area and has street frontage; parts with no street access are dropped or merged.
   - **Straight-skeleton subdivision**: offset the block inward, use the skeleton to make strips along each street, then cut the strips into lots. Gives lots that all face a street.
 - Stdlib-friendly: OBB recursion needs only polygon clipping by a line (Sutherland-Hodgman against a half-plane) and the rotating-calipers or a 0-to-180 degree sweep for the box.
-- Building footprints: shrink each lot by a setback, then optionally keep only the front part (row houses in old towns cover nearly the whole lot) [WAT-BLOG] (unverified for exact Watabou rules).
+- Building footprints: shrink each lot by a setback, then optionally keep only the front part (row houses in old towns cover nearly the whole lot) [WAT-BLOG] (unverified for exact Watabou rules; 2026-11-16: MFCG is closed source and no primary write-up found).
 
 ### Proof rules for blocks
 
@@ -65,7 +65,7 @@ mapwright is stdlib-first Python, so this file favours methods that need only `r
   - The wall is the outline of the inner patches, smoothed; gates go where main roads cross it; towers sit at wall vertices.
   - Each ward gets a type (market, craftsmen, merchant, slum, cathedral, castle, farm, park, administration, military) by rated placement: each type scores candidate patches (near plaza, near wall, near water) and takes the best.
   - Inside a ward, the patch polygon is cut into buildings by recursive splitting with alleys, then some buildings are dropped for gaps.
-- Current MFCG exports PNG, SVG and a JSON with features (walls, roads, buildings, districts) [WAT-MFCG] (exact JSON schema unverified).
+- Current MFCG exports PNG, SVG and a JSON with features (walls, roads, buildings, districts) [WAT-MFCG] (exact JSON schema unverified; 2026-11-16: no published schema, read it from a real export).
 - Watabou also makes the One Page Dungeon, Perilous Shores, Village and Neighbourhood generators; the Dungeon generator exports JSON with rooms and doors on a grid [WAT-OPD] (schema unverified; the itch page confirms PNG, SVG, Markdown and JSON exports only through devlog titles and comments, https://watabou.itch.io/one-page-dungeon, checked 2026-11-16).
 - Do not copy output or code into mapwright; reimplement the method. GPL code cannot go into a permissively licensed plugin.
 
@@ -179,7 +179,7 @@ Settings side by side (compared 2026-11-15). Nothing was replaced: the default c
   - Pointy-top hex to pixel: x = size * (sqrt(3) q + sqrt(3)/2 r), y = size * (3/2 r). Flat-top swaps the roles.
   - Pixel to hex: inverse matrix, then cube rounding (round each, then fix the component with the largest rounding error).
   - Lines: lerp in cube space N+1 times and round; rings and spirals by walking from a start.
-- Square grids: choose 4- or 8-connectivity explicitly. For D&D 5e the default diagonal is 5 ft per step; the optional variant alternates 5/10 ft [DMG14] (unverified page reference). Pathfinder 2e uses alternating 5/10 ft [PF2] (unverified).
+- Square grids: choose 4- or 8-connectivity explicitly. For D&D 5e the default diagonal is 5 ft per step; the optional variant alternates 5/10 ft [DMG14] (variant on DMG p. 252 per secondary rule summaries; book text not reachable online, 2026-11-16). Pathfinder 2e uses alternating 5/10 ft, counted across the whole turn and reset at its end [PF2] (checked 2026-11-16 https://2e.aonprd.com/Rules.aspx?ID=444).
 - Foundry, Roll20 and Owlbear Rodeo all support square and hex grids [FVTT-SCN][R20-GRID][OBR-DOC].
 
 ---
@@ -227,11 +227,11 @@ A few good outputs say little about a generator that can make thousands. The met
 | --- | --- | --- |
 | Foundry VTT | 100 px per square | Scene configuration "Grid Size"; minimum 50 px; most maps use 70, 100, 140 or 200 px; whole numbers only [FVTT-SCN] (https://foundryvtt.com/article/scenes/, https://foundryvtt.com/article/content-creation-guide/) |
 | Roll20 | 70 px per unit | Page "cell width" is a multiple of 70 px; maps are scaled to 70 px per square [R20-GRID] |
-| Owlbear Rodeo | Detects or asks on upload; grid set per map in squares | No single fixed px default documented (unverified) [OBR-DOC] |
-| Dungeondraft export | User chooses pixels per grid; 256 is the editor's native resolution (unverified) [DD] |
+| Owlbear Rodeo | Detects or asks on upload; grid set per map in squares | No single fixed px default documented (unverified; 2026-11-16: docs.owlbear.rodeo refuses scripts) [OBR-DOC] |
+| Dungeondraft export | User chooses pixels per grid; default export is 256 px per grid square (checked 2026-11-16 https://dungeondraft-encyclopaedia.gitbook.io/guide/final-steps/exporting-your-map/quality-settings, a community guide; the official site documents no default) [DD] |
 
 - Practical default for mapwright: 100 px per square for Foundry, 70 for Roll20, and keep the source at a multiple that scales cleanly (e.g. 140 or 200, or 280 = lcm-friendly for both 70 and 140) (design choice).
-- Large maps: keep below roughly 8192 or 16384 px a side because of GPU texture limits in browsers (unverified; depends on hardware).
+- Large maps: keep below roughly 8192 or 16384 px a side because of GPU texture limits in browsers (practice figure, no single source; tunable default; depends on hardware).
 
 ### 8.2 Universal VTT (.dd2vtt / .uvtt) JSON
 
@@ -290,7 +290,7 @@ A scene export (right-click scene, Export Data) contains, among others [FVTT-API
 
 ### 8.5 Owlbear Rodeo
 
-- Owlbear Rodeo 2.0 has fog and walls through its extension system; the "Dynamic Fog" extension draws walls (unverified) [OBR-DOC]. UVTT import exists through community extensions (unverified). Both stay unverified: docs.owlbear.rodeo answered 403 to WebFetch on 2026-11-15, so this needs a browser.
+- Owlbear Rodeo has fog and walls through its extension system; the first-party "Dynamic Fog" extension (since 2.3) adds walls, doors and lights, building walls from fog shapes drawn with the built-in tools [OBR-DOC] (checked 2026-11-16 https://blog.owlbear.rodeo/owlbear-rodeo-2-3-release-notes/). UVTT import exists through community extensions such as Smoke & Spectre and Scene Importer (formerly UVTT Importer) (checked 2026-11-16 https://www.czepeku.com/blog/how-to-use-uvtt-files-with-owlbear-rodeo, https://github.com/Eppinguin/scene-importer). docs.owlbear.rodeo itself answered 403 to WebFetch on 2026-11-15.
 - Safe default: PNG with the grid size in squares stated in the file name, e.g. `crypt_20x15_100px.png`.
 
 ---
@@ -307,15 +307,15 @@ A scene export (right-click scene, Export Data) contains, among others [FVTT-API
 
 - [PM01] Parish, Y. I. H. and Müller, P. "Procedural Modeling of Cities." SIGGRAPH 2001, pp. 301-308. https://doi.org/10.1145/383259.383292
 - [CH08] Chen, G., Esch, G., Wonka, P., Müller, P., Zhang, E. "Interactive Procedural Street Modeling." ACM Transactions on Graphics 27(3), SIGGRAPH 2008. https://doi.org/10.1145/1360612.1360702
-- [LE03] Lechner, T., Watson, B., Wilensky, U., Felsen, M. "Procedural City Modeling." 1st Midwestern Graphics Conference, 2003 (venue from a secondary bibliography; the paper text itself is at https://arxiv.org/abs/2507.18899, read 2026-11-16, and its header names no venue: unverified).
+- [LE03] Lechner, T., Watson, B., Wilensky, U., Felsen, M. "Procedural City Modeling." 1st Midwestern Graphics Conference, 2003 (venue from a secondary bibliography; the paper text itself is at https://arxiv.org/abs/2507.18899, read 2026-11-16, and its header names no venue; the Northwestern copy is named midgraph.cities.pdf but 2026-11-16: ccl.northwestern.edu refused scripts, so venue still unconfirmed).
 - [VA12] Vanegas, C. A., Kelly, T., Weber, B., Halatsch, J., Aliaga, D. G., Waddell, P. "Procedural Generation of Parcels in Urban Modeling." Computer Graphics Forum 31(2), Eurographics 2012. https://doi.org/10.1111/j.1467-8659.2012.03034.x
 - [DCG] de Berg, M., Cheong, O., van Kreveld, M., Overmars, M. Computational Geometry: Algorithms and Applications, 3rd ed., Springer 2008 (doubly connected edge list, ch. 2).
-- [SM-PORT] Hobby priority-queue ports of Parish and Müller, e.g. "citygen" write-ups (unverified; pick one before citing).
+- [SM-PORT] Hobby priority-queue ports of Parish and Müller, e.g. "citygen" write-ups (practice figure, no single source; tunable default; pick one port before citing).
 - [WAT-TGOS] watabou (Oleg Dolya), TownGeneratorOS. https://github.com/watabou/TownGeneratorOS (GPL-3.0, checked 2026-11-14)
 - [WAT-MFCG] watabou, Medieval Fantasy City Generator. https://watabou.github.io/city.html (export formats unverified)
 - [WAT-OPD] watabou, One Page Dungeon. https://watabou.github.io/dungeon.html (unverified)
-- [WAT-BLOG] watabou's posts on itch.io and his Tumblr/Twitter about MFCG internals (unverified URLs).
-- [ST-TALK] Stålberg, O. Talks on Townscaper and irregular grids, e.g. "Beyond Townscapers" / EPC 2018-2021 (unverified exact titles).
+- [WAT-BLOG] watabou's posts on itch.io and his Tumblr/Twitter about MFCG internals (unverified URLs; 2026-11-16: no specific post located).
+- [ST-TALK] Stålberg, O. Talks on Townscaper and irregular grids, e.g. "Beyond Townscapers" / EPC 2018-2021 (unverified exact titles; not checked 2026-11-16).
 - [ME10] Merrell, P., Schkufza, E., Koltun, V. "Computer-Generated Residential Building Layouts." ACM TOG 29(6), SIGGRAPH Asia 2010. https://doi.org/10.1145/1882261.1866203
 - [LO10] Lopes, R., Tutenel, T., Smelik, R. M., de Kraker, K. J., Bidarra, R. "A Constrained Growth Method for Procedural Floor Plan Generation." GAME-ON 2010.
 - [MA10] Marson, F., Musse, S. R. "Automatic Real-Time Generation of Floor Plans Based on Squarified Treemaps Algorithm." International Journal of Computer Games Technology, 2010. https://doi.org/10.1155/2010/624817
@@ -326,20 +326,20 @@ A scene export (right-click scene, Export Data) contains, among others [FVTT-API
 - [WFC] Gumin, M. WaveFunctionCollapse. https://github.com/mxgmn/WaveFunctionCollapse (MIT licence per repository LICENSE; recheck before release)
 - [KS17] Karth, I., Smith, A. M. "WaveFunctionCollapse is Constraint Solving in the Wild." FDG 2017. https://doi.org/10.1145/3102071.3110566
 - [DO10] Dormans, J. "Adventures in Level Design: Generating Missions and Spaces for Action Adventure Games." PCG Workshop 2010. https://doi.org/10.1145/1814256.1814257
-- [DO-CYC] Dormans, J. "Cyclic Generation" / talks on Unexplored, e.g. Procjam 2017 and Game Developer article (unverified exact venue).
+- [DO-CYC] Dormans, J. "Cyclic Generation" / talks on Unexplored, Game Developer blog post "Unexplored's Secret: Cyclic Dungeon Generation" (checked 2026-11-16 https://www.gamedeveloper.com/design/unexplored-s-secret-cyclic-dungeon-generation-); the talk is listed as ProcJam 2016, not 2017, only on aggregator pages (2026-11-16: no primary programme page found). Boris the Brave's breakdown: https://www.boristhebrave.com/2021/04/10/dungeon-generation-in-unexplored/.
 - [BTB-CYC] Boris the Brave. "Dungeon Generation in Unexplored." https://www.boristhebrave.com/2021/04/10/dungeon-generation-in-unexplored/
 - [RBG-HEX] Patel, A. (Red Blob Games). "Hexagonal Grids." https://www.redblobgames.com/grids/hexagons/
-- [DMG14] Wizards of the Coast. Dungeon Master's Guide (5e), 2014, optional diagonal rule (unverified page).
-- [PF2] Paizo. Pathfinder Core Rulebook, 2nd ed., movement on a grid (unverified page).
+- [DMG14] Wizards of the Coast. Dungeon Master's Guide (5e), 2014, optional diagonal rule, p. 252 per secondary summaries (2026-11-16: book text not online to check).
+- [PF2] Paizo. Pathfinder Core Rulebook, 2nd ed., movement on a grid; rule text checked 2026-11-16 https://2e.aonprd.com/Rules.aspx?ID=444 (page number not checked).
 - [FVTT-SCN] Foundry VTT Knowledge Base, "Scenes." https://foundryvtt.com/article/scenes/
 - [FVTT-API] Foundry VTT API docs: SceneData, WallData, AmbientLightData. https://foundryvtt.com/api/ (field names for GridData, WallData and SceneData checked 2026-11-15 against the Version 14 docs, 14.370; sense, door and direction values not re-checked)
 - [UBI] "Universal Battlemap Importer" Foundry module. https://foundryvtt.com/packages/dd-import (checked 2026-11-14: by Moo Man, imports Dungeondraft, DungeonFog and Arkenforge exports, v6.1.1 verified for Foundry 14)
 - [UVTT] Arkenforge, "Universal VTT files", with the developer field list. https://arkenforge.com/universal-vtt-files/ (checked 2026-11-15). Dungeondraft publishes no spec of its own that this pass found.
-- [DD] Dungeondraft, export documentation. https://dungeondraft.net/ (unverified)
+- [DD] Dungeondraft, export documentation. https://dungeondraft.net/; export default from https://dungeondraft-encyclopaedia.gitbook.io/guide/final-steps/exporting-your-map/quality-settings (checked 2026-11-16)
 - [R20-GRID] Roll20 Help Center, "Page Settings" (70 px units). https://help.roll20.net/
 - [R20-DL] Roll20 Help Center, "Dynamic Lighting." https://help.roll20.net/
 - [R20-API] Roll20 API script library, UniversalVTTImporter 0.1.13. https://github.com/Roll20/roll20-api-scripts/tree/master/UniversalVTTImporter (checked 2026-11-15)
-- [OBR-DOC] Owlbear Rodeo documentation. https://docs.owlbear.rodeo/ (unverified details)
+- [OBR-DOC] Owlbear Rodeo documentation. https://docs.owlbear.rodeo/ (403 to scripts 2026-11-15); Dynamic Fog from https://blog.owlbear.rodeo/owlbear-rodeo-2-3-release-notes/ (checked 2026-11-16)
 
 ## Flags added in session 17 (2026-11-16)
 
