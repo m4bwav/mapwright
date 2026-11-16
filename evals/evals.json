@@ -1,65 +1,167 @@
 {
   "skill": "mapwright",
-  "cases": [
+  "_format": "skill-creator evals.json plus evergreen fields (kind, decoy, evidence, baseline). Rules: evergreen protocol/TESTING.md. Decoys: codemaps (evergreen-map), data charts (chartwright), 3D real places (polywright-capture), pixel tiles (pixelwright).",
+  "evals": [
     {
-      "id": "t1",
+      "id": "trigger-read-gpx",
       "kind": "trigger",
       "prompt": "What's in this GPX file from my hike? tests/fixtures/track.gpx",
-      "expect": "mpw.py inspect runs"
+      "expectations": [
+        "the mapwright skill is invoked"
+      ],
+      "runs": 3
     },
     {
-      "id": "t2",
+      "id": "trigger-write-kml",
       "kind": "trigger",
       "prompt": "Convert my KML of campsites to GeoJSON",
-      "expect": "mpw.py convert runs"
+      "expectations": [
+        "the mapwright skill is invoked"
+      ],
+      "runs": 3
     },
     {
-      "id": "t3",
+      "id": "trigger-find-place",
       "kind": "trigger",
-      "prompt": "How far is Wellington from Salamanca along the earth, and what bearing?",
-      "expect": "mpw.py measure distance; 19959.679 km"
+      "prompt": "Find OpenStreetMap data for the trails around Lake Travis and tell me the licence",
+      "expectations": [
+        "the mapwright skill is invoked"
+      ],
+      "runs": 3
     },
     {
-      "id": "t4",
-      "kind": "trigger",
-      "prompt": "Which projection should I use for a world map comparing country areas?",
-      "expect": "equal-area named (Equal Earth or Mollweide), not Web Mercator"
-    },
-    {
-      "id": "t5",
+      "id": "trigger-gen-fantasy",
       "kind": "trigger",
       "prompt": "Make me a fantasy continent map for my campaign",
-      "expect": "skill fires; generate section (gen not built in 0.1.0, says so)"
+      "expectations": [
+        "the mapwright skill is invoked"
+      ],
+      "runs": 3
     },
     {
-      "id": "d1",
-      "kind": "decoy",
-      "prompt": "map this repo for me",
-      "expect": "evergreen-map, not mapwright"
+      "id": "trigger-scifi-sector",
+      "kind": "trigger",
+      "prompt": "Generate a star sector map with a few systems for my sci-fi RPG",
+      "expectations": [
+        "the mapwright skill is invoked"
+      ],
+      "runs": 3
     },
     {
-      "id": "d2",
-      "kind": "decoy",
-      "prompt": "choropleth of sales by state",
-      "expect": "chartwright"
+      "id": "trigger-scifi-deck",
+      "kind": "trigger",
+      "prompt": "I need a deck plan for a small freighter in my space game",
+      "expectations": [
+        "the mapwright skill is invoked"
+      ],
+      "runs": 3
     },
     {
-      "id": "d3",
-      "kind": "decoy",
-      "prompt": "3D model of my town for printing",
-      "expect": "polywright-capture"
+      "id": "trigger-path",
+      "kind": "trigger",
+      "prompt": "What's the shortest path and the chokepoints on my dungeon map in out/dungeon?",
+      "expectations": [
+        "the mapwright skill is invoked"
+      ],
+      "runs": 3
     },
     {
-      "id": "d4",
-      "kind": "decoy",
+      "id": "trigger-export",
+      "kind": "trigger",
+      "prompt": "Export my generated world as a Unity heightmap and a Universal VTT file",
+      "expectations": [
+        "the mapwright skill is invoked"
+      ],
+      "runs": 3
+    },
+    {
+      "id": "decoy-codemap",
+      "kind": "trigger",
+      "decoy": true,
+      "prompt": "map this repo for me so I know where things live",
+      "expectations": [
+        "the mapwright skill is not invoked"
+      ],
+      "runs": 3
+    },
+    {
+      "id": "decoy-choropleth",
+      "kind": "trigger",
+      "decoy": true,
+      "prompt": "make a choropleth chart of sales by US state from sales.csv",
+      "expectations": [
+        "the mapwright skill is not invoked"
+      ],
+      "runs": 3
+    },
+    {
+      "id": "decoy-3d-place",
+      "kind": "trigger",
+      "decoy": true,
+      "prompt": "3D model of my town's park for printing",
+      "expectations": [
+        "the mapwright skill is not invoked"
+      ],
+      "runs": 3
+    },
+    {
+      "id": "decoy-pixel-tiles",
+      "kind": "trigger",
+      "decoy": true,
       "prompt": "pixel art tileset for a dungeon",
-      "expect": "pixelwright"
+      "expectations": [
+        "the mapwright skill is not invoked"
+      ],
+      "runs": 3
     },
     {
-      "id": "d5",
-      "kind": "decoy",
-      "prompt": "level design for my dungeon crawler",
-      "expect": "ludowright"
+      "id": "action-gen-dungeon",
+      "kind": "action",
+      "prompt": "Generate a seeded dungeon map (seed 7) for my tabletop game into the folder out/dng in the current directory, and check it is sound.",
+      "expectations": [
+        "out/dng holds a recipe (recipe.json) and a map picture written by mpw.py gen dungeon",
+        "mpw.py check passes on it"
+      ],
+      "evidence": {
+        "type": "command",
+        "run": "python scripts/mpw.py check out/dng",
+        "expect": "exit 0"
+      },
+      "tools": [
+        "Read",
+        "Write",
+        "Edit",
+        "Glob",
+        "Grep",
+        "Bash"
+      ],
+      "max_turns": 30,
+      "runs": 1,
+      "baseline": "2026-11-16 claude -p sonnet, no plugin: wrote its own generate_dungeon.py and out/dng without recipe.json; mpw.py check fails. FAIL (skill needed)."
+    },
+    {
+      "id": "action-export-vtt",
+      "kind": "action",
+      "prompt": "Make a 20x16 square-grid battle map (seed 3) and export it as a Universal VTT file at out/battle.dd2vtt.",
+      "expectations": [
+        "out/battle.dd2vtt exists, is JSON with resolution.pixels_per_grid and line_of_sight"
+      ],
+      "evidence": {
+        "type": "command",
+        "run": "python scripts/mpw.py check <the battle recipe folder the run wrote>",
+        "expect": "exit 0, and out/battle.dd2vtt exists"
+      },
+      "tools": [
+        "Read",
+        "Write",
+        "Edit",
+        "Glob",
+        "Grep",
+        "Bash"
+      ],
+      "max_turns": 30,
+      "runs": 1,
+      "baseline": "2026-11-16 claude -p sonnet, no plugin: hand-written script wrote a valid dd2vtt (70 px, 24 LOS segments), so file evidence alone is redundant; evidence sharpened to a recipe the export came from."
     }
   ]
 }

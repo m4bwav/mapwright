@@ -4,6 +4,10 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261116-1 · 2026-11-16 · 0.10.2: Step F description triggers, eval suite in evergreen format
+- because: Step F; T-20261116-1 (trigger-read-gpx 0/3 before the fix)
+- files: skills/mapwright/SKILL.md, evals/evals.json, TESTS.md, evergreen.json, plugin.json, .claude-plugin/plugin.json, ai-docs/log.md
+- Description names export (engine heightmaps, Tiled, Universal VTT), paths, travel and chokepoints, game map kinds and sci-fi sector, system, planet and deck, keeps the boundaries (evergreen-map, chartwright, polywright-capture, pixelwright), 1,024 chars or less. Step 1 lists which request goes to which verb. evals.json is now an `evals` list: 8 triggers, 4 decoys, 2 action cases with command evidence and baselines.
 ### C-20261115-9 · 2026-11-15 · 0.10.1: Step E example maps; render --title on grid maps; space determinism bar ignores extra files
 - because: Step E (one keepable map per kind), L-039, L-040, L-041
 - files: scripts/mpw.py, scripts/mpw_places.py, scripts/mpw_space.py, tests/test_places.py, tests/test_space.py, LEARNINGS.md, plugin.json, .claude-plugin/plugin.json, ask/mapwright-step-e-1, ai-docs/notes/2026-11-15-step-e-maps.md

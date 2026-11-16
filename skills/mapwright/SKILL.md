@@ -1,9 +1,9 @@
 ---
 name: mapwright
-description: "Cartography for real, fantasy and sci-fi worlds: read, write, find and generate maps of places. Inspects and converts GeoJSON, GPX, KML, shapefiles, GeoPackage, MBTiles and heightmap PNGs, measures geodesic distance, bearing, area and scale, projects points (Web Mercator, Mollweide, Lambert equal-area, Robinson, Equal Earth), explains map terms, and grows invented worlds as recipe folders. Use whenever the user wants a map of a place or world: 'what is in this GPX', 'convert this KML to GeoJSON', 'how far is it from A to B', 'which projection for a world map', 'make a fantasy continent map', 'star map for my sci-fi setting', 'shortest path across this dungeon', 'pathfinding or chokepoints on my game map', 'how long to walk there'. Also 'refresh mapwright'. Not for code or repository maps (evergreen-map), charts of data on a map such as choropleths (chartwright) or 3D models of places (polywright)."
+description: "Cartography for real, fantasy and sci-fi worlds: read, write, find and generate maps of places. Reads and converts GeoJSON, GPX, KML and shapefiles, measures distance, area and scale, projects points, grows seeded worlds, regions, cities, dungeons, battle maps, star sectors, systems, planets and ship deck plans, with travel times. Exports engine heightmaps (Unity, Unreal, Godot, Roblox), Tiled tilemaps, Universal VTT, meshes and PDFs. Use whenever the user wants a map of a place or world: 'what is in this GPX', 'KML to GeoJSON', 'which projection for a world map', 'make a fantasy continent map', 'generate a dungeon for my game', 'star sector or deck plan for my sci-fi setting', 'shortest path or chokepoints on my game map', 'export it as a Unity heightmap, Tiled map or dd2vtt'. Also 'refresh mapwright'. Not for code or repository maps (evergreen-map), data charts on a map such as choropleths (chartwright), 3D models of real places (polywright-capture) or pixel-art tiles (pixelwright)."
 license: MIT
 metadata:
-  version: 0.10.0
+  version: 0.10.2
 ---
 
 # mapwright
@@ -25,6 +25,8 @@ Three kinds of world:
 - **Sci-fi**: galaxies, sectors, star charts, planets and deck plans ([references/scifi-maps.md](../../references/scifi-maps.md)).
 
 Four verbs, below. Pick one, then read only the reference that step names.
+
+Requests and where they go: a file to read or convert (Read, Write); a real place's data (Find); "make me a world, city, dungeon, battle map, star sector, star system, planet or deck plan" (Generate); "shortest path", "how long to travel", "chokepoints", "is this map fair" (Generate: `path`, `travel`, `check`); "as a Unity, Unreal, Godot or Roblox heightmap", "Tiled map", "Universal VTT / dd2vtt", "mesh", "print it" (Export).
 
 ## Read: what a map file holds
 
