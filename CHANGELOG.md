@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261116-16 · 2026-11-16 · 0.23.0: wide halls for block dungeons
+- because: HANDOFF backlog "corridor for blocks", T-20261116-23, L-060
+- files: scripts/mpw_places.py, scripts/mpw.py, tests, references/cli-generate.md, README.md
+- `gen dungeon --method blocks --corridor N` (1 to 3): halls and the block hub widen to N squares. Agent 2 reaches every room on 97/100 seeds at corridor 2, agent 3 on 84/100 at corridor 3. Default byte-identical (corridor 1 draws the same squares). Tests: 268 pass, 2 skip.
+
 ### C-20261116-15 · 2026-11-16 · 0.22.0: wide corridors for cyclic dungeons
 - because: HANDOFF backlog "corridor widening for cyclic", T-20261116-22, L-059
 - files: scripts/mpw_places.py, scripts/mpw.py, tests, references/cli-generate.md, README.md

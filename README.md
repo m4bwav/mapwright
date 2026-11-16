@@ -35,6 +35,7 @@ mapwright is a skill for AI coding agents plus one small script, `mpw.py`, that 
 - **Per-place seeds** (0.17.0): `gen sector --systems` writes every world's system; `gen system --sector-seed S --hex 0118` regenerates one alone, byte-identical, from a stable hash of seed and hex.
 - **Region chunks** (0.18.0): `gen region --chunk COL,ROW [--chunk-km 250]` makes one chunk of the parent world with its own stable seed; reruns are byte-identical.
 - **Agent-size navigation** (0.19.0): `export --nav --agent N` erodes the walkable squares for a body N squares wide before merging rectangles and portals.
+- **Wide block halls** (0.23.0): `--corridor N` also works with `--method blocks`; halls and hub squares widen, agent 2 at corridor 2 reaches every room on 97 of 100 seeds.
 - **Wide cyclic corridors** (0.22.0): `--corridor N` also works with `--method cyclic`; locks and keys hold across the whole gap.
 - **Wide corridors** (0.21.0): `gen dungeon --corridor 2` (bsp, 1 to 3) carves corridors two squares wide with open gaps instead of one-square doors, so `path --agent 2` and `export --nav --agent 2` reach every room (100 of 100 seeds).
 - **Agent-size paths** (0.20.0): `path --agent N` routes a body N squares wide on square dungeon and battle grids, with the same erosion.

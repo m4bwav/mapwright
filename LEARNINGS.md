@@ -6,6 +6,9 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 
 ## Active
 
+### L-060 · 2026-11-16 · `perpendicular-offset-not-signed`: widen a hall along the perpendicular axis, never by dx*o / dy*o
+- When widening a hall drawn along (dx, dy), the first try added `dy*o` to x and `dx*o` to y: the sign flips between N and S (or E and W) halls, so the two halves of a 2-wide hall met one square apart and agent 2 reached every room on 0/100 block dungeons. Offset x by o when dx == 0 and y by o when dy == 0: 97/100. Status: applied in 0.23.0 (T-20261116-23).
+
 ### L-059 · 2026-11-16 · `wide-corridor-centre-to-centre`: widen a cyclic edge from room centre to room centre, and gate the whole gap
 - Trigger: extending --corridor to cyclic; rooms are 3-5 squares and only certainly cover the cell's middle line, so a corridor widened beside that line can end on a room's outer wall, and a lock on the single door square leaks round it.
 - Rule: at corridor > 1 `_carve_edge` carves N wide (centred on the middle line) from cell centre to cell centre, so the run cuts a notch into each room; the edge keeps its lock or one-way flag and records `gap`, and `door_dist` applies the rule to every gap square. Ruling: locks and keys stay, as wide gates, rather than refusing corridor > 1 on cyclic.

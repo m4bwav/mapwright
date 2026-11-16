@@ -482,6 +482,19 @@ class CorridorWidth(unittest.TestCase):
                 self.assertTrue(any((x, y) in set(regs[0]) for y in range(r["y"], r["y"] + r["h"])
                                     for x in range(r["x"], r["x"] + r["w"])), (seed, r))
 
+    def test_blocks_wide_halls(self):
+        """--method blocks --corridor 2: default unchanged; agent 2 reaches every room on most seeds."""
+        P = M.P
+        good = 0
+        for seed in range(1, 21):
+            self.assertEqual(P.build_dungeon(seed, 48, 36, "blocks")["g"],
+                             P.build_dungeon(seed, 48, 36, "blocks", corridor=1)["g"])
+            D = P.build_dungeon(seed, 48, 36, "blocks", corridor=2)
+            e = M.erode(D["g"], 48, 36, 2)
+            regs = P.flood_regions([[c if c in P.PASS else "#" for c in r] for r in e], 48, 36)
+            good += len(regs) == 1
+        self.assertGreaterEqual(good, 18)
+
     def test_corridor_refused_off_bsp(self):
         d = tempfile.mkdtemp()
         try:
