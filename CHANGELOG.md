@@ -4,6 +4,13 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261116-6 · 2026-11-16 · 0.13.0: block dungeons, ports on open coast
+- because: build backlog rows 7 and 21 (L-052..L-057)
+- files: scripts/mpw_places.py, scripts/mpw_gen.py, scripts/mpw_human.py, tests/, references/cli-generate.md, LEARNINGS.md, TESTS.md
+- `gen dungeon --method blocks`: exit-matched 7x7-square blocks, block-count bar scaled to the grid, up to 32 restarts recorded as `blocks.rerolls`; two new `check` bars. bsp, cave and cyclic output unchanged.
+- Ports: open sea flooded in from the map border (zoom windows inherit the parent's); a settlement is a port only when it touches open sea; new `check` bar. Other files byte-identical on seed 7.
+- Tests: 249 pass, 2 skip.
+
 ### C-20261116-5 · 2026-11-16 · 0.12.0: landlocked drainage, rain-shadow margin, battle layout, treasure placement, battle legend
 - because: L-009 closed (L-047, L-048); battle render defects from session 17 (L-044..L-046); wiki run found `legend` crashing on battle maps
 - files: scripts/mpw.py, scripts/mpw_gen.py, scripts/mpw_places.py, tests/, evals/evals.json, LEARNINGS.md, TESTS.md
