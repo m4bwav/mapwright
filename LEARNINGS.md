@@ -6,6 +6,13 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 
 ## Active
 
+### L-043 · 2026-11-16 · `jps-doors-and-python-speed`: JPS pruning breaks next to doors, and saves expansions but not time in Python
+- Trigger: s17 `path --jps` build: dungeon doors forbid diagonals and carry one-way entry, which the JPS paper's uniform grid does not have; the 48-map sweep then showed 3.4 times fewer expansions but 0.39 s against A*'s 0.30 s.
+- Hypothesis: pruning at a square is safe only when its 3x3 neighbourhood has uniform moves; the jump loop runs square by square in the interpreter, so pure-Python JPS pays for the scans it saves on the queue.
+- Rule: make every square within one step of a door a jump point expanded with all of G.out's moves, and prove JPS against A* to 1e-9 on generated maps with doors before trusting it. Never sell `--jps` as faster in wall time; report expansions and time separately.
+- Evidence: tests/test_path.py JumpPoints (MPW_JPS_STATS=1 prints the numbers)
+- Scope: skill
+
 ### L-042 · 2026-11-16 · `find-osm-undertriggers`: "find OpenStreetMap data ... tell me the licence" fires mapwright 1 of 3
 - Trigger: T-20261116-2: trigger-find-place missed in one run and a rerun pair (1 hit of 3); it was 3/3 in T-20261116-1 after the Step F fix.
 - Hypothesis: the prompt reads as a licence question sonnet can answer from memory, and the description says "find" maps of places but does not name OpenStreetMap, Overpass or data licences.

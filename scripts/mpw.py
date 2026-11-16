@@ -180,6 +180,16 @@ GLOSSARY = {
     "tmj": ("Tiled's JSON map: tile layers of global tile ids (0 is empty, the top four bits are flip flags), "
             "object layers for walls and doors, and a tileset with a first gid and an image.",
             "references/games-film-print.md"),
+    "jump-point-search": ("JPS (Harabor and Grastien 2011): A* on a uniform-cost grid that jumps along straight and "
+                          "diagonal lines and queues only squares with a forced neighbour. Same cost as A*, fewer "
+                          "queued nodes. mpw.py path --jps; doors are always jump points.",
+                          "references/pathfinding.md"),
+    "nav-export": ("Navigation hand-over: walkable squares merged into convex rectangles plus the portals between "
+                   "them, JSON an engine can load as a navmesh. mpw.py export DIR --nav -o map.nav.json.",
+                   "references/games-film-print.md"),
+    "keys-and-locks": ("Lock-aware search: state is (square, keys held), a locked door opens only with its key. "
+                       "mpw.py path on a cyclic dungeon does this by default; --ignore-locks opens every lock.",
+                       "references/pathfinding.md"),
     "uvtt": ("Universal VTT (.dd2vtt): one JSON file with a square-grid map picture in base64, walls as line of "
              "sight, doors as portals and lights. Foundry and other tabletops import it. It has no hex form.",
              "references/games-film-print.md"),
@@ -187,7 +197,8 @@ GLOSSARY = {
 ALIASES = {"epsg:3857": "web-mercator", "3857": "web-mercator", "webmercator": "web-mercator",
            "plate-carree": "equirectangular", "lambert-azimuthal-equal-area": "laea",
            "indicatrix": "tissot", "great-circle": "geodesic", "loxodrome": "rhumb-line",
-           "pgw": "world-file", "representative-fraction": "scale", "tiled": "tmj", "dd2vtt": "uvtt",
+           "pgw": "world-file", "representative-fraction": "scale", "tiled": "tmj", "dd2vtt": "uvtt", "jps": "jump-point-search",
+           "navmesh": "nav-export", "nav": "nav-export", "locks": "keys-and-locks",
            "universal-vtt": "uvtt", "trim-marks": "crop-marks", "height-map": "heightmap"}
 
 
@@ -1424,6 +1435,8 @@ def cmd_path(a):
     out = a.out or a.dir
     try:
         G, rc = M.build(a.dir, a.moves)
+        if a.jps and M.jps_refusal(G):
+            die(M.jps_refusal(G))
         if not a.to:
             die("path needs --to")
         goals = [G.node(_xy(t)) for t in a.to]
@@ -1437,10 +1450,26 @@ def cmd_path(a):
             if not a.src or len(goals) != 1:
                 die("path needs --from and one --to (or --field)")
             s = G.node(_xy(a.src))
-            cost, path, exp = M.search(G, s, goals)
-            if cost is None:
-                die("no route: the goal cannot be reached from the start", 1)
-            extra = {"locks_open": G.locks} if getattr(G, "locks", 0) else None
+            locked = getattr(G, "locks", 0) and not a.ignore_locks
+            extra = None
+            if a.jps:
+                if locked:
+                    die("--jps does not track keys; add --ignore-locks to search with every lock open")
+            if locked:
+                cost, path, picks, exp = M.lock_search(G, s, goals[0])
+                extra = {"locks": G.locks, "keys": [dict(key=p["key"], step=p["step"], cell=G.xy(path[p["step"]]))
+                                                    for p in picks] if path else []}
+                if cost is None:
+                    die("no route: the goal cannot be reached from the start with the keys on the map "
+                        "(--ignore-locks opens every lock)", 1)
+            else:
+                cost, path, exp = (M.jps if a.jps else M.search)(G, s, goals[0] if a.jps else goals)
+                if cost is None:
+                    die("no route: the goal cannot be reached from the start", 1)
+                if getattr(G, "locks", 0):
+                    extra = {"locks_open": G.locks}
+            if a.jps:
+                extra = dict(extra or {}, search="jps")
             rep = M.path_files(a.dir, out, G, s, goals[0], cost, path, exp, extra)
             rep = {k: v for k, v in rep.items() if k != "path"}
             msg = "path: cost %.4f %s, %d steps, %d cells expanded -> %s" % (rep["cost"], G.units, rep["steps"],
@@ -1654,7 +1683,7 @@ def _export():
 
 
 EXPORT_OPTS = ("size", "flip", "bits", "tile", "encoding", "csv", "deck", "pps", "exaggeration", "base", "print_mm",
-               "flat_sea", "paper", "landscape", "dpi", "bleed", "no_marks", "margin", "fit", "style")
+               "flat_sea", "paper", "landscape", "dpi", "bleed", "no_marks", "margin", "fit", "style", "nav")
 
 
 def cmd_export(a):
@@ -2017,7 +2046,9 @@ def build_parser():
     s.add_argument("-o", "--out", required=True, help="output file; the extension picks the target when --to is absent "
                                                       "(.dd2vtt .tmj .raw .r16 .obj .pdf .tab, .png for a planet or hex map)")
     s.add_argument("--to", choices=("uvtt", "png", "sphere", "t5", "unity", "unreal", "godot", "roblox", "tiled",
-                                    "mesh", "print"))
+                                    "mesh", "print", "nav"))
+    s.add_argument("--nav", action="store_true", help="same as --to nav: walkable squares merged into rectangles "
+                                                      "with portals, JSON for a game engine (dungeon, square battle)")
     s.add_argument("--size", type=int, help="heightmap or mesh samples on a side (unity 2^n+1, unreal 1009 and kin)")
     s.add_argument("--flip", action="store_true", help="unity: write the south row first")
     s.add_argument("--bits", type=int, choices=(8, 16), help="roblox heightmap depth (default 8)")
@@ -2077,6 +2108,9 @@ def build_parser():
     s.add_argument("--to", action="append", help="goal (repeat for several goals with --field)")
     s.add_argument("--field", action="store_true", help="cost to the nearest goal from every cell, with a flow step")
     s.add_argument("--moves", type=int, choices=(4, 8), default=8, help="square grids: 4- or 8-way moves")
+    s.add_argument("--ignore-locks", action="store_true",
+                   help="cyclic dungeons: treat every locked door as open (default: fetch each key before its lock)")
+    s.add_argument("--jps", action="store_true", help="jump point search on 8-way square grids (same cost as A*)")
     s.add_argument("--out", help="folder for the output files (default: the recipe folder)")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_path)
