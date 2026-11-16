@@ -144,12 +144,13 @@
       "kind": "action",
       "prompt": "Make a 20x16 square-grid battle map (seed 3) and export it as a Universal VTT file at out/battle.dd2vtt.",
       "expectations": [
-        "out/battle.dd2vtt exists, is JSON with resolution.pixels_per_grid and line_of_sight"
+        "out/battle.dd2vtt exists, is JSON with resolution.pixels_per_grid and line_of_sight",
+        "a recipe.json written by mpw.py gen battle (kind battle, seed 3, w 20, h 16) sits anywhere in the run folder, and mpw.py check passes on its folder; a hand-written script producing only a .dd2vtt fails"
       ],
       "evidence": {
         "type": "command",
-        "run": "python scripts/mpw.py check <the battle recipe folder the run wrote>",
-        "expect": "exit 0, and out/battle.dd2vtt exists"
+        "run": "python -c \"import json,glob,os,subprocess,sys; r=[f for f in glob.glob('**/recipe.json',recursive=True) if (lambda j:j.get('kind')=='battle' and j.get('seed')==3 and j['params'].get('w')==20 and j['params'].get('h')==16)(json.load(open(f)))]; ok=os.path.exists('out/battle.dd2vtt') and r and subprocess.call([sys.executable,'scripts/mpw.py','check',os.path.dirname(r[0])])==0; sys.exit(0 if ok else 1)\"",
+        "expect": "exit 0"
       },
       "tools": [
         "Read",
