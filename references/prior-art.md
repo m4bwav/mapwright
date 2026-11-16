@@ -187,7 +187,7 @@ Notes for mapwright:
   SpaceEngine and Universe Sandbox are closed. mapwright can read their exports (PNG,
   heightmaps, Universal VTT JSON) but should not try to reproduce them.
 - Universal VTT (`.dd2vtt`, `.uvtt`) is a documented JSON with a base64 image plus walls,
-  doors and lights; good stdlib read/write target. No formal spec found; the format is Megasploot's (Dungeondraft), and the Arkenforge explainer lists the core JSON tags (image, resolution, line_of_sight, portals, lights, baked_lighting); .dd2vtt, .df2vtt and .uvtt are the same file.
+  doors and lights; good stdlib read/write target. No formal spec found; the format is Megasploot's (Dungeondraft), and the Arkenforge explainer lists the core JSON tags (image, resolution, line_of_sight, portals, lights, baked_lighting); .dd2vtt, .df2vtt and .uvtt are the same file. Verified 2026-11-16 against the Foundry Universal Battlemap Importer source (github.com/moo-man/FVTT-DD-Import, ddimport.js): it reads resolution.map_origin, map_size and pixels_per_grid, line_of_sight, objects_line_of_sight, portals (position, bounds, closed), lights (position, range, intensity, color) and image.
   Source: https://arkenforge.com/universal-vtt-files/ (verified 2026-11-16)
 
 ### Non-AI generation methods worth porting (checked 2026-11-14)
