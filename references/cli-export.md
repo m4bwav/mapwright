@@ -15,7 +15,7 @@
 | world, region | `-o t.obj [--size 257] [--exaggeration Z] [--base T] [--print-mm 100] [--flat-sea]`, or `--to mesh -o FOLDER` | terrain mesh and a polywright manifest; with a base it is one watertight solid |
 | dungeon, square battle, deck | `-o map.tmj [--tile 32] [--encoding base64] [--csv]` | Tiled map, flat-colour tileset PNG, walls and doors as object layers, one tile layer per deck |
 | dungeon, square battle, deck | `-o map.dd2vtt [--deck N] [--pps 50]` | Universal VTT (walls, doors as closed portals, lights, the PNG in base64); one file per deck |
-| dungeon, square battle | `--nav -o map.nav.json` (0.11.0) | Navigation hand-over: walkable squares merged into rectangles, doors kept separate with lock and one-way info, a portal list; no agent-size erosion ([games-film-print.md](games-film-print.md) 4.1) |
+| dungeon, square battle | `--nav -o map.nav.json` (0.11.0) | Navigation hand-over: walkable squares merged into rectangles, doors kept separate with lock and one-way info, a portal list; `--agent N` (0.19.0) erodes the walkable set for a body N squares wide, top-left anchor ([games-film-print.md](games-film-print.md) 4.1) |
 | battle, dungeon | `--to png -o map.png` | the grid picture; the only raster export for a hex map |
 | planet, sector | `-o p.png`, `-o s.tab` | sphere texture with `p.sphere.json`; T5 tab file |
 | any | `--to print -o NAME[.pdf or .png] [--paper A4] [--landscape] [--dpi 300] [--bleed 3] [--fit cover]` | PDF and PNG at the paper size plus bleed, crop marks in the bleed |

@@ -1266,8 +1266,23 @@ def nav_bars(g, w, h, nav):
     return bars
 
 
-def export_nav(d, out, version):
-    """Walkable squares as convex rectangles plus a portal list, JSON for a game engine."""
+def nav_erode(g, w, h, agent):
+    """Squares an agent `agent` squares wide can stand on, anchored at its top-left square: the whole
+    agent x agent block from (x, y) must be walkable. The anchor keeps its own character (floor or door).
+    agent 1 returns the grid unchanged."""
+    if agent <= 1:
+        return [list(r) for r in g]
+    out = [["#"] * w for _ in range(h)]
+    for y in range(h - agent + 1):
+        for x in range(w - agent + 1):
+            if all(g[yy][xx] in P.PASS for yy in range(y, y + agent) for xx in range(x, x + agent)):
+                out[y][x] = g[y][x]
+    return out
+
+
+def export_nav(d, out, version, agent=1):
+    """Walkable squares as convex rectangles plus a portal list, JSON for a game engine. With agent > 1 the
+    walkable set is eroded first: a rectangle square is a top-left anchor where an agent x agent body fits."""
     rc = P.load(d, "recipe.json")
     kind = rc.get("kind")
     if kind not in ("dungeon", "battle"):
@@ -1275,11 +1290,17 @@ def export_nav(d, out, version):
     gj = P.load(d, "grid.json")
     if gj.get("grid") == "hex":
         raise ValueError("--to nav is square-grid only; hexes do not merge into rectangles")
-    w, h, g = gj["w"], gj["h"], gj["cells"]
+    if agent < 1:
+        raise ValueError("--agent is the body width in squares, 1 or more")
+    w, h = gj["w"], gj["h"]
+    g = nav_erode(gj["cells"], w, h, agent)
     rects, owner = nav_rects(g, w, h)
     gr = gj.get("graph")
     for e in (gr or {}).get("edges", []):
-        r = rects[owner[e["door"][1]][e["door"][0]]]
+        ow = owner[e["door"][1]][e["door"][0]]
+        if ow < 0:
+            continue
+        r = rects[ow]
         if "lock" in e:
             r["lock"] = e["lock"]
         elif "oneway" in e:
@@ -1291,6 +1312,9 @@ def export_nav(d, out, version):
                seed=rc.get("seed"), w=w, h=h, units="squares", origin="top-left, y down",
                moves=dict(neighbours=8, diagonal_cost=1.414213562, corner_cutting=False, diagonal_through_door=False),
                rects=rects, portals=nav_portals(rects))
+    if agent > 1:
+        nav["agent"] = dict(squares=agent, anchor="top-left",
+                            note="a rect square is where the agent's top-left square may stand")
     for k in ("entrance", "goal"):
         if k in gj:
             nav[k] = gj[k]
@@ -1347,7 +1371,7 @@ def export(d, out, to=None, version="0.7.0", **o):
         with open(out, encoding="utf-8") as f:
             return P.uvtt_bars(f.read()), [out]
     if to == "nav":
-        return export_nav(d, out, version)
+        return export_nav(d, out, version, agent=1 if o.get("agent") is None else o["agent"])
     if to == "png":
         return export_grid_png(d, out, o.get("style"))
     if to in ("unity", "unreal", "godot", "roblox"):

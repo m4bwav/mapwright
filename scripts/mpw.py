@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.18.0"
+VERSION = "0.19.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -1708,7 +1708,7 @@ def _export():
 
 
 EXPORT_OPTS = ("size", "flip", "bits", "tile", "encoding", "csv", "deck", "pps", "exaggeration", "base", "print_mm",
-               "flat_sea", "paper", "landscape", "dpi", "bleed", "no_marks", "margin", "fit", "style", "nav")
+               "flat_sea", "paper", "landscape", "dpi", "bleed", "no_marks", "margin", "fit", "style", "nav", "agent")
 
 
 def cmd_export(a):
@@ -2107,6 +2107,8 @@ def build_parser():
                                     "mesh", "print", "nav"))
     s.add_argument("--nav", action="store_true", help="same as --to nav: walkable squares merged into rectangles "
                                                       "with portals, JSON for a game engine (dungeon, square battle)")
+    s.add_argument("--agent", type=int, help="nav: body width in squares (default 1); walkable squares are eroded "
+                                             "so each rect square is a top-left anchor where the whole body fits")
     s.add_argument("--size", type=int, help="heightmap or mesh samples on a side (unity 2^n+1, unreal 1009 and kin)")
     s.add_argument("--flip", action="store_true", help="unity: write the south row first")
     s.add_argument("--bits", type=int, choices=(8, 16), help="roblox heightmap depth (default 8)")
