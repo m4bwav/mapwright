@@ -754,6 +754,14 @@ def write_folder(out, recipe, M, H, hyd, temp, prec, biome, window, R, deltas=()
         hum = mpw_human.human_child(mesh, thr, parent_ctx, window)
     else:
         hum = mpw_human.human_world(mesh, thr)
+    # ports only on open coast (row 21): a settlement touching a lake or enclosed sea is never a port
+    popen = None
+    if parent_ctx and parent_ctx.get("open_sea"):
+        popen = lambda: (parent_ctx["mesh"], parent_ctx["open_sea"]())   # noqa: E731
+    sea = open_sea(mesh, hum["nb"], popen)
+    for s in hum["sets"]:
+        s["port"] = any(sea[q] for q in hum["nb"][s["cell"]])
+    recipe["ports"] = [s["id"] for s in hum["sets"] if s["port"]]
     labels, entries, stem, stem_names, lake_names = mpw_human.name_features(mesh, hum, recipe["language"],
                                                                             parent_ctx)
     # features
@@ -1175,7 +1183,7 @@ def gen_region(parent, window, cells, out, detail=0.03, raster_px=512, version="
                   parent=dict(path=ref if ref is not None else parent_ref(parent, out), window=[x0, y0, x1, y1]),
                   deltas=[], language=prec_.get("language") or mpw_names.make_language(seed))
     pnames = load(parent, "names.json").get("names") or []
-    ctx = dict(mesh=pm, features=pfe, names=pnames, sp=psp)
+    ctx = dict(mesh=pm, features=pfe, names=pnames, sp=psp, open_sea=lambda: open_sea_dir(parent))
     info = write_folder(out, recipe, M, H, hyd, temp, prc, biome, (x0, y0, x1, y1), raster_px, parent_ctx=ctx)
     return dict(out=out, cells=n, window=[x0, y0, x1, y1], rivers=info["rivers"], lakes=info["lakes"],
                 settlements=info["settlements"], roads=info["roads"], names=info["names"],
@@ -1258,6 +1266,56 @@ def _neighbours(m):
         nb[a].add(a + 1)
         nb[a + 1].add(a)
     return nb
+
+
+def open_sea(m, nb, parent=None):
+    """Open-sea mask: sea cells reached by flooding inward from the map border through sea cells.
+
+    Enclosed sea below the waterline that the flood never reaches is not open sea, and lakes never are.
+    A child window with no sea on its border takes its seeds from the parent: parent() returns
+    (parent mesh, parent open-sea mask), and a child sea cell whose nearest parent cell is open sea seeds the flood.
+    """
+    ocean = m["ocean"]
+    n = len(ocean)
+    nx, ny = m["nx"], m["ny"]
+    if nx * ny == n:
+        edge = [j * nx + i for j in range(ny) for i in range(nx) if i in (0, nx - 1) or j in (0, ny - 1)]
+    else:
+        edge = [c for c in range(n) if len(nb[c]) < 6]
+    seeds = [c for c in edge if ocean[c]]
+    if not seeds and parent is not None and any(ocean):
+        pm, pmask = parent()
+        g = Grid(pm["x"], pm["y"], pm["sp"])
+        X, Y = m["x"], m["y"]
+        for c in range(n):
+            if ocean[c]:
+                hit = g.near(X[c], Y[c], 1)
+                if hit and pmask[hit[0][1]]:
+                    seeds.append(c)
+    out = [0] * n
+    stack = []
+    for c in seeds:
+        if not out[c]:
+            out[c] = 1
+            stack.append(c)
+    while stack:
+        c = stack.pop()
+        for q in nb[c]:
+            if ocean[q] and not out[q]:
+                out[q] = 1
+                stack.append(q)
+    return out
+
+
+def open_sea_dir(d):
+    """open_sea for a written folder; a child asks its parent folder only when it needs to."""
+    rc = load(d, "recipe.json")
+    m = load(d, "mesh.json")
+    parent = None
+    if rc.get("parent"):
+        pd = parent_dir(d, rc)
+        parent = lambda: (load(pd, "mesh.json"), open_sea_dir(pd))   # noqa: E731
+    return open_sea(m, _neighbours(m), parent)
 
 
 def regenerate(d, tmp):
@@ -1533,4 +1591,12 @@ def human_bars(d, rc, m, nb, feats, diff):
     else:
         out.append((13, "child keeps parent settlements and roads within 1 parent + 1 child spacing", True,
                     "n/a (not a child map)"))
+    # 14 ports only on open coast
+    sea = open_sea_dir(d)
+    ports = [s for s in sets if s.get("port")]
+    bad = [s["id"] for s in ports if not (0 <= s["cell"] < n) or not any(sea[q] for q in nb[s["cell"]])]
+    listed = sorted(rc.get("ports", []))
+    same = listed == sorted(s["id"] for s in ports)
+    out.append((14, "every port touches open sea (a lakeshore town is never a port)", not bad and same,
+                "%d ports, %d off open sea%s" % (len(ports), len(bad), "" if same else "; recipe ports differ")))
     return out

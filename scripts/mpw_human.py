@@ -633,6 +633,8 @@ def features(m, hum, stem, stem_names):
               "score": s["score"]}
         if "parent_id" in s:
             pr["parent_id"] = s["parent_id"]
+        if "port" in s:
+            pr["port"] = bool(s["port"])
         out.append({"type": "Feature", "properties": pr,
                     "geometry": {"type": "Point", "coordinates": to_geo(X[s["cell"]], Y[s["cell"]])}})
     for i, r in enumerate(hum["roads"]):
