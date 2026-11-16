@@ -77,7 +77,7 @@ Proof rules:
 
 - A sector is 32 hexes wide by 40 tall, 1280 hexes [9]. It divides into 16 subsectors lettered A to P [9]; each subsector is 8 by 10 hexes (implied by 32x40 / 4x4; the file-format page lists A-P but does not state 8x10) [9].
 - Each hex is addressed `XXYY`, column then row, starting at 0101 at top left [9].
-- Hexes are flat-topped in columns; odd and even columns are offset by half a hex. The direction of the offset must be fixed in code and tested (unverified which parity is shifted on travellermap.com; read it from the renderer's source before matching).
+- Hexes are flat-topped in columns; odd and even columns are offset by half a hex. The direction of the offset must be fixed in code and tested On travellermap.com odd-numbered columns (01, 03, ...) sit half a hex higher than even ones: `Astrometrics.cs` shifts even world-X columns up 0.5 and notes that numbered-hex parity is the opposite of world-X parity (https://github.com/inexorabletash/travellermap/blob/main/server/Astrometrics.cs, checked 2026-11-16).
 - Hex distance on offset columns: convert to cube coordinates first, then distance = max(|dx|, |dy|, |dz|) [10]. Red Blob Games' hex guide is the standard reference for offset, axial and cube conversions [10].
 
 ### 3.2 Text formats (travellermap.com file formats page) [9]
@@ -87,9 +87,9 @@ Proof rules:
 - T5 Column Delimited: fixed-width columns whose widths are defined by a dashed separator line under the header, UTF-8. Columns: Hex, Name, UWP, Remarks, {Ix}, (Ex), [Cx], N, B, Z, PBG, W, A, Stellar.
 - T5 Tab Delimited: tab-separated, UTF-8, with a header row. Columns: Hex, Name, UWP, Bases, Remarks, Zone, PBG, Allegiance, Stars, {Ix}, (Ex), [Cx], Nobility, W; optional Sector, SS, RU. Field order is not fixed, so a parser must read the header.
 
-Recommended for mapwright: write and read T5 Tab Delimited. It is the simplest to parse with `csv` (delimiter `\t`), carries a header, and is UTF-8. Metadata (sector name, subsector names, routes, borders) lives in a separate XML/MSEC metadata file in the Traveller Map ecosystem [9] (unverified detail; check the metadata docs before writing one).
+Recommended for mapwright: write and read T5 Tab Delimited. It is the simplest to parse with `csv` (delimiter `\t`), carries a header, and is UTF-8. Metadata (sector name, subsector names, routes, borders) lives in a separate XML/MSEC metadata file in the Traveller Map ecosystem [9]. Checked 2026-11-16 at https://travellermap.com/doc/metadata: the site has its own XML format and also reads plain-text MSEC files; elements cover subsector names, routes, borders, labels, regions, allegiances and stylesheets (the page does not list a sector-name element).
 
-UWP (Universal World Profile) is a code string like `A788899-C`: starport, size, atmosphere, hydrographics, population, government, law level, dash, tech level [11]. A generator that emits UWPs should emit valid digits per field (eHex 0-9, A-Z skipping I and O) [9][11] (unverified for the exact skipped letters).
+UWP (Universal World Profile) is a code string like `A788899-C`: starport, size, atmosphere, hydrographics, population, government, law level, dash, tech level [11]. A generator that emits UWPs should emit valid digits per field (eHex 0-9, A-Z skipping I and O) [9][11]. Traveller Map's eHex table skips I and O "to avoid confusion with 1 and 0"; X, Y, Z are 31-33 or reserved, and X is reserved for unknown values (https://travellermap.com/doc/secondsurvey, checked 2026-11-16).
 
 ### 3.3 Licensing of travellermap.com data
 
@@ -187,7 +187,7 @@ Proof rule: `deck-reachability`. Model each deck as a grid graph (floor cells, d
 
 ## 10. Megastructures and their inner surfaces
 
-- Spin gravity: a = omega^2 * r. For 1 g at r metres, omega = sqrt(9.81 / r) [31]. Comfort guidance from NASA's 1970s studies kept spin at or below about 1-2 rpm (unverified exact figure; studies cite up to 2 rpm) [31].
+- Spin gravity: a = omega^2 * r. For 1 g at r metres, omega = sqrt(9.81 / r) [31]. NASA SP-413 set 1 rpm as "the upper limit of permissible rotation rate for the principal living quarters", noting most people can adapt to about 3 rpm, and specified 0.9 g to 1 g for permanent residents (https://settlement.nss.org/75SummerStudy/Chapt3.html, checked 2026-11-16) [31].
 - O'Neill cylinder: two counter-rotating cylinders, the original design about 8 km in diameter and 32 km long, alternating land and window strips [32]. Map the inside as a rectangle: circumference by length. The unrolled rectangle is exact (a cylinder is developable), so no projection distortion [33].
 - Stanford torus: a ring of radius about 900 m [31]; same unrolling: the floor is a long strip, circumference by width.
 - Ringworld-scale rings: also developable as a strip; draw with a strongly anisotropic scale, or in segments.

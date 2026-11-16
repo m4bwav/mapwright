@@ -30,7 +30,7 @@ The family: place rectangular rooms, join them with corridors, then decorate. Co
 
 From `mklev.c` of NetHack 3.6.1 [NH]:
 
-- `makerooms()` keeps asking `rnd_rect()` for a free rectangle and puts a room in it until no rectangle is left or `MAXNROFROOMS` is reached (its value is 40, unverified).
+- `makerooms()` keeps asking `rnd_rect()` for a free rectangle and puts a room in it until no rectangle is left or `MAXNROFROOMS` is reached (40, "max number of rooms per level", NetHack 3.6 `include/global.h`; the loop is in `src/mklev.c`, https://github.com/NetHack/NetHack/blob/NetHack-3.6/include/global.h, checked 2026-11-16).
 - `sort_rooms()` orders rooms by left edge, so room index runs left to right.
 - `makecorridors()` joins in three passes: `join(a, a+1)` for neighbours in the sorted order (with a 1 in 50 chance to stop early after each join), then `join(a, a+2)` where the two are not yet connected, then any pair still not connected. Connection sets are tracked in `smeq`.
 - Then `rn2(nroom) + 4` extra corridors are dug with the `nxcor` flag. These may dead-end.
@@ -44,7 +44,7 @@ From `mklev.c` of NetHack 3.6.1 [NH]:
 - The `classic_gen`, `modified_gen` and `moria_gen` builders "divide the level into a grid of rectangular blocks where, in general, each block can only contain one room" [ANG].
 - Rooms come from room types in `list-rooms.h`, built by `build_*` functions in `gen-room.c`. Other profiles are built from cavern and labyrinth chunks [ANG].
 - Corridors: `do_traditional_tunneling()` joins the rooms, then `ensure_connectedness()` repairs what vault areas cut off [ANG].
-- Vaults are hand-drawn dangerous treasure rooms stored as text in `vault.txt`, picked by depth range and type (lesser, medium, greater) (unverified: seen only in search snippets of the 4.2 source and FAangband docs).
+- Vaults are hand-drawn dangerous treasure rooms stored as text in `vault.txt`, picked by depth range and type (lesser, medium, greater) (checked 2026-11-16 in Angband's `lib/gamedata/vault.txt`: types Lesser, Medium and Greater vault, each also in a "(new)" set, plus "Interesting room"; each entry carries `min-depth` and `max-depth`, https://github.com/angband/angband/blob/master/lib/gamedata/vault.txt).
 - Guarantee: a repair pass after the fact. Failure: tunnels that wander and cross.
 
 ### 1.4 Brogue: room accretion, loops, lakes, machines
