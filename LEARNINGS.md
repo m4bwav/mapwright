@@ -254,6 +254,27 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 - Evidence: T-20261115-7
 - Scope: skill
 
+### L-041 · 2026-11-15 · `system-hz-legend-undrawn`: schematic system view names a green habitable zone it does not draw
+- Trigger: Step E system seed 2077 (G9 V): legend says "green: habitable zone 0.88-1.56 AU", the schematic shows no green band, and no planet sits in the zone.
+- Hypothesis: the schematic uses equal spacing, so the zone has no x extent; the legend line is shared with the to-scale view.
+- Rule: open item: drop the legend line in the schematic or mark planets in the zone; pick a seed with a planet in the zone for a showcase.
+- Evidence: Step E note 2026-11-15
+- Scope: skill
+
+### L-040 · 2026-11-15 · `grid-map-title-ignored`: render --title did nothing on city, dungeon and battle maps
+- Trigger: `render DIR --title "The Sunken Vault"` still showed the generated name.
+- Hypothesis: cmd_render sent places kinds to mpw_places.render_svg without the title.
+- Rule: fixed in 0.10.1 (title replaces the recipe name in the label); space kinds now warn on stderr that --title is unused. The gen's map.png on grid maps is the unlabelled VTT image: render a labelled copy to another file.
+- Evidence: tests/test_places.py test_cli_gen_check_render
+- Scope: skill
+
+### L-039 · 2026-11-15 · `render-into-recipe-folder-breaks-determinism`: a render saved inside the recipe folder fails the byte-identical bar
+- Trigger: Step E: `render DIR -o DIR/map.png --style star-chart` then `check DIR` failed "same seed gives byte-identical files" on sector and system; world and region failed on map.svg after a restyled render overwrote the gen's file.
+- Hypothesis: space check compared the folder's file set both ways, so a file the gen never writes counted as a difference; world check compares the gen's own map.svg.
+- Rule: fixed in 0.10.1 for space kinds (only files the gen writes must exist and match; extras are ignored). Still: render showcase copies outside the recipe folder or under another name, never over map.svg/map.png.
+- Evidence: tests/test_space.py test_rendered_extra_file_does_not_fail_determinism
+- Scope: skill
+
 ### L-038 · 2026-11-15 · `road-cost-is-directed`: the road router charges the cell entered
 - Trigger: world paths cost 1225.07 one way and 1234.13 the other.
 - Hypothesis: `Router.step` multiplies by the terrain of the cell entered and adds a bridge only when entering a river, so the cost is directed even on flat ground.

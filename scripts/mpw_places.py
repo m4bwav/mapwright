@@ -1390,8 +1390,10 @@ def write_place(out, recipe, feats, names, gj, _):
         f.write(svg)
 
 
-def render_svg(d, style_name=None):
+def render_svg(d, style_name=None, title=None):
     rc = load(d, "recipe.json")
+    if title:
+        rc["name"] = title
     _, st = pstyle(style_name, rc["kind"])
     if rc["kind"] == "city":
         return render_city_svg(rc, load(d, "features.geojson")["features"], st)

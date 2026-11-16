@@ -1616,6 +1616,8 @@ def cmd_render(a):
     _need_recipe(a.dir)
     if _kind(a.dir) in SPACE:
         try:
+            if a.title:
+                print("mpw: --title is not used on %s maps yet; the recipe's name stays" % _kind(a.dir), file=sys.stderr)
             svg = _space().render_svg(a.dir, a.view)
             r.write_out(svg, a.out)
         except (ValueError, RuntimeError, OSError) as e:
@@ -1624,7 +1626,7 @@ def cmd_render(a):
         return
     if _kind(a.dir) in ("city", "dungeon", "battle"):
         try:
-            svg = _places().render_svg(a.dir, None if a.style == "topographic" else a.style)
+            svg = _places().render_svg(a.dir, None if a.style == "topographic" else a.style, a.title)
             r.write_out(svg, a.out)
         except (ValueError, RuntimeError, OSError) as e:
             die(str(e))
