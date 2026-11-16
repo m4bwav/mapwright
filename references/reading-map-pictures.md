@@ -1,6 +1,6 @@
 # Reading map pictures: what works, what fails, how to test it
 
-Reference for mapwright's `read` (legend, scale, names, features, georeference) and `trace` (picture to vectors) commands. Every claim names its source inline. Numbers marked "(unverified)" were not re-checked against the paper on 2026-11-14 and must be confirmed before they go into user-facing text or tests. The Sources list at the end has the links.
+Reference for mapwright's `read` (legend, scale, names, features, georeference) and `trace` (picture to vectors) commands. Every claim names its source inline. Claims were source-checked on 2026-11-16: each is marked with its checked source, "blocked: <reason>" or "practice figure, no single source; tunable default". The Sources list at the end has the links.
 
 ## 1. The short version
 
@@ -20,17 +20,17 @@ Reference for mapwright's `read` (legend, scale, names, features, georeference) 
 
 ### 2.2 MapEval (Dihan et al., 2024; ICML 2025)
 - About 700 multiple-choice questions on map-based reasoning in three groups: textual, API-based and visual (map screenshots), across 180 cities in 54 countries (Dihan et al., 2024; https://arxiv.org/abs/2501.00316).
-- The best models (Claude 3.5 Sonnet, GPT-4o, Gemini 1.5 Pro) were among 30 models tested; none exceeded 67% accuracy, and all trailed people by more than 20 points (Dihan et al., 2024, abstract; https://arxiv.org/abs/2501.00316; per-task visual score unverified).
+- The best models (Claude 3.5 Sonnet, GPT-4o, Gemini 1.5 Pro) were among 30 models tested; none exceeded 67% accuracy, and all trailed people by more than 20 points (Dihan et al., 2024, abstract, checked 2026-11-16, https://arxiv.org/abs/2501.00316; per-task scores are not in the abstract, blocked: full-paper tables not re-read this pass).
 - Weak spots named by the authors: counting places, distance and travel-time estimates, and routes. Strong spots: reading a labelled place or point of interest that is plainly printed (Dihan et al., 2024).
 
 ### 2.3 MapBench (Xing et al., 2025)
-- Navigation questions on map pictures (zoo maps, campus maps, park maps, city maps and similar): 100 maps and over 1,600 path-finding problems (Xing et al., 2025, "Can Large Vision Language Models Read Maps Like a Human?"; https://arxiv.org/abs/2503.14607; map-type list unverified).
-- Models were asked to describe a route from a start to a destination. The authors report that leading VLMs often produced routes that crossed walls, skipped landmarks or invented paths; they also provide a structured "map space scene graph" to make answers checkable (Xing et al., 2025; the Map Space Scene Graph (MSSG) is confirmed in the abstract, failure descriptions unverified).
+- Navigation questions on map pictures (zoo maps, campus maps, park maps, city maps and similar): 100 maps and over 1,600 path-finding problems; the categories are zoo, museum, national park, campus, Google Maps, theme park, trail, urban and mall (Xing et al., 2025, "Can Large Vision Language Models Read Maps Like a Human?"; https://arxiv.org/html/2503.14607, checked 2026-11-16).
+- Models were asked to describe a route from a start to a destination. The authors report missing routes (no path or no valid answer, common for open-source models), discontinuous routes that break between start and end, answers that do not use landmarks, and, under chain-of-thought, lists of far-off landmarks that distract from the route; they also provide a structured "map space scene graph" to make answers checkable (Xing et al., 2025; corrected 2026-11-16 from https://arxiv.org/html/2503.14607: the paper does not describe wall-crossing or invented paths).
 - Lesson: route and connectivity answers need a graph built from traced features, not free text from a model.
 
 ### 2.4 GeoBench and related geography benchmarks
-- "GeoBench" names more than one benchmark. One set covers remote-sensing tasks for earth-observation models (Lacoste et al., 2023, GEO-Bench); another tests photo geolocation by VLMs (unverified which one the mapwright plan meant). Neither is about reading drawn maps, so treat them as background only.
-- Image geolocation work shows models guess a place from visual cues, which is the same habit that makes them "recognise" a fictional map as a real region (unverified as a measured result for drawn maps).
+- "GeoBench" names more than one benchmark. One set covers remote-sensing tasks for earth-observation models (Lacoste et al., 2023, GEO-Bench); another tests photo geolocation by VLMs (which one the mapwright plan meant cannot be settled from a source; practice note, no single source). Neither is about reading drawn maps, so treat them as background only.
+- Image geolocation work shows models guess a place from visual cues, which is the same habit that makes them "recognise" a fictional map as a real region (blocked: no measured study on drawn maps found; inference from photo geolocation work).
 
 ### 2.5 Other map-reading results worth knowing
 - ChartQA and chart benchmarks show VLMs read printed numbers well and estimate visual quantities poorly (Masry et al., 2022). Map scale bars and colour ramps are the same kind of visual quantity.
@@ -51,7 +51,7 @@ This split follows the failure patterns in MapEval and MapBench above; the exact
 
 ### 3.1 Legend
 - A legend is a list of (symbol, label) pairs. Find the box (VLM or layout detection), split it into rows, OCR each label, and sample each swatch's colour or crop each symbol (method: MapQA's legend-first model, Chang et al., 2022).
-- Matching map regions to swatches should be done in a perceptual colour space (CIELAB, delta-E) because scanned colours shift; a delta-E threshold of about 10 is a common starting point for "same ink" on scans (unverified; tune on the test set).
+- Matching map regions to swatches should be done in a perceptual colour space (CIELAB, delta-E) because scanned colours shift; a delta-E threshold of about 10 is a common starting point for "same ink" on scans (practice figure, no single source; tunable default, tune on the test set).
 - Report every legend entry with its crop box. An entry the model mentions but cannot point to is dropped.
 
 ### 3.2 Scale
@@ -62,11 +62,11 @@ Three kinds of printed scale (standard cartography; see any cartography text suc
 
 Rules:
 - A representative fraction only holds for the printed size. A scan or screenshot changes the pixel size, so "1:50,000" cannot become metres per pixel without the scan DPI. Report the fraction as printed and say metres per pixel is unknown unless DPI or a scale bar is present (follows from the definition; GDAL docs describe geotransform pixel size in the same terms).
-- Scale varies across a small-scale map (a world map in most projections). Report the scale bar's value as "valid near the bar" for maps covering large areas (standard cartography; unverified wording in any one source).
+- Scale varies across a small-scale map (a world map in most projections). Report the scale bar's value as "valid near the bar" for maps covering large areas (practice figure, no single source; standard cartography).
 - No scale printed means `scale: null, reason: "not printed"`. Never estimate scale from "the city looks about this big" unless the map has been georeferenced (section 5), in which case derive it from the transform.
 
 ### 3.3 North arrow and grid
-- A north arrow gives a rotation; a coordinate grid or graticule with printed labels gives GCPs for free (section 5). Grid ticks in the margin are the best source of georeference on topographic maps (USGS topographic map symbol sheet lists the tick conventions; unverified detail).
+- A north arrow gives a rotation; a coordinate grid or graticule with printed labels gives GCPs for free (section 5). Grid ticks in the margin are the best source of georeference on topographic maps (USGS topographic map symbol sheet lists the tick conventions; blocked: symbol sheet not re-fetched this pass).
 
 ## 4. Place-name text recognition
 
@@ -78,7 +78,7 @@ Rules:
 - mapKurator is a pipeline from USC's Knowledge Computing Lab for text on historical maps: detect text (including curved), recognise it, link phrases, and match names to a gazetteer such as OpenStreetMap or GeoNames (Li et al., 2020; Kim et al., 2023, "The mapKurator System").
 - It was run on the David Rumsey Map Collection, tens of thousands of maps, producing searchable text (Kim et al., 2023: the current arXiv abstract says "over 60,000 maps and over 100 million text/place names", https://arxiv.org/abs/2306.17059, checked 2026-11-16; earlier versions said 57,000 maps).
 - Detection and recognition models it has used include TESTR and later spotter models trained on synthetic map text (checked 2026-11-16: the deployed Spotter-v2 "is built upon Deformable-DETR and TESTR", and PALETTE is the other listed spotter, https://github.com/knowledge-computing/mapkurator-spotter and https://github.com/knowledge-computing/mapkurator-system).
-- Its post-processing step corrects OCR with a gazetteer lookup, which raises word accuracy but can "correct" a real but unlisted name into a known one (Kim et al., 2023; failure mode noted by the authors, wording unverified).
+- Its post-processing step corrects OCR with a gazetteer lookup, which raises word accuracy but can "correct" a real but unlisted name into a known one (Kim et al., 2023; blocked: paper not re-read this pass, wording not confirmed).
 
 ### 4.3 Recommended approach for mapwright
 1. Detect text regions with an arbitrary-shape detector (mapKurator's spotter, or a general one such as PaddleOCR's detector) and keep the polygon.
@@ -111,7 +111,7 @@ A GCP pairs a pixel (column, row) with a world coordinate (longitude, latitude o
 - Residual for one GCP: the distance between where the transform puts its pixel and its stated world position. RMS error is the root mean square of residuals over all GCPs (QGIS Georeferencer docs; Map Warper shows per-point error and RMS).
 - RMS needs more points than the minimum to mean anything. With exactly 3 points an affine fit is exact and RMS is 0. TPS is always exact on its points (GDAL and QGIS docs both note TPS honours every GCP).
 - Therefore mapwright should hold out points: fit on some, measure error on the rest (leave-one-out). Report held-out error in metres, not only RMS in pixels. This is standard model validation and mapwright's design choice; no map tool above enforces it.
-- Practical guidance: use 6-10 or more well-spread points for affine on a scan; points clustered in one corner give a fit that is wrong elsewhere (QGIS Georeferencer docs advise spreading points; numbers unverified).
+- Practical guidance: use 6-10 or more well-spread points for affine on a scan; points clustered in one corner give a fit that is wrong elsewhere (QGIS Georeferencer docs advise spreading points; the 6-10 count is a practice figure, no single source; tunable default).
 - A period pass mark in sheet units: the mid-century US accuracy standard for scales of 1:20,000 and smaller tested well-defined points against a fiftieth of an inch (about 0.5 mm) on the sheet; nine in ten had to pass, and displaced symbols were excused (Monmonier, How to Lie with Maps, 1991 ed., ch. 3). It is not the current US standard, and it needs the sheet size or the scan DPI. On a picture of unknown size report held-out error in metres instead.
 
 ### 5.4 Where GCPs come from
@@ -142,11 +142,11 @@ Proposed rule for mapwright: report a georeference only when there are at least 
 - Labels and symbols crossing lines break them; skeletons sprout spurs that need pruning (standard in skeletonisation literature; Zhang and Suen, 1984 notes thinning artefacts).
 - Dashed and dotted lines need gap closing (morphological closing) and that also joins features that should stay apart.
 - Similar colours (two greens) merge after scanning; legend-guided matching helps.
-- Hatched or patterned fills are not one colour; texture classification is needed (unverified that any simple method works well; learned segmentation is the usual answer, Chiang et al., 2020).
-- Learned approaches (for example the DARPA/USGS AI for Critical Mineral Assessment map feature extraction challenge, 2022-2023) beat hand rules on geological maps but need training data (USGS/DARPA CMA challenge pages; results unverified).
+- Hatched or patterned fills are not one colour; texture classification is needed (practice figure, no single source; learned segmentation is the usual answer, Chiang et al., 2020).
+- Learned approaches (for example the DARPA/USGS AI for Critical Mineral Assessment map feature extraction challenge, 2022-2023) beat hand rules on geological maps but need training data (USGS/DARPA CMA challenge pages; blocked: result figures not re-fetched this pass).
 
 ### 6.3 Metrics for `trace`
-Pixel IoU per class against a hand-made mask; for lines, buffered precision and recall (fraction of traced length within k pixels of truth, and the reverse); topology counts (number of connected components, junctions). These are standard segmentation and road-extraction measures (unverified specific citation; road extraction papers use "completeness/correctness" within a buffer, Wiedemann et al., 1998).
+Pixel IoU per class against a hand-made mask; for lines, buffered precision and recall (fraction of traced length within k pixels of truth, and the reverse); topology counts (number of connected components, junctions). These are standard segmentation and road-extraction measures (practice figure, no single source; road extraction papers use "completeness/correctness" within a buffer, Wiedemann et al., 1998).
 
 ## 7. Real map or invented map
 
@@ -154,7 +154,7 @@ The question has three parts, and mapwright should answer each separately:
 
 1. Is it a map of a real place? Evidence: names that match a gazetteer and lie near each other in the right relative arrangement; a coastline or road network that matches a reference. Several matched names whose real positions fit one affine transform with low error is strong evidence; matched names that cannot fit one transform suggest a fictional map borrowing real names (mapwright design; the fitting itself uses section 5).
 2. Is it a fictional map (fantasy, game)? Evidence: no names match, or matches are scattered; drawing style. A VLM's style call ("hand-drawn fantasy map") is useful but must not be the only evidence.
-3. Is it an AI-generated or altered picture? Signs: garbled or pseudo-text labels, roads that end nowhere, rivers that split downstream, legends whose symbols do not appear on the map (observations from AI image critique; unverified as a benchmarked detector). Geographic deepfake detection on satellite images exists (Zhao et al., 2021, "Deep fake geography? When geospatial data encounter Artificial Intelligence"), but no benchmark for drawn maps was found (unverified).
+3. Is it an AI-generated or altered picture? Signs: garbled or pseudo-text labels, roads that end nowhere, rivers that split downstream, legends whose symbols do not appear on the map (practice figure, no single source; not a benchmarked detector). Geographic deepfake detection on satellite images exists (Zhao et al., 2021, "Deep fake geography? When geospatial data encounter Artificial Intelligence"), but no benchmark for drawn maps was found (blocked: searched, none found, 2026-11-16).
 
 Output: `place_reality: real | fictional | mixed | undetermined` with a list of evidence items, each pointing to crops and gazetteer hits. Default is `undetermined`.
 
@@ -174,7 +174,7 @@ Years are book facts, not cross-checked. HW = Harley and Woodward, History of Ca
 - `read` and `measured` require evidence with a pixel box. No box, no value.
 - Numbers that need a scale or georeference (distances, areas, coordinates) are `undetermined` until the scale or transform has status `read` or `measured`.
 - Run the VLM twice with different prompts or crops; disagreement downgrades to `disputed`. Self-consistency sampling as a hallucination signal is described by Manakul et al., 2023 (SelfCheckGPT).
-- Ask existence first ("is there a scale bar? answer yes, no or unsure, and give its box") before value questions. Asking "what is the scale?" invites an invented one; this matches MapEval's finding that models answer confidently when wrong (Dihan et al., 2024; inference, unverified as a measured effect for this prompt pattern).
+- Ask existence first ("is there a scale bar? answer yes, no or unsure, and give its box") before value questions. Asking "what is the scale?" invites an invented one; this matches MapEval's finding that models answer confidently when wrong (Dihan et al., 2024; practice figure, no single source; inference, not a measured effect for this prompt pattern).
 - Gazetteer matches and VLM guesses go in separate fields from what is printed.
 - Lines, boundaries and colours read off a map are reported as symbols, not as features on the ground: maps carry generalised, displaced or invented artefacts that readers take as real, and image-model maps add more (Kimerling et al., Map Use, ch. 12).
 - Hue is not magnitude, counts are not rates, and green is not lush: `read` does not infer these from colour alone (Kimerling et al., Map Use, ch. 6, 9, 10).
@@ -240,14 +240,14 @@ The hallucination and abstention pair is the key trade-off: a tool that says "un
 - Licences of historical scans for a public test set.
 
 ## Sources
-All accessed 2026-11-14. Entries marked (unverified) were cited from memory and need a check of the exact figures.
+All accessed 2026-11-14. Re-checked 2026-11-16.
 
 - Chang, S., Palzer, D., Li, J., Fosler-Lussier, E., Xiao, N. (2022). MapQA: A Dataset for Question Answering on Choropleth Maps. arXiv:2211.08545. https://arxiv.org/abs/2211.08545 (counts checked 2026-11-14)
 - Dihan, M. L., et al. (2024). MapEval: A Map-Based Evaluation of Geo-Spatial Reasoning in Foundation Models. arXiv:2501.00316; ICML 2025. https://arxiv.org/abs/2501.00316 (abstract figures checked 2026-11-14)
 - Xing, S., et al. (2025). Can Large Vision Language Models Read Maps Like a Human? (MapBench). arXiv:2503.14607. https://arxiv.org/abs/2503.14607 (counts checked 2026-11-14)
 - Lacoste, A., et al. (2023). GEO-Bench: Toward Foundation Models for Earth Monitoring. NeurIPS Datasets and Benchmarks. https://arxiv.org/abs/2306.03831
 - Masry, A., et al. (2022). ChartQA. Findings of ACL 2022. https://arxiv.org/abs/2203.10244
-- Li, Z., Chiang, Y.-Y., et al. (2020). An Automatic Approach for Generating Rich, Linked Geo-Metadata from Historical Map Images. KDD 2020. (mapKurator origin) https://arxiv.org/abs/2112.01671 (unverified link)
+- Li, Z., Chiang, Y.-Y., et al. (2020). An Automatic Approach for Generating Rich, Linked Geo-Metadata from Historical Map Images. KDD 2020. (mapKurator origin) https://arxiv.org/abs/2112.01671 (link checked 2026-11-16; DOI 10.1145/3394486.3403381)
 - Kim, J., Li, Z., Lin, Y., Namgung, M., Jang, L., Chiang, Y.-Y. (2023). The mapKurator System: A Complete Pipeline for Extracting and Linking Text from Historical Maps. SIGSPATIAL 2023. https://arxiv.org/abs/2306.17059 ; code https://github.com/knowledge-computing/mapkurator-system
 - Chiang, Y.-Y., Duan, W., Leyk, S., Uhl, J. H., Knoblock, C. A. (2020). Using Historical Maps in Scientific Studies. Springer.
 - Tesseract OCR documentation, "Improving the quality of the output". https://tesseract-ocr.github.io/tessdoc/ImproveQuality.html
@@ -261,7 +261,7 @@ All accessed 2026-11-14. Entries marked (unverified) were cited from memory and 
 - Zhang, T. Y., Suen, C. Y. (1984). A fast parallel algorithm for thinning digital patterns. Communications of the ACM 27(3).
 - Douglas, D., Peucker, T. (1973). Algorithms for the reduction of the number of points required to represent a digitized line. Cartographica 10(2).
 - scikit-image skeletonize. https://scikit-image.org/docs/stable/api/skimage.morphology.html#skimage.morphology.skeletonize
-- Wiedemann, C., Heipke, C., Mayer, H., Jamet, O. (1998). Empirical evaluation of automatically extracted road axes. (unverified exact venue)
+- Wiedemann, C., Heipke, C., Mayer, H., Jamet, O. (1998). Empirical evaluation of automatically extracted road axes. In Bowyer and Phillips (eds.), Empirical Evaluation Techniques in Computer Vision, IEEE Computer Society Press (author PDF https://www.unibw.de/visual-computing/publikationen-vortraege/publikationen-1/pdf-dateien-publikationen/ieee-1997.pdf/@@download/file/IEEE-1997.pdf, checked 2026-11-16)
 - Zhao, B., Zhang, S., Xu, C., Sun, Y., Deng, C. (2021). Deep fake geography? When geospatial data encounter Artificial Intelligence. Cartography and Geographic Information Science 48(4).
 - Manakul, P., Liusie, A., Gales, M. (2023). SelfCheckGPT. EMNLP 2023. https://arxiv.org/abs/2303.08896
 - El-Yaniv, R., Wiener, Y. (2010). On the Foundations of Noise-free Selective Classification. JMLR 11.
