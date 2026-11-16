@@ -8,6 +8,13 @@ Entry shape: `### T-YYYYMMDD-n · date · harness · env · passed/total`, then 
 
 ## Runs
 
+### T-20261116-3 · 2026-11-16 · skill evals, `python evals/run.py` (`claude -p --plugin-dir`, sonnet, other installed plugins present) · Windows · 38/38 runs passed
+- L-042 description edit (find phrase names OpenStreetMap or Overpass data with its licence; example 'which projection for a world map' swapped for 'find OpenStreetMap data for this area and its licence'; 'projects points' dropped from the list): trigger-find-place 3/3, then decoys 4/4 not fired (one run each).
+- Body trim (SKILL.md 24,508 -> 8,748 bytes; per-verb detail moved verbatim to references/cli-read-write.md, cli-find.md, cli-generate.md, cli-render.md, cli-export.md), then the whole suite with each case's run count: triggers 8/8 at 3 of 3 (find-place 3/3 again, so 6/6 after the edit); decoys 4/4 at 0 of 3 (evergreen-map, chartwright, polywright-capture, pixelwright fired or nothing); action-gen-dungeon evidence exit 0; action-export-vtt evidence exit 0.
+- Each run in a fresh temp folder with copies of scripts/ and tests/fixtures/. Trigger runs capped at 3 turns. Unittest: 220 pass, 2 skip.
+- not covered: interactive loop, second OS, repeated action runs, whether the moved detail is read when needed (actions passed, so the pointers held for dungeon and dd2vtt).
+- led to: L-042 closed
+
 ### T-20261116-2 · 2026-11-16 · skill evals, `claude -p --plugin-dir` (sonnet, other installed plugins present) · Windows · 13/14 passed (one run per case)
 - Triggers 7/8: read-gpx, write-kml, fantasy gen, sci-fi sector, deck plan, path, export fired mapwright. trigger-find-place missed (no skill; answered the OSM licence from memory and offered Overpass); two reruns: 1 hit, 1 miss, so 1 of 3 (L-042).
 - Decoys 4/4: codemap (evergreen-map), choropleth (none), 3D place (polywright-capture), pixel tiles (pixelwright + comfyui-gen).
