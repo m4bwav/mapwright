@@ -1,0 +1,42 @@
+{
+  "askwright": 1,
+  "rev": 3,
+  "answers": {
+    "life-like": {
+      "choice": "keep",
+      "note": "",
+      "attachments": [],
+      "timecodes": [],
+      "guess_revealed": false,
+      "guess_revealed_before_pick": false,
+      "q_rev": 1,
+      "rev": 1,
+      "updated": "2026-11-16T07:08:13-06:00",
+      "state": "answered"
+    },
+    "fantasy": {
+      "choice": "keep",
+      "note": "",
+      "attachments": [],
+      "timecodes": [],
+      "guess_revealed": false,
+      "guess_revealed_before_pick": false,
+      "q_rev": 1,
+      "rev": 2,
+      "updated": "2026-11-16T07:08:23-06:00",
+      "state": "answered"
+    },
+    "sci-fi": {
+      "choice": "keep",
+      "note": "",
+      "attachments": [],
+      "timecodes": [],
+      "guess_revealed": false,
+      "guess_revealed_before_pick": false,
+      "q_rev": 1,
+      "rev": 3,
+      "updated": "2026-11-16T07:08:27-06:00",
+      "state": "answered"
+    }
+  }
+}

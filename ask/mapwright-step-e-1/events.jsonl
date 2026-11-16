@@ -1,2 +1,6 @@
 {"t": "2026-11-15T23:21:15-06:00", "type": "added", "q": ["life-like", "fantasy", "sci-fi"]}
 {"t": "2026-11-15T23:21:16-06:00", "type": "serve", "port": 47631, "pid": 14276}
+{"t": "2026-11-16T07:07:53-06:00", "type": "visit"}
+{"t": "2026-11-16T07:08:13-06:00", "type": "answer", "q": "life-like", "state": "answered", "rev": 1}
+{"t": "2026-11-16T07:08:23-06:00", "type": "answer", "q": "fantasy", "state": "answered", "rev": 2}
+{"t": "2026-11-16T07:08:27-06:00", "type": "answer", "q": "sci-fi", "state": "answered", "rev": 3}
