@@ -20,6 +20,13 @@ Entry shape: `### T-YYYYMMDD-n · date · harness · env · passed/total`, then 
 - First full check sweep (200 seeds, 48x36, exit chance 0.55): every bar passed except OCR, skipped without tesseract.
 - `check --range blocks` before the path restart: path over diagonal minimum 0.767 (46 steps, under the 48-step bar).
 - led to: L-052, L-053, L-054
+### T-20261116-13 · 2026-11-16 · before/after output comparison for the port flag (seed 7, 1600 cells, raster 64) · Windows, Python 3.14 · identical apart from the new field
+- map.svg, mesh.json, names.json, heights.png, heights.pgw, sources.json byte-identical; features.geojson and recipe.json equal once `port` and `ports` are removed. 39 of 48 settlements are ports on this small map.
+- led to: L-057
+
+### T-20261116-12 · 2026-11-16 · pytest (python -m pytest -q) after row 21, ports only on open coast · Windows, Python 3.14 · 244 passed, 2 skipped (live) in 81 s
+- New tests/test_ports.py (5): enclosed sea is not open; child with no border sea inherits the parent's mask (and stays closed when the parent says enclosed); every world and child settlement's port flag equals "touches open sea", lakeshore-only towns are never ports, recipe `ports` matches; bar 14 passes on world and child and fails when an inland town is flagged; same seed byte-identical. Bar counts in test_mpw.py moved 13 to 14 and 16 to 17.
+- led to: L-055, L-056
 
 ### T-20261116-9 · 2026-11-16 · unittest (tests/) + grandchild sweep after the edge-outlet fix · Windows, Python 3.14 · 238/238 passed, 2 skipped (live) in 78 s
 - New tests: hydrology drains a no-sea valley to its outlet and ignores outlets when sea exists; a seed 2 all-land grandchild has border outlets, rivers, and passes every bar with determinism; bar 7 says "too arid to judge" when the floor is raised.

@@ -6,6 +6,27 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 
 ## Active
 
+### L-055 · 2026-11-16 · `ocean-is-not-open-sea`: mesh `ocean` marks every cell below sea level, not only sea joined to the border
+- Trigger: row 21 (ports only on open coast) needed "touches the sea"; `ocean[c]` is `h < 0`, which also holds for a pocket below the waterline surrounded by land.
+- Hypothesis: hydrology treats every below-zero cell as sea, so a coast test on `ocean` alone would call an enclosed pocket a coast.
+- Rule: use `mpw_gen.open_sea(m, nb, parent)` (flood from border sea cells through sea cells) for anything that means navigable coast; keep `ocean` for drainage.
+- Evidence: tests/test_ports.py test_enclosed_sea_is_not_open; T-20261116-12
+- Scope: skill
+
+### L-056 · 2026-11-16 · `child-open-sea-from-parent`: a zoom window with no sea on its border cannot find open sea by itself
+- Trigger: a child window that shows only an inner bay floods from no seed, so every bay town would lose its port flag.
+- Hypothesis: open sea is a property of the whole world, and the window only sees part of it.
+- Rule: when the child border has no sea, seed the flood with child sea cells whose nearest parent cell is open sea; the parent's mask comes from `open_sea_dir(parent)`, recursively, and is loaded only when needed.
+- Evidence: tests/test_ports.py test_child_without_border_sea_inherits_parent; T-20261116-12
+- Scope: skill
+
+### L-057 · 2026-11-16 · `port-flag-adds-fields-only`: the port flag changed features.geojson and recipe.json by the new field alone
+- Trigger: row 21 had to keep seeded output identical apart from the new field.
+- Hypothesis: the flag is computed after settlements are picked and does not feed site scores, so placement, roads, names and map.svg do not move.
+- Rule: keep derived flags out of scoring when a change must leave seeded maps in place; check by generating before and after and stripping the new keys.
+- Evidence: seed 7, 1600 cells: map.svg, mesh.json, names.json, heights.png byte-identical; features and recipe equal after removing `port` and `ports`; T-20261116-13
+- Scope: skill
+
 ### L-047 · 2026-11-16 · `landlocked-window-drains-at-edge`: a window with no sea drains through the edge cells where the parent's flow leaves it
 - Trigger: L-009; grandchild g2_0 (seed 2) failed bar 1 on all 60 river cells; all-land g1_0 and g1_1 passed only with 0 rivers.
 - Hypothesis: Priority-Flood seeded only from sea, so with no sea every cell kept its raw height and water had no outlet.

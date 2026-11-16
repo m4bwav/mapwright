@@ -65,7 +65,7 @@ New rows from later research go under the command they belong to, or in a new se
 
 | # | Command | What it would do | Numbers | Source | Script | Size |
 |---|---|---|---|---|---|---|
-| 21 | `gen world`, `check` | Ports only on open coast. Start every cell as land, mark the map border as sea, flood inward through sea cells; water reached this way is open sea, and land next to it is true coast. A settlement flagged as a port must touch it; a lakeshore town is never a port. Today no settlement carries a port flag. A child window with no sea on its border needs its parent's open-sea mask | No number | KL ch. 8, sec. 3.3.1 (R10) | scripts/mpw_gen.py (sea flood), scripts/mpw_human.py (settlement flag) | small |
+| 21 | **Built (branch s20-ports).** `gen world`, `check` | Ports only on open coast. Start every cell as land, mark the map border as sea, flood inward through sea cells; water reached this way is open sea, and land next to it is true coast. A settlement flagged as a port must touch it; a lakeshore town is never a port. Today no settlement carries a port flag. A child window with no sea on its border needs its parent's open-sea mask | No number | KL ch. 8, sec. 3.3.1 (R10) | scripts/mpw_gen.py (sea flood), scripts/mpw_human.py (settlement flag) | small |
 | 22 | `measure` or a route export | Itinerary: a route as a list of stages with the distance of each and a total, in the world's own unit. Bar: the total equals the sum of the stages (ancient lists did not always agree) | Pace preset, upper figure: about fifty Roman miles (74 km) a day for relay couriers. Book fact, not cross-checked | HW ch. 14 (H16) | scripts/mpw_human.py (roads), scripts/mpw.py | small |
 
 ## Flagged candidates that got no row
