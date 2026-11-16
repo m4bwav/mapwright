@@ -1,7 +1,7 @@
 === python scripts/mpw.py --version
-0.10.0
+0.11.0
 === python scripts/mpw.py doctor
-mapwright 0.10.0
+mapwright 0.11.0
 python        3.14.6 ok
 sqlite        3.50.4
 browser       C:\Program Files\Google\Chrome\Application\chrome.exe
@@ -26,9 +26,12 @@ geojson
 hachures
 heightmap
 hillshade
+jump-point-search
+keys-and-locks
 laea
 mercator
 mollweide
+nav-export
 priority-flood
 rhumb-line
 robinson
@@ -308,14 +311,14 @@ lon=174.7819664  lat=-41.30844609
  }
 }
 === python scripts/mpw.py gen world --seed 7 --style nordic --out isles.map
-wrote isles.map: 15876 cells, 48 rivers, 22 lakes, 81 settlements, 94 roads, 162 names in 1.21 s
+wrote isles.map: 15876 cells, 48 rivers, 22 lakes, 81 settlements, 94 roads, 162 names in 1.90 s
 === python scripts/mpw.py gen world --seed 7 --style nordic --out isles2.map
-wrote isles2.map: 15876 cells, 48 rivers, 22 lakes, 81 settlements, 94 roads, 162 names in 1.20 s
+wrote isles2.map: 15876 cells, 48 rivers, 22 lakes, 81 settlements, 94 roads, 162 names in 1.90 s
 === cmp isles.map/features.geojson isles2.map/features.geojson
 === python scripts/mpw.py zoom isles.map --out isles-south.map
-wrote isles-south.map: 16002 cells, 8 rivers, 3 lakes, 21 settlements, 27 roads, 37 names in 0.99 s
+wrote isles-south.map: 16002 cells, 8 rivers, 3 lakes, 21 settlements, 27 roads, 37 names in 1.46 s
 === python scripts/mpw.py gen region --parent isles.map --window 100,100,400,350 --cells 8000 --out isles-west.map
-wrote isles-west.map: 8036 cells, 32 rivers, 21 lakes, 31 settlements, 33 roads, 88 names in 0.76 s
+wrote isles-west.map: 8036 cells, 32 rivers, 21 lakes, 31 settlements, 33 roads, 88 names in 1.30 s
 === python scripts/mpw.py check isles-south.map
 bar 1 PASS: every river runs downhill to the sea or through a lake to it (42 river cells, 0 failures)
 bar 2 PASS: no river splits outside a marked delta (0 splits, 0 rivers that stop on land, 0 marked deltas)
@@ -384,11 +387,11 @@ topographic        hypsometric tints, hillshade, depth-tinted sea
  "paper": "#e2d0a0"
 }
 === python scripts/mpw.py render isles.map -o isles.svg --style atlas
-wrote isles.svg: style atlas, 78 labels (62 dropped), 21 legend entries, 0.61 s
+wrote isles.svg: style atlas, 78 labels (62 dropped), 21 legend entries, 0.87 s
 === python scripts/mpw.py render isles.map -o isles.png --style ink-and-parchment
-wrote isles.png: style ink-and-parchment, 83 labels (57 dropped), 10 legend entries, 0.61 s
+wrote isles.png: style ink-and-parchment, 83 labels (57 dropped), 10 legend entries, 0.80 s
 === python scripts/mpw.py render isles.map -o isles.pdf --style blueprint --title The Isles
-wrote isles.pdf: style blueprint, 83 labels (57 dropped), 10 legend entries, 0.61 s
+wrote isles.pdf: style blueprint, 83 labels (57 dropped), 10 legend entries, 0.82 s
 === python scripts/mpw.py label isles.map
 82 labels placed, 58 dropped (no free spot)
 PASS: labels: none overlap (82 labels, 0 overlapping pairs)
@@ -438,7 +441,7 @@ wrote pick.png: 3 maps
 === python scripts/mpw.py sheet isles.map --seeds 1,2,3,4 --cols 2 -o seeds.svg
 wrote seeds.svg: 4 maps
 === python scripts/mpw.py render isles.map -o isles-atlas.png --style atlas
-wrote isles-atlas.png: style atlas, 78 labels (62 dropped), 21 legend entries, 0.60 s
+wrote isles-atlas.png: style atlas, 78 labels (62 dropped), 21 legend entries, 0.83 s
 === python scripts/mpw.py trace isles-atlas.png --class water --min-area 50 -o water.geojson
 {"source": "isles-atlas.png", "width": 1000, "height": 1000, "mode": "polygons", "class": "water", "epsilon_px": 1.0, "coordinates": "pixel", "mask_share": 0.5341, "features": 37, "out": "water.geojson"}
 === python scripts/mpw.py inspect water.geojson
@@ -449,7 +452,7 @@ extent          [1, 1, 999, 999]
 crs             WGS84 lon/lat (RFC 7946)
 properties      ["area_px", "class", "holes"]
 === python scripts/mpw.py gen city --seed 4 --out town.map
-wrote town.map: Ewakake, 114 streets, 49 blocks, 1047 lots, 15 districts, 5 gates, 0 bridges in 0.14 s
+wrote town.map: Ewakake, 114 streets, 49 blocks, 1047 lots, 15 districts, 5 gates, 0 bridges in 0.20 s
 === python scripts/mpw.py check town.map
 bar 1 PASS: city: every street reachable from the market (364 of 364 street nodes reached)
 bar 2 PASS: city: every block fronts a reached street (49 blocks, 0 without a reached street edge)
@@ -461,7 +464,7 @@ bar 7 PASS: labels: none overlap (16 labels, 0 overlapping pairs)
 bar 8 PASS: labels: none cut by the edge (0 cut)
 bar 9 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
 === python scripts/mpw.py gen dungeon --seed 3 --method bsp --out crypt.map
-wrote crypt.map: Koda, 48x36 square squares at 70 px, 14 rooms, 19 doors, 96 wall runs, 14 lights in 0.07 s
+wrote crypt.map: Koda, 48x36 square squares at 70 px, 14 rooms, 19 doors, 96 wall runs, 14 lights in 0.09 s
 === python scripts/mpw.py check crypt.map
 bar 1 PASS: dungeon: every floor square reachable from the entrance (854 of 854 passable squares reached)
 bar 2 PASS: dungeon: every room reached, none overlap (14 rooms, 0 unreached, 0 overlapping pairs)
@@ -481,9 +484,9 @@ bar 15 PASS: labels: none overlap (15 labels, 0 overlapping pairs)
 bar 16 PASS: labels: none cut by the edge (0 cut)
 bar 17 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
 === python scripts/mpw.py gen dungeon --seed 3 --method cave --out cave.map
-wrote cave.map: Koda, 48x36 square squares at 70 px, 0 rooms, 0 doors, 174 wall runs, 9 lights in 0.07 s
+wrote cave.map: Koda, 48x36 square squares at 70 px, 0 rooms, 0 doors, 174 wall runs, 9 lights in 0.09 s
 === python scripts/mpw.py gen dungeon --seed 3 --method cyclic --out keep.map
-wrote keep.map: Koda, 48x36 square squares at 70 px, 20 rooms, 24 doors, 144 wall runs, 20 lights in 0.07 s
+wrote keep.map: Koda, 48x36 square squares at 70 px, 20 rooms, 24 doors, 144 wall runs, 20 lights in 0.09 s
 === python scripts/mpw.py check keep.map --chokepoints
 chokepoints: 0 cells, 0 bridges, 373 passable, min cut entrance to goal 2, equals brute force: True
 === python scripts/mpw.py check crypt.map --fair
@@ -497,13 +500,45 @@ expressive range: gen dungeon --method bsp, 20 seeds, 48x36 -> range-bsp
   loop_share x dead_end_share: 17 of 100 bins used, fullest bin 15.0%, first 10 seeds against all 20 TV 0.450
   path_over_diagonal x open_floor_share: 18 of 100 bins used, fullest bin 15.0%, first 10 seeds against all 20 TV 0.450
 === python scripts/mpw.py gen battle --seed 2 --grid square --out field.map
-wrote field.map: Ninbuqaa, 30x20 square squares at 100 px, 0 rooms, 3 doors, 48 wall runs, 5 lights in 0.05 s
+wrote field.map: Ninbuqaa, 30x20 square squares at 100 px, 0 rooms, 3 doors, 52 wall runs, 5 lights in 0.07 s
 === python scripts/mpw.py gen battle --seed 2 --grid hex --out hexes.map
-wrote hexes.map: Ninbuqaa, 30x20 hex squares at 100 px, 0 rooms, 0 doors, 0 wall runs, 0 lights in 0.02 s
+wrote hexes.map: Ninbuqaa, 30x20 hex squares at 100 px, 0 rooms, 0 doors, 0 wall runs, 0 lights in 0.04 s
+=== python scripts/mpw.py gen battle --seed 2 --grid square --density sparse --out sparse.map
+wrote sparse.map: Ninbuqaa, 30x20 square squares at 100 px, 0 rooms, 3 doors, 48 wall runs, 5 lights in 0.07 s
+=== python scripts/mpw.py gen battle --seed 2 --grid square --density dense --out dense.map
+wrote dense.map: Ninbuqaa, 30x20 square squares at 100 px, 0 rooms, 3 doors, 52 wall runs, 5 lights in 0.09 s
+=== python -c import re;[print(m, re.findall('<text x=.2737[^>]*>([^<]*)', open(m+'/map.svg').read())) for m in ('sparse.map','field.map','dense.map')]
+sparse.map ['rock or ruined wall (blocks)', 'trees (block movement, cover)', 'doorway or gap']
+field.map ['rock or ruined wall (blocks)', 'trees (block movement, cover)', 'doorway or gap']
+dense.map ['rock or ruined wall (blocks)', 'trees (block movement, cover)', 'doorway or gap']
+=== python scripts/mpw.py gen dungeon --seed 3 --method cyclic --branches 3 --out wings.map
+wrote wings.map: Koda, 48x36 square squares at 70 px, 24 rooms, 28 doors, 174 wall runs, 24 lights in 0.09 s
+=== python scripts/mpw.py check wings.map
+bar 1 PASS: dungeon: every floor square reachable from the entrance (466 of 466 passable squares reached)
+bar 2 PASS: dungeon: every room reached, none overlap (24 rooms, 0 unreached, 0 overlapping pairs)
+bar 3 PASS: dungeon: entrance-to-goal path at least 48 steps (map width) (shortest path 134 steps, fetching the key first)
+bar 4 PASS: dungeon: no isolated wall squares (every wall has two wall neighbours) (0 isolated, 73% of squares wall)
+bar 5 PASS: cyclic: cycle rank 2 to 5 (edges - nodes + 1) (28 edges, 24 nodes, rank 5, 5 cycles listed, 0 re-rolls)
+bar 6 PASS: cyclic: every edge joins cells that share a border, one node per cell (28 edges, 0 not adjacent or without an open door, 0 cells reused)
+bar 7 PASS: cyclic: every key reached before its lock, every room reached, the lock is a real gate (1 locks, keys taken in order k1, 24 of 24 rooms reached, goal not reached without the key)
+bar 8 PASS: cyclic: a return path from goal to entrance honours one-way edges (1 one-way edges; entrance reached from the goal)
+bar 9 PASS: cyclic: with the lock shut no square route reaches the goal (one-way doors honoured) (1 locked doors; goal sealed)
+bar 10 PASS: dungeon: every door reached and joins two floors (28 doors, 0 bad)
+bar 11 PASS: dungeon: walls closed (every wall end meets another) (174 wall runs, 0 loose ends)
+bar 12 PASS: dungeon: grid on whole pixels (map.png 3360x2520 = 48x36 squares x 70 px)
+bar 13 PASS: uvtt: loads, pixels_per_grid a whole number (ppg 70, 174 walls, 28 portals, 24 lights)
+bar 14 PASS: uvtt: walls inside the image (174 walls, 0 points outside 48x36)
+bar 15 PASS: uvtt: every door ends on a wall (0 door ends off a wall)
+bar 16 PASS: uvtt: image matches the grid (3360x2520 px for 48x36 squares at 70)
+bar 17 PASS: uvtt: colours alpha first, doors closed, no wall over a door (0 colours not ffRRGGBB, 0 portals not closed, 0 doors under a wall)
+bar 18 PASS: same seed gives byte-identical files (7 files identical)
+bar 19 PASS: labels: none overlap (25 labels, 0 overlapping pairs)
+bar 20 PASS: labels: none cut by the edge (0 cut)
+bar 21 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
 === python scripts/mpw.py render crypt.map -o crypt.svg --style blueprint --title The Crypt
 wrote crypt.svg
 === python scripts/mpw.py gen sector --seed 5 --out spin.map
-wrote spin.map: Vovivio, 57 worlds, 90 routes (0 long) in 0.03 s
+wrote spin.map: Vovivio, 57 worlds, 90 routes (0 long) in 0.04 s
 === python scripts/mpw.py check spin.map
 bar 1 PASS: sector: route graph connected (57 worlds, 90 routes, 1 component(s), 6 bridges (chokepoints listed, not failed))
 bar 2 PASS: sector: jump routes within jump 2, longer ones marked long (90 jump, 0 long, 0 mislabelled)
@@ -514,9 +549,9 @@ bar 6 PASS: labels: none overlap (57 labels, 0 overlapping pairs)
 bar 7 PASS: labels: none cut by the edge (0 cut)
 bar 8 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
 === python scripts/mpw.py gen sector --real --radius-pc 4 --out near.map
-wrote near.map: Near stars within 4.0 pc, 12 worlds, 13 routes (7 long) in 0.02 s
+wrote near.map: Near stars within 4.0 pc, 12 worlds, 13 routes (7 long) in 0.03 s
 === python scripts/mpw.py gen system --seed 5 --star G --out sol2.map
-wrote sol2.map: Quusa (G7 V), 5 planets, 0 moons in 0.01 s
+wrote sol2.map: Quusa (G7 V), 5 planets, 0 moons in 0.02 s
 === python scripts/mpw.py check sol2.map
 bar 1 PASS: system: every orbit outside the star (5 planets, 0 too close; star radius 0.00482 AU)
 bar 2 PASS: system: neighbours at least 10 mutual Hill radii apart (orbits ascending True, closest pair 35.9 mutual Hill radii)
@@ -532,7 +567,7 @@ bar 11 SKIP: labels: read back by OCR (orbits.svg) (skipped: tesseract not found
 === python scripts/mpw.py render sol2.map -o sol2-scale.svg --view scale
 wrote sol2-scale.svg
 === python scripts/mpw.py gen planet --seed 5 --kind ocean --width 512 --out blue.map
-wrote blue.map: ocean planet texture 512x256, 0 craters in 0.74 s
+wrote blue.map: ocean planet texture 512x256, 0 craters in 1.01 s
 === python scripts/mpw.py check blue.map
 bar 1 PASS: planet: texture is 2:1 (512x256)
 bar 2 PASS: planet: no seam where the edges meet (mean |col 0 - col 511| 1.29 vs 90th percentile adjacent-column 1.94 (limit x2.5 + 0.5 grey level))
@@ -724,6 +759,25 @@ recipe.json
 sources.json
 === python scripts/mpw.py path ship.map --from 1,2,3 --to 2,19,10
 path: cost 36.3640 m, 22 steps, 53 cells expanded -> ship.map
+=== python scripts/mpw.py path keep.map --from 10,32 --to 17,17
+path: cost 127.5563 steps, 123 steps, 636 cells expanded -> keep.map
+=== python -c import json;d=json.load(open('keep.map/path.json'));print('locks', d['locks'], 'keys', d['keys'])
+locks 1 keys [{'cell': [24.5, 17.5], 'key': 'k1', 'step': 52}]
+=== python scripts/mpw.py path keep.map --from 10,32 --to 17,17 --ignore-locks
+path: cost 21.4142 steps, 21 steps, 62 cells expanded -> keep.map
+=== python scripts/mpw.py path crypt.map --from 2,2 --to 30,20 --jps
+path: cost 62.1421 steps, 58 steps, 96 cells expanded -> crypt.map
+=== python scripts/mpw.py path hexes.map --from 1,1 --to 10,8 --jps
+mpw: --jps needs a uniform-cost square grid (dungeon or square battle map); hex graphs have six neighbours per cell
+[exit 2]
+=== python scripts/mpw.py export crypt.map --nav -o crypt-nav.json
+PASS: nav: rectangles cover every walkable square exactly once (45 rectangles over 854 squares, 0 covered 0 or 2+ times)
+PASS: nav: no rectangle covers a wall (0 wall squares covered)
+PASS: nav: portal graph has the same connected components as the square grid (1 square components, 1 rectangle components)
+wrote crypt-nav.json
+=== python -c import json;d=json.load(open('crypt-nav.json'));print(sorted(d)); print({k:len(v) for k,v in d.items() if isinstance(v,list)})
+['entrance', 'format', 'format_version', 'generator', 'goal', 'h', 'kind', 'moves', 'origin', 'portals', 'rects', 'seed', 'units', 'w']
+{'entrance': 2, 'goal': 2, 'portals': 46, 'rects': 45}
 === python scripts/mpw.py path isles.map --from 200,200 --to 400,300
 path: cost 471.8830 road cost (km x slope x terrain), 39 steps, 927 cells expanded -> isles.map
 === python scripts/mpw.py travel isles.map --from 200,200 --to 400,300 --mode walk
@@ -800,4 +854,4 @@ watercolour        over topographic        loose washes on cold-press paper
 dry run: wrote isles.map\aistyle-painted-atlas.control.png and isles.map\aistyle-painted-atlas.workflow.json (1024x1024, painted-atlas, seed 0, denoise 0.45 runs as 0.450); no server contacted
 === serve
 GET / -> 200
-serving http://127.0.0.1:8765/ (127.0.0.1 only; Ctrl+C stops)
+serving http://127.0.0.1:<port>/ (127.0.0.1 only; Ctrl+C stops)
