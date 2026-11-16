@@ -6,6 +6,13 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 
 ## Active
 
+### L-058 · 2026-11-16 · `open-coast-is-not-a-harbour`: touching open sea made 89% of settlements ports
+- Trigger: after row 21 (0.13.0) ports were every settlement touching open sea; sweep of 24 worlds (seeds 1-8 at 800/1600/3200 cells) gave 742 of 835 (0.889).
+- Hypothesis: settlement siting favours coast and rivers, so nearly every town is coastal; "touches open sea" is an eligibility test, not a port rule.
+- Rule: `harbour_ports` ranks eligible settlements by `harbour_score` (two-ring land share for shelter + 0.5 x depth of the deepest open-sea neighbour, capped + 0.2 river mouth + rank bonus), ties by id, and keeps the best `port_cap(n) = max(1, ceil(n/4))`. Bar 14 now also fails above the cap.
+- Evidence: same sweep after: 218 of 835 (0.261; 0.263/0.266/0.257 by size); tests/test_ports.py test_port_cap_and_harbour_rank, test_bar14_catches_too_many_ports; T-20261116-14
+- Scope: skill
+
 ### L-055 · 2026-11-16 · `ocean-is-not-open-sea`: mesh `ocean` marks every cell below sea level, not only sea joined to the border
 - Trigger: row 21 (ports only on open coast) needed "touches the sea"; `ocean[c]` is `h < 0`, which also holds for a pocket below the waterline surrounded by land.
 - Hypothesis: hydrology treats every below-zero cell as sea, so a coast test on `ocean` alone would call an enclosed pocket a coast.

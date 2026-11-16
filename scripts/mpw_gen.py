@@ -734,6 +734,46 @@ def dump(path, obj):
         f.write("\n")
 
 
+
+PORT_SHARE = 0.25   # at most this share of settlements become ports (row 21b)
+RANK_BONUS = {"city": 0.3, "town": 0.15}
+
+
+def port_cap(nsets):
+    """Most ports a map may hold: a quarter of its settlements, at least one."""
+    return max(1, int(math.ceil(nsets * PORT_SHARE))) if nsets else 0
+
+
+def harbour_score(mesh, nb, sea, cell, rank="village"):
+    """Harbour quality of a settlement cell touching open sea, or None when it touches none.
+    Shelter: land share of the two-ring neighbourhood (a bay beats a cape). Access: depth of
+    the deepest open-sea neighbour. A river mouth and a bigger rank add a little."""
+    H = mesh["h"]
+    wet = [q for q in nb[cell] if sea[q]]
+    if not wet:
+        return None
+    ring = set(nb[cell])
+    for q in nb[cell]:
+        ring.update(nb[q])
+    ring.discard(cell)
+    shelter = sum(1 for q in ring if not mesh["ocean"][q]) / float(len(ring) or 1)
+    depth = max(0.0, -min(H[q] for q in wet))
+    access = min(1.0, depth / 0.05)
+    river = 0.2 if mesh["river"][cell] or any(mesh["river"][q] for q in nb[cell]) else 0.0
+    return round(shelter + 0.5 * access + river + RANK_BONUS.get(rank, 0.0), 6)
+
+
+def harbour_ports(mesh, nb, sea, sets):
+    """Ids of the settlements that become ports: open-coast settlements ranked by harbour
+    score (ties by id), capped at port_cap(len(sets)). Deterministic."""
+    cand = []
+    for s in sets:
+        sc = harbour_score(mesh, nb, sea, s["cell"], s.get("rank", "village"))
+        if sc is not None:
+            cand.append((-sc, s["id"]))
+    cand.sort()
+    return set(i for _, i in cand[:port_cap(len(sets))])
+
 def write_folder(out, recipe, M, H, hyd, temp, prec, biome, window, R, deltas=(), parent_ctx=None):
     import mpw_human
     os.makedirs(out, exist_ok=True)
@@ -759,8 +799,9 @@ def write_folder(out, recipe, M, H, hyd, temp, prec, biome, window, R, deltas=()
     if parent_ctx and parent_ctx.get("open_sea"):
         popen = lambda: (parent_ctx["mesh"], parent_ctx["open_sea"]())   # noqa: E731
     sea = open_sea(mesh, hum["nb"], popen)
+    chosen = harbour_ports(mesh, hum["nb"], sea, hum["sets"])
     for s in hum["sets"]:
-        s["port"] = any(sea[q] for q in hum["nb"][s["cell"]])
+        s["port"] = s["id"] in chosen
     recipe["ports"] = [s["id"] for s in hum["sets"] if s["port"]]
     labels, entries, stem, stem_names, lake_names = mpw_human.name_features(mesh, hum, recipe["language"],
                                                                             parent_ctx)
@@ -1597,6 +1638,9 @@ def human_bars(d, rc, m, nb, feats, diff):
     bad = [s["id"] for s in ports if not (0 <= s["cell"] < n) or not any(sea[q] for q in nb[s["cell"]])]
     listed = sorted(rc.get("ports", []))
     same = listed == sorted(s["id"] for s in ports)
-    out.append((14, "every port touches open sea (a lakeshore town is never a port)", not bad and same,
-                "%d ports, %d off open sea%s" % (len(ports), len(bad), "" if same else "; recipe ports differ")))
+    cap = port_cap(len(sets))
+    out.append((14, "every port touches open sea (a lakeshore town is never a port), at most %d%% of settlements"
+                % int(PORT_SHARE * 100), not bad and same and len(ports) <= cap,
+                "%d ports (cap %d), %d off open sea%s" % (len(ports), cap, len(bad),
+                                                          "" if same else "; recipe ports differ")))
     return out

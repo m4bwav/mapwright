@@ -4,7 +4,11 @@ Companions: [RESEARCH.md](RESEARCH.md), [CHANGELOG.md](CHANGELOG.md), [LEARNINGS
 
 Test runs for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and `scripts/mpw.py`. Unit tests live in `tests/`, skill cases in `evals/evals.json` (run log below). A test passes on evidence, never on a transcript's claim.
 
-Entry shape: `### T-YYYYMMDD-n · date · harness · env · passed/total`, then one line per notable result, then `led to:`. Newest first.
+Entry shape: `### T-20261116-14 · 2026-11-16 · pytest (tests/) + port-share sweep · Windows · 252 passed, 2 skipped
+- Sweep: gen_world seeds 1-8 at 800, 1600, 3200 cells. Port share before 0.921/0.929/0.851 (all 0.889, 742/835); after 0.263/0.266/0.257 (all 0.261, 218/835).
+- New: test_port_cap_and_harbour_rank (world + child: count = min(cap, coastal), worst port scores >= best non-port), test_cap_values, test_bar14_catches_too_many_ports; existing determinism test byte-identical.
+- led to: L-058
+### T-YYYYMMDD-n · date · harness · env · passed/total`, then one line per notable result, then `led to:`. Newest first.
 
 ## Runs
 
