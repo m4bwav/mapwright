@@ -465,3 +465,29 @@ class AgentBars(Fixtures):
 
 if __name__ == "__main__":
     unittest.main()
+
+class CorridorWidth(unittest.TestCase):
+    """gen dungeon --corridor N (bsp): an N-wide body reaches every room; default draws unchanged."""
+
+    def test_wide_corridors_join_rooms_for_wide_bodies(self):
+        P = M.P
+        for seed in range(1, 21):
+            one = P.build_dungeon(seed, 48, 36, "bsp")
+            self.assertEqual(one["g"], P.build_dungeon(seed, 48, 36, "bsp", corridor=1)["g"])
+            D = P.build_dungeon(seed, 48, 36, "bsp", corridor=2)
+            e = M.erode(D["g"], 48, 36, 2)
+            regs = P.flood_regions([[c if c in P.PASS else "#" for c in r] for r in e], 48, 36)
+            self.assertEqual(len(regs), 1, seed)
+            for r in D["rooms"]:
+                self.assertTrue(any((x, y) in set(regs[0]) for y in range(r["y"], r["y"] + r["h"])
+                                    for x in range(r["x"], r["x"] + r["w"])), (seed, r))
+
+    def test_corridor_refused_off_bsp(self):
+        d = tempfile.mkdtemp()
+        try:
+            with self.assertRaises(ValueError):
+                M.P.gen_grid("dungeon", 3, os.path.join(d, "x"), 48, 36, "cave", corridor=2)
+            with self.assertRaises(ValueError):
+                M.P.gen_grid("dungeon", 3, os.path.join(d, "y"), 48, 36, "bsp", corridor=4)
+        finally:
+            shutil.rmtree(d, ignore_errors=True)

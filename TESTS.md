@@ -155,6 +155,9 @@ New TestPlaceSeeds: `place_seed` pinned and stable; `gen system --sector-seed 7 
 
 Older runs (T-20261114-1 to T-20261115-5): [TESTS-ARCHIVE.md](TESTS-ARCHIVE.md).
 
+### T-20261116-21 · 2026-11-16 · gen dungeon --corridor
+- pytest tests: 266 pass, 2 skip (73 s). CorridorWidth: seeds 1-20 corridor 1 equals default; corridor 2 eroded at agent 2 is one region touching every room; cave and corridor 4 refused. Sweep seeds 1-100: agent 2 joins all rooms 0/100 at corridor 1, 100/100 at 2; agent 3 at corridor 3 97/100. Default seed 3 files byte-identical to 0.20.0; check passes at corridor 2 and 3.
+
 ### T-20261116-20 · 2026-11-16 · path --agent
 - pytest tests: 264 pass, 2 skip (71 s). AgentBars: hand grid (a one-square gap blocks a 2-wide body, a two-square gap passes); bsp, cave and battle at agent 2: 20 random pairs each, every path square's 2 x 2 body is walkable and the cost is never below the agent-1 cost; CLI JSON carries agent; agent 0 refused; hex, deck and world refused.
 

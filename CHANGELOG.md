@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261116-14 · 2026-11-16 · 0.21.0: wide corridors for wide bodies
+- because: HANDOFF backlog "nav/path door widening", T-20261116-21
+- files: scripts/mpw_places.py, scripts/mpw.py, tests/test_path.py, references/cli-generate.md, README.md
+- `gen dungeon --corridor N` (bsp, 1 to 3) carves N-wide corridors; above 1 the room openings stay open gaps rather than doors. Recorded in the recipe so `check` regenerates it. Default byte-identical. Tests: 266 pass, 2 skip.
+
 ### C-20261116-13 · 2026-11-16 · 0.20.0: agent-aware path
 - because: HANDOFF backlog item "an agent-aware `path`", T-20261116-20
 - files: scripts/mpw_path.py, scripts/mpw_export.py, scripts/mpw.py, tests/test_path.py, references/cli-generate.md, README.md

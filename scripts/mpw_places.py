@@ -602,21 +602,30 @@ WALLC, FLOOR, DOOR, TREE = "#", ".", "+", "T"
 PASS = (FLOOR, DOOR)
 
 
-def carve_l(g, a, b, rng):
+def carve_l(g, a, b, rng, width=1):
+    """L-shaped corridor from a to b. width > 1 widens it toward +x/+y (clipped to the grid); width 1 draws
+    exactly as before."""
     (x0, y0), (x1, y1) = a, b
+    hh, ww = len(g), len(g[0])
+
+    def put(x, y):
+        for dy in range(width):
+            for dx in range(width):
+                if 0 <= y + dy < hh and 0 <= x + dx < ww:
+                    g[y + dy][x + dx] = FLOOR
     if rng.random() < 0.5:
         for x in range(min(x0, x1), max(x0, x1) + 1):
-            g[y0][x] = FLOOR
+            put(x, y0)
         for y in range(min(y0, y1), max(y0, y1) + 1):
-            g[y][x1] = FLOOR
+            put(x1, y)
     else:
         for y in range(min(y0, y1), max(y0, y1) + 1):
-            g[y][x0] = FLOOR
+            put(x0, y)
         for x in range(min(x0, x1), max(x0, x1) + 1):
-            g[y1][x] = FLOOR
+            put(x, y1)
 
 
-def bsp_dungeon(w, h, rng, leaf=9, loops=0.12):
+def bsp_dungeon(w, h, rng, leaf=9, loops=0.12, corridor=1):
     g = [[WALLC] * w for _ in range(h)]
     rooms = []
 
@@ -652,7 +661,7 @@ def bsp_dungeon(w, h, rng, leaf=9, loops=0.12):
     def ctr(r):
         return (r[0] + r[2] // 2, r[1] + r[3] // 2)
     for ra, rb in links:
-        carve_l(g, ctr(ra), ctr(rb), rng)
+        carve_l(g, ctr(ra), ctr(rb), rng, corridor)
     n = len(rooms)
     extra = max(1, int(round(n * loops)))
     pairs = sorted(((math.dist(ctr(rooms[i]), ctr(rooms[j])), i, j) for i in range(n) for j in range(i + 1, n)))
@@ -663,13 +672,15 @@ def bsp_dungeon(w, h, rng, leaf=9, loops=0.12):
             break
         if (id(rooms[i]), id(rooms[j])) in linked or rng.random() < 0.5:
             continue
-        carve_l(g, ctr(rooms[i]), ctr(rooms[j]), rng)
+        carve_l(g, ctr(rooms[i]), ctr(rooms[j]), rng, corridor)
         added += 1
     for yy in range(h):
         g[yy][0] = g[yy][w - 1] = WALLC
     for xx in range(w):
         g[0][xx] = g[h - 1][xx] = WALLC
-    # doors: one-wide openings just outside a room
+    # doors: one-wide openings just outside a room (wide corridors leave open gaps, no doors)
+    if corridor > 1:
+        return g, rooms
     inroom = set()
     for rx, ry, rw, rh in rooms:
         for yy in range(ry, ry + rh):
@@ -1509,7 +1520,7 @@ def render_grid_svg(rc, gj, st):
 PATH_TRIES = 16     # bsp and cave re-rolls when the entrance-to-goal path is under min_path
 
 
-def build_dungeon(seed, w, h, method="bsp", cave=None, legacy=False, branches=0):
+def build_dungeon(seed, w, h, method="bsp", cave=None, legacy=False, branches=0, corridor=1):
     """The dungeon itself, without names or files: grid rows, rooms, lights, entrance, goal, graph.
     legacy=True rebuilds a recipe written before 0.9.0 exactly: no wall cleanup, no goal, the old entrance.
     A bsp or cave map whose path is under min_path is drawn again from stream 3000 + k (k = re-roll)."""
@@ -1523,7 +1534,8 @@ def build_dungeon(seed, w, h, method="bsp", cave=None, legacy=False, branches=0)
                 return D
             k0 = D["stats"]["rerolls"] + 1
     for k in range(PATH_TRIES):
-        D = _build_once(seed, w, h, method, cave, legacy, Rng(seed, 2) if k == 0 else Rng(seed, 3000 + k))
+        D = _build_once(seed, w, h, method, cave, legacy, Rng(seed, 2) if k == 0 else Rng(seed, 3000 + k),
+                        corridor=corridor)
         D["stats"]["rerolls"] = k
         d = bfs_dist(D["g"], w, h, D["entrance"])
         if d[tuple(D["goal"])] >= min_path(w, h):
@@ -1531,10 +1543,10 @@ def build_dungeon(seed, w, h, method="bsp", cave=None, legacy=False, branches=0)
     return D
 
 
-def _build_once(seed, w, h, method, cave, legacy, rng, branches=0):
+def _build_once(seed, w, h, method, cave, legacy, rng, branches=0, corridor=1):
     rooms, lights, graph, goal, stats = [], [], None, None, {}
     if method == "bsp":
-        g, rr = bsp_dungeon(w, h, rng)
+        g, rr = bsp_dungeon(w, h, rng, corridor=corridor)
         rooms = [dict(id=i, x=r[0], y=r[1], w=r[2], h=r[3]) for i, r in enumerate(rr)]
     elif method == "cave":
         g, _ = cave_dungeon(w, h, rng, stats=stats, **dict(CAVE_DEFAULTS, **(cave or {})))
@@ -1578,7 +1590,7 @@ def _build_once(seed, w, h, method, cave, legacy, rng, branches=0):
 
 
 def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style=None, version="0.5.0",
-             name_style=None, cave=None, legacy=False, density=None, branches=None):
+             name_style=None, cave=None, legacy=False, density=None, branches=None, corridor=None):
     t0 = time.perf_counter()
     rng = Rng(seed, 2 if kind == "dungeon" else 3)
     lang = mpw_names.make_language(seed, name_style)
@@ -1600,7 +1612,9 @@ def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style
             raise ValueError("--branches works with --method cyclic")
         if branches is not None and not 0 <= branches <= 8:
             raise ValueError("--branches must be 0 to 8")
-        D = build_dungeon(seed, w, h, method, cave, legacy, branches or 0)
+        if corridor is not None and (method != "bsp" or not 1 <= corridor <= 3):
+            raise ValueError("--corridor works with --method bsp and must be 1 to 3")
+        D = build_dungeon(seed, w, h, method, cave, legacy, branches or 0, corridor or 1)
         g, rooms, lights, entrance, goal, graph = D["g"], D["rooms"], D["lights"], D["entrance"], D["goal"], D["graph"]
         nb = nbrs4
     else:
@@ -1677,6 +1691,8 @@ def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style
         recipe["params"]["density"] = density
     if kind == "dungeon" and branches is not None:
         recipe["params"]["branches"] = branches
+    if kind == "dungeon" and corridor is not None:
+        recipe["params"]["corridor"] = corridor
     if kind == "dungeon" and not legacy:
         recipe["params"]["goal"] = "graph" if graph else "farthest"
         if method == "cave":
@@ -1817,7 +1833,7 @@ def regenerate(d, tmp):
         gen_grid(rc["kind"], rc["seed"], tmp, p["w"], p["h"], p["method"] or "bsp", p["grid"], p["pps"], p["style"],
                  rc["tool_version"], p["name_style"], cave=p.get("cave"),
                  legacy=rc["kind"] == "dungeon" and "goal" not in p, density=p.get("density"),
-                 branches=p.get("branches"))
+                 branches=p.get("branches"), corridor=p.get("corridor"))
 
 
 def _city_bars(d):
