@@ -20,7 +20,7 @@ Map-level attributes [S1]:
 | `infinite` | 0 or 1 | infinite maps store data in `<chunk>` elements |
 | `hexsidelength`, `staggeraxis` (`x`/`y`), `staggerindex` (`odd`/`even`) | | hex and staggered only |
 
-Layer types: `layer` (tile layer), `objectgroup`, `imagelayer`, `group` [S1]. Tile layer `<data>` takes `encoding` = `csv` or `base64` (no encoding = deprecated per-tile XML), and for base64 an optional `compression` = `gzip`, `zlib` or `zstd`, zstd being a compile-time option since Tiled 1.3 [S1] (https://doc.mapeditor.org/en/stable/reference/tmx-map-format/). mapwright should default to CSV for readability and base64+zlib for size; zstd support in loaders is patchy (unverified for each engine importer).
+Layer types: `layer` (tile layer), `objectgroup`, `imagelayer`, `group` [S1]. Tile layer `<data>` takes `encoding` = `csv` or `base64` (no encoding = deprecated per-tile XML), and for base64 an optional `compression` = `gzip`, `zlib` or `zstd`, zstd being a compile-time option since Tiled 1.3 [S1] (https://doc.mapeditor.org/en/stable/reference/tmx-map-format/). mapwright should default to CSV for readability and base64+zlib for size; zstd support in loaders is patchy (blocked: support varies per engine importer and version, no single source to check; test each loader).
 
 Global tile IDs (GIDs): each tileset has a `firstgid`; GID 0 means empty [S1]. The top four bits of a 32-bit GID are flip flags and must be masked off before lookup [S1]:
 
@@ -33,7 +33,7 @@ Global tile IDs (GIDs): each tileset has a `firstgid`; GID 0 means empty [S1]. T
 
 Objects carry `x`, `y` in pixels, `width`, `height`, `rotation` in degrees clockwise, and shape children (`ellipse`, `point`, `polygon`, `polyline`, `text`) [S1]. Polygon points are relative to the object position [S1]. Custom properties take types `string`, `int`, `float`, `bool`, `color`, `file`, `object`, `class` [S1].
 
-Practical export choice: write TMJ, since every target has a JSON parser; write TMX only when a loader needs it (some engine plugins read only TMX, unverified per plugin).
+Practical export choice: write TMJ, since every target has a JSON parser; write TMX only when a loader needs it (some engine plugins read only TMX; blocked: per-plugin, no single source).
 
 Chunk-stable rule for infinite or chunked maps: a cell is the same whatever order the map was generated in, and a cell already made is never overwritten. Test: generate region A, then A plus B; A's cells are byte-identical. One shared random stream fails this, so each chunk or coordinate gets its own seed (Watkins, Procedural Content Generation for Unity Game Development, ch. 3; Short and Adams, Procedural Generation in Game Design, ch. 26, p. 272-273).
 
@@ -68,10 +68,10 @@ Godot 4.3 deprecated the single `TileMap` node in favour of one `TileMapLayer` n
 | Heightmap resolution | power of two plus one: 33, 65, 129, 257, 513, 1025, 2049, 4097 | [S6] |
 | Import format | RAW, 8-bit or 16-bit | [S6] |
 | Byte order | Windows (little-endian) or Mac (big-endian), chosen on import | [S6] |
-| Default terrain size | 1000 x 600 x 1000 m (unverified; current manual gives only the ranges: width/length 1-100,000, height 1-10,000, heightmap resolution 2^n+1, https://docs.unity.com/en-us/engine/current/manual/creating-environments/script-terrain/terrain-other-settings) | [S6] |
+| Default terrain size | 1000 x 600 x 1000 m (blocked: the current manual no longer states a default; it gives only the ranges: width/length 1-100,000, height 1-10,000, heightmap resolution 2^n+1, https://docs.unity.com/en-us/engine/current/manual/creating-environments/script-terrain/terrain-other-settings) | [S6] |
 | Height mapping | 0..65535 maps linearly to 0..Terrain Height | [S6] |
 
-Write 16-bit little-endian RAW, rows top to bottom; Unity flips vertically relative to some tools, so mapwright's test must check orientation against a known asymmetric map (unverified which way; Import Raw offers Depth 8/16 bit, Byte Order and Flip Vertically, https://docs.unity.com/en-us/engine/6000.6/manual/creating-environments/script-terrain/terrain-heightmaps). Tiled terrain beyond 4097 uses several Terrain objects with matching neighbours [S6].
+Write 16-bit little-endian RAW, rows top to bottom; Unity flips vertically relative to some tools, so mapwright's test must check orientation against a known asymmetric map (blocked: the manual does not say which way; Import Raw offers Depth 8/16 bit, Byte Order and Flip Vertically, https://docs.unity.com/en-us/engine/6000.6/manual/creating-environments/script-terrain/terrain-heightmaps). Tiled terrain beyond 4097 uses several Terrain objects with matching neighbours [S6].
 
 ### 2.2 Unreal Engine Landscape
 
@@ -96,7 +96,7 @@ Format: 16-bit grayscale PNG or 16-bit RAW (little-endian) [S7]. Scale [S7]:
 - Value 32768 is zero height.
 - To fit a real relief of H metres: Z scale = H x 100 / 512 (for example 1000 m of relief needs Z = 195.3).
 
-World Partition landscapes can be larger and are imported in tiles named `_x0_y0` (unverified naming for current UE 5.x).
+World Partition landscapes can be larger and are imported in tiles named `_x0_y0` (Epic's heightmap import page, checked 2026-11-16, https://dev.epicgames.com/documentation/unreal-engine/importing-and-exporting-landscape-heightmaps-in-unreal-engine, documents tiled import but not the pattern; the `name_x0_y0` suffix is from the editor's error text as reported on forums.unrealengine.com).
 
 ### 2.3 Godot Terrain3D
 
@@ -119,7 +119,7 @@ Two routes:
 1. Data pack world generation: JSON under `data/<ns>/worldgen/` (`noise_settings`, `density_function`, `biome`, `configured_feature`) and `dimension/` [S11]. It changes generation rules, not a fixed map, so it cannot reproduce an exact heightmap without very elaborate density functions.
 2. WorldPainter: imports a grayscale heightmap (8- or 16-bit) into a world, with a scale and a water level, then exports a playable save [S12]. This is the route for an exact map. Hand off a 16-bit PNG at 1 px = 1 block plus a material mask.
 
-Bedrock edition limits differ (unverified here).
+Bedrock edition limits differ (blocked: not checked in this pass; see the Minecraft Wiki before relying on them).
 
 ## 3. Fog of war and minimaps
 
@@ -127,7 +127,7 @@ Fog of war is usually a low-resolution visibility texture laid over the map: one
 
 Universal VTT format (`.dd2vtt` / `.uvtt`, from Dungeondraft) is JSON with `resolution` (`map_size`, `pixels_per_grid`), `line_of_sight` (wall polylines in grid units), `portals` (doors), `lights`, and a base64 PNG image [S16]. Foundry and several modules import it [S16]. This is the single most useful tabletop export.
 
-Common tabletop grid scale: 5 ft per square in D&D 5e [S17]; VTT images are often authored at 70, 100, 140 or 200 px per grid (unverified as a standard; Roll20 uses 70 px per unit [S15]).
+Common tabletop grid scale: 5 ft per square in D&D 5e [S17]; VTT images are often authored at 70, 100, 140 or 200 px per grid (practice figure, no single source; tunable default; Roll20 uses 70 px per unit [S15]).
 
 Minimap approaches [S13]:
 
@@ -148,7 +148,7 @@ Most engines build navmeshes with Recast-style voxelisation [S18]. Parameters th
 | Agent radius | 0.5 m (Unity), 0.5 m (Godot) | erodes walkable area |
 | Agent height | 2 m | |
 | Max slope | 45 degrees | steeper is unwalkable |
-| Step height | 0.4 m (Unity default 0.75 in older versions, unverified) | |
+| Step height | 0.4 m (Unity's manual, checked 2026-11-16, gives no default and advises 0.1 to 0.4 for a 2 m human, https://docs.unity.com/en-us/engine/current/manual/physics-section/physics-overview/character-control-section/class-character-controller) | |
 | Cell size | about radius / 2 to / 3 | Recast guidance |
 
 mapwright does not need to bake navmeshes; engines bake from geometry. What helps is exporting clean collision geometry and walkability/area masks (water, road with lower cost) that the engine can turn into navmesh areas or modifiers [S19]. A tile export carries a blocking layer for anything that stops movement, apart from the ordered draw layers (Watkins, Procedural Content Generation for Unity Game Development, ch. 3).
@@ -176,13 +176,13 @@ Render at the delivery rate; do not convert 30 to 24 afterward. Common resolutio
 
 ### 5.2 Flight path animation conventions
 
-Conventions from travel-map films and documentary graphics (unverified as written standards; they are craft practice):
+Conventions from travel-map films and documentary graphics (practice figure, no single source; tunable default):
 
 - Draw the route line progressively, with an icon (plane, ship, marker) at its head, ease-in and ease-out at each stop.
 - Air routes are drawn as great-circle arcs, often lifted into a curve on flat maps so short and long hops read differently.
-- Hold 1 to 2 s on each named stop so labels can be read; reading speed for on-screen text is about 3 words per second (unverified).
+- Hold 1 to 2 s on each named stop so labels can be read; reading speed for on-screen text is about 3 words per second (practice figure, no single source; tunable default).
 - Keep the camera moving slower than the line; let the line lead.
-- Avoid camera moves that require more than about one screen width of pan per second at 24 fps, to prevent strobing (judder guidance from cinematography: pan speed rule of about 7 s for an object to cross the frame at 24 fps) [S21] (unverified exact figure).
+- Avoid camera moves that require more than about one screen width of pan per second at 24 fps, to prevent strobing (judder guidance from cinematography: pan speed rule of about 7 s for an object to cross the frame at 24 fps) [S21] (RED: pan no faster than one full image width per 7 s at 24 fps, 180-degree shutter; checked 2026-11-16, https://www.red.com/red-101/camera-panning-speed).
 
 ### 5.2a Map shots and route animation (books)
 
@@ -263,7 +263,7 @@ Avoid placing small labels or thin features on a fold line; mapwright can output
 - Convert with a named ICC profile matching the press: FOGRA39 / FOGRA51 (ISO coated, Europe), GRACoL 2013 / SWOP (US) [S29]. Ask the printer which one.
 - Saturated RGB blues, greens and oranges (water, vegetation) fall outside CMYK gamut and dull; soft-proof first [S29].
 - Total area coverage (ink limit) 300% to 340% for coated stock, lower (about 260%) for uncoated or newsprint [S29].
-- Small black text and thin lines should be 100% K only, not rich black, to avoid misregistration [S29]. Rich black for large fills e.g. C60 M40 Y40 K100 (unverified recipe; printers vary).
+- Small black text and thin lines should be 100% K only, not rich black, to avoid misregistration [S29]. Rich black for large fills e.g. C60 M40 Y40 K100 (practice figure, no single source; tunable default; printers vary).
 - Use a perceptual or relative colorimetric intent with black point compensation; relative keeps in-gamut colours exact [S29].
 - Python note: Pillow's `ImageCms` can do ICC conversion; a plain `.convert("CMYK")` ignores profiles: Pillow's `rgb2cmyk` sets C, M, Y to 255 minus R, G, B and K to 0, "no undercolour removal" (https://github.com/python-pillow/Pillow/blob/main/src/libImaging/Convert.c, checked 2026-11-16), so blacks come out as C255 M255 Y255 K0.
 
@@ -275,7 +275,7 @@ Avoid placing small labels or thin features on a fold line; mapwright can output
 | PDF/X-3:2002/2003 | 15930-3/-6 | colour-managed RGB/Lab allowed with ICC | flattened | [S30] |
 | PDF/X-4:2010 | 15930-7 | ICC-based, RGB allowed | live transparency and layers allowed | [S30] |
 
-All require embedded fonts, an OutputIntent (the target ICC profile), and TrimBox/BleedBox set [S30]. PDF/X-4 is the current recommendation from most printers and from Ghent Workgroup (unverified for every printer). Python route: write a PDF with ReportLab or cairo, then validate or convert with Ghostscript's PDF/X support or a preflight tool (Acrobat, callas) [S30] (Ghostscript PDF/X-4 output support unverified for current version).
+All require embedded fonts, an OutputIntent (the target ICC profile), and TrimBox/BleedBox set [S30]. PDF/X-4 is the current recommendation from most printers and from Ghent Workgroup (practice figure, no single source; tunable default; ask the printer). Python route: write a PDF with ReportLab or cairo, then validate or convert with Ghostscript's PDF/X support or a preflight tool (Acrobat, callas) [S30] (Ghostscript docs, checked 2026-11-16, https://ghostscript.readthedocs.io/en/latest/VectorDevices.html, say the PDFX option takes 1, 3 or 4 but a warning on the same page says only X-1 and X-3 are supported; validate X-4 output in a preflight tool).
 
 ## 7. 3D print terrain tiles (hand-off)
 
@@ -283,14 +283,14 @@ mapwright should export a heightmap or a mesh and hand it to a print tool (polyw
 
 | Item | Common value | Source |
 |---|---|---|
-| Vertical exaggeration, mountains | 1.0 to 1.5x | [S31] (unverified range) |
-| Vertical exaggeration, rolling or flat regions, city scale | 2x to 5x | [S31] (unverified range) |
+| Vertical exaggeration, mountains | 1.0 to 1.5x | [S31] (practice figure, no single source; tunable default) |
+| Vertical exaggeration, rolling or flat regions, city scale | 2x to 5x | [S31] (practice figure, no single source; tunable default) |
 | TouchTerrain default z-scale | z-scale 1.0, tile width 80 mm, base 1 mm, print resolution 0.5 mm (defaults in `TouchTerrain_standalone.py`, https://github.com/ChHarding/TouchTerrain_for_CAGEO, checked 2026-11-16) | [S31] |
 | Base thickness under lowest point | 1 to 2 mm minimum | [S31] |
 | FDM nozzle | 0.4 mm, so features under about 0.8 mm horizontally vanish | [S32] |
 | FDM layer height | 0.1 to 0.2 mm, so relief steps finer than that vanish | [S32] |
 
-Rules: state the exaggeration on the print or its label (cartographic convention for relief models) (unverified as formal rule); compute real scale first (tile mm / ground m), then exaggeration; keep tiles the same base height and size so they tile; output STL or 3MF in millimetres with a flat bottom and watertight walls [S32].
+Rules: state the exaggeration on the print or its label (cartographic convention for relief models) (practice figure, no single source; tunable default); compute real scale first (tile mm / ground m), then exaggeration; keep tiles the same base height and size so they tile; output STL or 3MF in millimetres with a flat bottom and watertight walls [S32].
 
 ## 8. Open items
 
@@ -324,7 +324,7 @@ All accessed 2026-11-14 (from prior knowledge; URLs to be re-fetched before code
 - [S18] Recast Navigation documentation. https://recastnav.com/
 - [S19] Unity Manual, "AI Navigation" package; Godot docs, "Using NavigationMeshes". https://docs.unity3d.com/Packages/com.unity.ai.navigation@latest
 - [S20] SMPTE / EBU common frame rates; YouTube Help, "Recommended upload encoding settings". https://support.google.com/youtube/answer/1722171
-- [S21] RED Digital Cinema, "Camera panning speed and judder" (unverified exact rule). https://www.red.com/red-101/
+- [S21] RED Digital Cinema, "Panning Speed Best Practices" (checked 2026-11-16). https://www.red.com/red-101/camera-panning-speed
 - [S22] J. J. van Wijk and W. A. A. Nuij, "Smooth and efficient zooming and panning", Proc. IEEE Symposium on Information Visualization (InfoVis) 2003, pp. 15-23. doi:10.1109/INFVIS.2003.1249004
 - [S23] d3-interpolate, `interpolateZoom`. https://d3js.org/d3-interpolate/zoom
 - [S24] ISO 216:2007, writing paper and certain classes of printed matter, A and B series.
