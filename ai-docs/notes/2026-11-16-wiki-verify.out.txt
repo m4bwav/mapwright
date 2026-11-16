@@ -1,0 +1,803 @@
+=== python scripts/mpw.py --version
+0.10.0
+=== python scripts/mpw.py doctor
+mapwright 0.10.0
+python        3.14.6 ok
+sqlite        3.50.4
+browser       C:\Program Files\Google\Chrome\Application\chrome.exe
+numpy         2.5.2
+shapely       2.1.2
+pyproj        absent (optional)
+gdal          absent (optional)
+geographiclib absent (optional)
+pillow        12.3.0
+tesseract     absent (optional)
+export        heightmaps, tiled, uvtt and mesh ready; print (PDF/PNG at a paper size) ready
+aistyle       no server set (optional: pass --host or set MAPWRIGHT_COMFYUI)
+=== python scripts/mpw.py explain list
+authalic-sphere
+bleed
+contour
+crop-marks
+equal-earth
+equirectangular
+geodesic
+geojson
+hachures
+heightmap
+hillshade
+laea
+mercator
+mollweide
+priority-flood
+rhumb-line
+robinson
+scale
+tissot
+tmj
+utm
+uvtt
+voronoi
+web-mercator
+world-file
+=== python scripts/mpw.py explain web-mercator
+web-mercator: EPSG:3857. Spherical Mercator on the WGS84 radius used by web tiles. Conformal, area grows as sec^2(lat); cut at about 85.0511 deg. Never use it for area.
+More: references/projections.md
+=== python scripts/mpw.py explain no-such-term
+Not in the built-in glossary: 'no-such-term'. Try `mpw.py explain list`, or search references/sources-and-terms.md and references/projections.md.
+[exit 1]
+=== python scripts/mpw.py inspect tests/fixtures/track.gpx
+format          GPX 1.1
+features        2
+geometry_types  {"Point": 1, "LineString": 1}
+extent          [-122.3492774, 47.5951518, -122.3316393, 47.6205063]
+crs             WGS84 (by schema)
+properties      ["gpx", "name"]
+points          4
+=== python scripts/mpw.py inspect tests/fixtures/heights.png
+format          PNG
+width           16
+height          12
+bit_depth       16
+colour          greyscale
+interlaced      False
+note            16-bit greyscale: likely a heightmap
+value_range     [0, 18300]
+world_file      heights.pgw
+pixel_size      [10.0, -10.0]
+rotation        [0.0, 0.0]
+extent          [500000.0, 4199880.0, 500160.0, 4200000.0]
+crs             not stated (world files carry no CRS)
+=== python scripts/mpw.py inspect tests/fixtures/square.geojson --json
+{
+  "format": "GeoJSON",
+  "features": 1,
+  "geometry_types": {
+    "Polygon": 1
+  },
+  "extent": [
+    0,
+    0,
+    1,
+    1
+  ],
+  "crs": "WGS84 lon/lat (RFC 7946)",
+  "properties": [
+    "name"
+  ]
+}
+=== python scripts/mpw.py convert tests/fixtures/track.gpx track.geojson
+wrote track.geojson: 2 features
+=== python scripts/mpw.py convert tests/fixtures/route.geojson route.kml
+wrote route.kml: 4 features
+=== python scripts/mpw.py inspect route.kml
+format          KML
+features        4
+geometry_types  {"Point": 1, "LineString": 2, "GeometryCollection": 1}
+extent          [-0.1275862, 48.856614, 13.404954, 52.5200066]
+crs             WGS84 (by spec)
+properties      ["desc", "gpx", "name"]
+=== python scripts/mpw.py measure distance -41.32 174.81 40.96 -5.50
+distance  19959679.267 m (19959.679 km)
+bearing   161.067670 deg (initial)
+final     18.825195 deg
+method    Vincenty (WGS84)
+=== python scripts/mpw.py measure distance -37.95103342 144.42486789 -37.65282114 143.92649553 --ellipsoid GRS80
+distance  54972.271 m (54.972 km)
+bearing   306.868159 deg (initial)
+final     307.173631 deg
+method    Vincenty (GRS80)
+=== python scripts/mpw.py measure area tests/fixtures/square.geojson
+area  9231319412.4 m2 (9231.319412 km2)
+method ellipsoid (WGS84) via authalic latitude; edges straight in cylindrical equal-area
+=== python scripts/mpw.py measure scale 1:50000 --map 2cm
+2cm on the map = 1000 m = 1 km on the ground at 1:50000
+=== python scripts/mpw.py measure scale 1:25000 --ground 3km
+3km on the ground = 12 cm on the map at 1:25000
+=== python scripts/mpw.py project --list
+webmercator      EPSG:3857 spherical Mercator on R = 6378137 m (metres; conformal)
+equirectangular  plate carree (lat0 = standard parallel; R units)
+mollweide        Mollweide, equal-area (R units)
+laea             Lambert azimuthal equal-area centred on lon0, lat0 (sphere, R units)
+robinson         Robinson, PROJ cubic-spline table (compromise; R units)
+equalearth       Equal Earth, equal-area (R units)
+=== python scripts/mpw.py project mollweide 100 45
+x=1.266361139  y=0.8372734721
+=== python scripts/mpw.py project webmercator 174.78 -41.29
+x=19456420.6  y=-5055211.16
+=== python scripts/mpw.py project webmercator 19456639.5 -5057944.4 --inverse
+lon=174.7819664  lat=-41.30844609
+=== python scripts/mpw.py read tests/fixtures/heights.png
+{
+ "image": "heights.png",
+ "width": 16,
+ "height": 12,
+ "decoder": "png",
+ "classes": {
+  "ink": 0.8906,
+  "grey": 0.1094
+ },
+ "class_rules": {
+  "ink": "near black: text, outlines, symbols",
+  "grey": "neutral greys"
+ },
+ "dominant_colours": [
+  {
+   "colour": "#171717",
+   "share": 0.2552,
+   "class": "ink"
+  },
+  {
+   "colour": "#272727",
+   "share": 0.2552,
+   "class": "ink"
+  },
+  {
+   "colour": "#373737",
+   "share": 0.25,
+   "class": "ink"
+  },
+  {
+   "colour": "#090909",
+   "share": 0.1823,
+   "class": "ink"
+  },
+  {
+   "colour": "#424242",
+   "share": 0.0573,
+   "class": "grey"
+  }
+ ],
+ "sample_step_px": 1,
+ "text": {
+  "value": null,
+  "status": "not sure",
+  "reason": "tesseract is not on PATH, so no text was read; names, legend labels and printed scale are not sure. Install Tesseract, or use `read --prompt` and your own vision."
+ },
+ "printed_scale": {
+  "value": null,
+  "status": "not sure",
+  "reason": "no OCR, so printed scale text was not read"
+ },
+ "georeference": {
+  "value": null,
+  "status": "not sure",
+  "reason": "no control points given; pass --gcp px,py,lon,lat three or more times"
+ },
+ "scale": {
+  "value": null,
+  "status": "not sure",
+  "reason": "no georeference and no measured scale bar"
+ },
+ "legend": {
+  "value": null,
+  "status": "not sure",
+  "reason": "legend entries need text recognition or an agent reading (read --prompt)"
+ },
+ "names": {
+  "value": null,
+  "status": "not sure",
+  "reason": "place names need text recognition or an agent reading (read --prompt)"
+ }
+}
+=== python scripts/mpw.py read tests/fixtures/heights.png --gcp 0,0,500000,4200000 --gcp 16,0,500160,4200000 --gcp 0,12,500000,4199880 --units m
+{
+ "image": "heights.png",
+ "width": 16,
+ "height": 12,
+ "decoder": "png",
+ "classes": {
+  "ink": 0.8906,
+  "grey": 0.1094
+ },
+ "class_rules": {
+  "ink": "near black: text, outlines, symbols",
+  "grey": "neutral greys"
+ },
+ "dominant_colours": [
+  {
+   "colour": "#171717",
+   "share": 0.2552,
+   "class": "ink"
+  },
+  {
+   "colour": "#272727",
+   "share": 0.2552,
+   "class": "ink"
+  },
+  {
+   "colour": "#373737",
+   "share": 0.25,
+   "class": "ink"
+  },
+  {
+   "colour": "#090909",
+   "share": 0.1823,
+   "class": "ink"
+  },
+  {
+   "colour": "#424242",
+   "share": 0.0573,
+   "class": "grey"
+  }
+ ],
+ "sample_step_px": 1,
+ "text": {
+  "value": null,
+  "status": "not sure",
+  "reason": "tesseract is not on PATH, so no text was read; names, legend labels and printed scale are not sure. Install Tesseract, or use `read --prompt` and your own vision."
+ },
+ "printed_scale": {
+  "value": null,
+  "status": "not sure",
+  "reason": "no OCR, so printed scale text was not read"
+ },
+ "georeference": {
+  "method": "affine",
+  "coefficients": [
+   10.0,
+   0.0,
+   500000.0,
+   0.0,
+   -10.0,
+   4200000.0
+  ],
+  "units": "m",
+  "gcps": 3,
+  "residuals": [
+   {
+    "px": 0.0,
+    "py": 0.0,
+    "dx": 0.0,
+    "dy": 0.0,
+    "metres": 0.0
+   },
+   {
+    "px": 16.0,
+    "py": 0.0,
+    "dx": 0.0,
+    "dy": 0.0,
+    "metres": 0.0
+   },
+   {
+    "px": 0.0,
+    "py": 12.0,
+    "dx": 0.0,
+    "dy": 0.0,
+    "metres": 0.0
+   }
+  ],
+  "rms_m": 0.0,
+  "max_m": 0.0,
+  "note": "3 points fit an affine exactly: residuals are zero by construction and prove nothing. Add a 4th.",
+  "metres_per_pixel_at_centre": 10.0
+ },
+ "scale": {
+  "metres_per_pixel": 10.0,
+  "from": "GCP affine fit"
+ },
+ "legend": {
+  "value": null,
+  "status": "not sure",
+  "reason": "legend entries need text recognition or an agent reading (read --prompt)"
+ },
+ "names": {
+  "value": null,
+  "status": "not sure",
+  "reason": "place names need text recognition or an agent reading (read --prompt)"
+ }
+}
+=== python scripts/mpw.py gen world --seed 7 --style nordic --out isles.map
+wrote isles.map: 15876 cells, 48 rivers, 22 lakes, 81 settlements, 94 roads, 162 names in 1.21 s
+=== python scripts/mpw.py gen world --seed 7 --style nordic --out isles2.map
+wrote isles2.map: 15876 cells, 48 rivers, 22 lakes, 81 settlements, 94 roads, 162 names in 1.20 s
+=== cmp isles.map/features.geojson isles2.map/features.geojson
+=== python scripts/mpw.py zoom isles.map --out isles-south.map
+wrote isles-south.map: 16002 cells, 8 rivers, 3 lakes, 21 settlements, 27 roads, 37 names in 0.99 s
+=== python scripts/mpw.py gen region --parent isles.map --window 100,100,400,350 --cells 8000 --out isles-west.map
+wrote isles-west.map: 8036 cells, 32 rivers, 21 lakes, 31 settlements, 33 roads, 88 names in 0.76 s
+=== python scripts/mpw.py check isles-south.map
+bar 1 PASS: every river runs downhill to the sea or through a lake to it (42 river cells, 0 failures)
+bar 2 PASS: no river splits outside a marked delta (0 splits, 0 rivers that stop on land, 0 marked deltas)
+bar 3 PASS: each lake has at most one outlet (3 lakes, max outlets 1)
+bar 4 PASS: same recipe gives byte-identical files (all 8 files identical)
+bar 5 PASS: child coast within 1 parent spacing of the parent coast (875 child coast segments, max 0.679, mean 0.177 parent spacings)
+bar 6 PASS: parent rivers present in the child within 1 parent spacing (4 parent river points, max 0.128 parent spacings)
+bar 7 PASS: climate: temperature falls poleward; lee of mountains drier (sea-level temp by 10-deg band 25.9/22.7; windward 0 vs leeward 32 cm/yr (too few samples, shadow not judged))
+bar 8 PASS: every settlement on land and not in a lake (21 settlements, 0 in water)
+bar 9 PASS: all settlements of one landmass connected by roads (3 landmasses with settlements, 0 split)
+bar 10 PASS: roads never run through sea or lake cells (no ferries) and step cell to cell (27 roads, 758 road cells, 0 in water, 0 jumps)
+bar 11 PASS: names unique and present for every named feature (37 names, 0 duplicates, 0 features unnamed, 0 feature names missing from names.json)
+bar 12 PASS: same seed gives byte-identical names.json and features.geojson (identical)
+bar 13 PASS: child keeps parent settlements and roads within 1 parent + 1 child spacing (8 parent settlements in window, 0 missing or renamed, max shift 1.42 km; 141 parent road points, max 1.43 km; tolerance 9.91 km)
+bar 14 PASS: labels: none overlap (23 labels, 0 overlapping pairs)
+bar 15 PASS: labels: none cut by the edge (0 cut)
+bar 16 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
+=== python scripts/mpw.py names --list
+desert    long vowels, sh/kh/q (C=b d h j k m n q r s sh t z kh; V=a i u aa; S=CV CVF CV)
+harsh     clustered stops, closed syllables (C=k g d t r z kr gr dr th b; V=a o u i; S=CVF CV CVF CCVF)
+isle      no codas, small inventory (C=h k l m n p w; V=a e i o u; S=CV V CV)
+latinate  open syllables, -a/-um/-is feel (C=b c d f l m n p r s t v qu; V=a e i o u ia io; S=CV CV CVF V)
+nordic    short, consonant final (C=b d f g h k l m n r s t v sk st; V=a e i o u y aa ei; S=CVF CV CVF)
+soft      flowing, vowel rich (C=l m n r s v th h f y w; V=a e i o u ae ei ia; S=CV CVF V CV)
+=== python scripts/mpw.py names --sample 6 --style desert --seed 3
+Qabur
+Raami
+Ribud
+Saashi
+Khijish
+Hunhi
+=== python scripts/mpw.py names --sample 4 --pattern C=k t r s;V=a o i;F=n r;S=CV CVF;N=2-3 --seed 1
+Rakosir
+Sitoror
+Kansiron
+Karto
+=== python scripts/mpw.py style --list
+atlas              biome colours, soft hillshade, flat sea, serif labels
+blueprint          white line work on blueprint blue, monospace
+ink-and-parchment  parchment land, ink lines, old serif
+satellite          dark natural colour with strong relief, white labels
+star-chart         night palette with a star field (palette only for now)
+topographic        hypsometric tints, hillshade, depth-tinted sea
+=== python scripts/mpw.py style ink-and-parchment
+{
+ "desc": "parchment land, ink lines, old serif",
+ "land": "flat",
+ "landc": "#ecdcb0",
+ "sea": [
+  "#d9c896",
+  "#cbb680"
+ ],
+ "shade": 0.35,
+ "coast": "#3b2a1a",
+ "river": "#3b2a1a",
+ "lake": "#d9c896",
+ "roads": [
+  "#5a3b22",
+  "#5a3b22",
+  "#7a5a3a"
+ ],
+ "dot": "#3b2a1a",
+ "ink": "#2b1d10",
+ "halo": "#ecdcb0",
+ "font": "'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif",
+ "paper": "#e2d0a0"
+}
+=== python scripts/mpw.py render isles.map -o isles.svg --style atlas
+wrote isles.svg: style atlas, 78 labels (62 dropped), 21 legend entries, 0.61 s
+=== python scripts/mpw.py render isles.map -o isles.png --style ink-and-parchment
+wrote isles.png: style ink-and-parchment, 83 labels (57 dropped), 10 legend entries, 0.61 s
+=== python scripts/mpw.py render isles.map -o isles.pdf --style blueprint --title The Isles
+wrote isles.pdf: style blueprint, 83 labels (57 dropped), 10 legend entries, 0.61 s
+=== python scripts/mpw.py label isles.map
+82 labels placed, 58 dropped (no free spot)
+PASS: labels: none overlap (82 labels, 0 overlapping pairs)
+PASS: labels: none cut by the edge (0 cut)
+SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
+=== python scripts/mpw.py legend isles.map --style atlas
+swatch ice
+swatch tundra
+swatch boreal forest
+swatch temperate grassland
+swatch cold desert
+swatch temperate seasonal forest
+swatch temperate rainforest
+swatch subtropical desert
+swatch savanna
+swatch tropical seasonal forest
+swatch tropical rainforest
+swatch alpine
+swatch sea
+line   coast
+line   river
+swatch lake
+line   major road
+line   minor road
+dot    city
+dot    town
+dot    village
+=== python scripts/mpw.py legend isles.map --style topographic -o legend.svg
+swatch 0-200 m
+swatch 200-500 m
+swatch 500-1000 m
+swatch 1000-2000 m
+swatch 2000-3000 m
+swatch 3000-4500 m
+swatch 4500 m+
+swatch sea
+line   coast
+line   river
+swatch lake
+line   major road
+line   minor road
+dot    city
+dot    town
+dot    village
+=== python scripts/mpw.py sheet isles.map --styles atlas,blueprint,star-chart -o pick.png
+wrote pick.png: 3 maps
+=== python scripts/mpw.py sheet isles.map --seeds 1,2,3,4 --cols 2 -o seeds.svg
+wrote seeds.svg: 4 maps
+=== python scripts/mpw.py render isles.map -o isles-atlas.png --style atlas
+wrote isles-atlas.png: style atlas, 78 labels (62 dropped), 21 legend entries, 0.60 s
+=== python scripts/mpw.py trace isles-atlas.png --class water --min-area 50 -o water.geojson
+{"source": "isles-atlas.png", "width": 1000, "height": 1000, "mode": "polygons", "class": "water", "epsilon_px": 1.0, "coordinates": "pixel", "mask_share": 0.5341, "features": 37, "out": "water.geojson"}
+=== python scripts/mpw.py inspect water.geojson
+format          GeoJSON
+features        37
+geometry_types  {"Polygon": 37}
+extent          [1, 1, 999, 999]
+crs             WGS84 lon/lat (RFC 7946)
+properties      ["area_px", "class", "holes"]
+=== python scripts/mpw.py gen city --seed 4 --out town.map
+wrote town.map: Ewakake, 114 streets, 49 blocks, 1047 lots, 15 districts, 5 gates, 0 bridges in 0.14 s
+=== python scripts/mpw.py check town.map
+bar 1 PASS: city: every street reachable from the market (364 of 364 street nodes reached)
+bar 2 PASS: city: every block fronts a reached street (49 blocks, 0 without a reached street edge)
+bar 3 PASS: city: lots simple, positive and inside their block (1047 lots, 0 bad)
+bar 4 PASS: city: every built lot has street frontage (1047 lots, 0 without frontage (left as yards, never built on), 0 built without frontage)
+bar 5 PASS: city: gates on the wall, streets cross it only at gates (5 gates (0 off the wall), 0 streets cut the wall, 0 leave it without a gate; wall closed)
+bar 6 PASS: same seed gives byte-identical files (5 files identical)
+bar 7 PASS: labels: none overlap (16 labels, 0 overlapping pairs)
+bar 8 PASS: labels: none cut by the edge (0 cut)
+bar 9 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
+=== python scripts/mpw.py gen dungeon --seed 3 --method bsp --out crypt.map
+wrote crypt.map: Koda, 48x36 square squares at 70 px, 14 rooms, 19 doors, 96 wall runs, 14 lights in 0.07 s
+=== python scripts/mpw.py check crypt.map
+bar 1 PASS: dungeon: every floor square reachable from the entrance (854 of 854 passable squares reached)
+bar 2 PASS: dungeon: every room reached, none overlap (14 rooms, 0 unreached, 0 overlapping pairs)
+bar 3 PASS: dungeon: goal at the floor square farthest from the entrance (goal 108 steps, map maximum 108)
+bar 4 PASS: dungeon: entrance-to-goal path at least 48 steps (map width) (shortest path 108 steps)
+bar 5 PASS: dungeon: no isolated wall squares (every wall has two wall neighbours) (0 isolated, 51% of squares wall)
+bar 6 PASS: dungeon: every door reached and joins two floors (19 doors, 0 bad)
+bar 7 PASS: dungeon: walls closed (every wall end meets another) (96 wall runs, 0 loose ends)
+bar 8 PASS: dungeon: grid on whole pixels (map.png 3360x2520 = 48x36 squares x 70 px)
+bar 9 PASS: uvtt: loads, pixels_per_grid a whole number (ppg 70, 96 walls, 19 portals, 14 lights)
+bar 10 PASS: uvtt: walls inside the image (96 walls, 0 points outside 48x36)
+bar 11 PASS: uvtt: every door ends on a wall (0 door ends off a wall)
+bar 12 PASS: uvtt: image matches the grid (3360x2520 px for 48x36 squares at 70)
+bar 13 PASS: uvtt: colours alpha first, doors closed, no wall over a door (0 colours not ffRRGGBB, 0 portals not closed, 0 doors under a wall)
+bar 14 PASS: same seed gives byte-identical files (7 files identical)
+bar 15 PASS: labels: none overlap (15 labels, 0 overlapping pairs)
+bar 16 PASS: labels: none cut by the edge (0 cut)
+bar 17 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
+=== python scripts/mpw.py gen dungeon --seed 3 --method cave --out cave.map
+wrote cave.map: Koda, 48x36 square squares at 70 px, 0 rooms, 0 doors, 174 wall runs, 9 lights in 0.07 s
+=== python scripts/mpw.py gen dungeon --seed 3 --method cyclic --out keep.map
+wrote keep.map: Koda, 48x36 square squares at 70 px, 20 rooms, 24 doors, 144 wall runs, 20 lights in 0.07 s
+=== python scripts/mpw.py check keep.map --chokepoints
+chokepoints: 0 cells, 0 bridges, 373 passable, min cut entrance to goal 2, equals brute force: True
+=== python scripts/mpw.py check crypt.map --fair
+fair: areas [424, 430] (ratio 1.014151), tied 0, unreached 0 of 854; resources reached first [8, 6]
+=== python scripts/mpw.py check --range bsp --seeds 20
+expressive range: gen dungeon --method bsp, 20 seeds, 48x36 -> range-bsp
+  loop_share          min 0.300  mean 0.585  max 0.872
+  dead_end_share      min 0.109  mean 0.355  max 0.899
+  path_over_diagonal  min 1.100  mean 1.614  max 2.117
+  open_floor_share    min 0.420  mean 0.476  max 0.552
+  loop_share x dead_end_share: 17 of 100 bins used, fullest bin 15.0%, first 10 seeds against all 20 TV 0.450
+  path_over_diagonal x open_floor_share: 18 of 100 bins used, fullest bin 15.0%, first 10 seeds against all 20 TV 0.450
+=== python scripts/mpw.py gen battle --seed 2 --grid square --out field.map
+wrote field.map: Ninbuqaa, 30x20 square squares at 100 px, 0 rooms, 3 doors, 48 wall runs, 5 lights in 0.05 s
+=== python scripts/mpw.py gen battle --seed 2 --grid hex --out hexes.map
+wrote hexes.map: Ninbuqaa, 30x20 hex squares at 100 px, 0 rooms, 0 doors, 0 wall runs, 0 lights in 0.02 s
+=== python scripts/mpw.py render crypt.map -o crypt.svg --style blueprint --title The Crypt
+wrote crypt.svg
+=== python scripts/mpw.py gen sector --seed 5 --out spin.map
+wrote spin.map: Vovivio, 57 worlds, 90 routes (0 long) in 0.03 s
+=== python scripts/mpw.py check spin.map
+bar 1 PASS: sector: route graph connected (57 worlds, 90 routes, 1 component(s), 6 bridges (chokepoints listed, not failed))
+bar 2 PASS: sector: jump routes within jump 2, longer ones marked long (90 jump, 0 long, 0 mislabelled)
+bar 3 PASS: sector: worlds inside the grid, one per hex (57 worlds, 0 outside, 0 sharing a hex)
+bar 4 PASS: sector: T5 tab file reads back (57 rows read back by header, hex, name and UWP match: True)
+bar 5 PASS: same seed gives byte-identical files (6 files identical)
+bar 6 PASS: labels: none overlap (57 labels, 0 overlapping pairs)
+bar 7 PASS: labels: none cut by the edge (0 cut)
+bar 8 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
+=== python scripts/mpw.py gen sector --real --radius-pc 4 --out near.map
+wrote near.map: Near stars within 4.0 pc, 12 worlds, 13 routes (7 long) in 0.02 s
+=== python scripts/mpw.py gen system --seed 5 --star G --out sol2.map
+wrote sol2.map: Quusa (G7 V), 5 planets, 0 moons in 0.01 s
+=== python scripts/mpw.py check sol2.map
+bar 1 PASS: system: every orbit outside the star (5 planets, 0 too close; star radius 0.00482 AU)
+bar 2 PASS: system: neighbours at least 10 mutual Hill radii apart (orbits ascending True, closest pair 35.9 mutual Hill radii)
+bar 3 PASS: system: moons inside their planet's Hill sphere and outside the planet (0 moons, 0 outside the bounds)
+bar 4 PASS: system: habitable zone scales with sqrt(L) and zones match it (1.037-1.823 AU for L = 1.1915, 0 bodies in the wrong zone)
+bar 5 PASS: same seed gives byte-identical files (6 files identical)
+bar 6 PASS: labels: none overlap (10 labels, 0 overlapping pairs)
+bar 7 PASS: labels: none cut by the edge (0 cut)
+bar 8 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
+bar 9 PASS: labels: none overlap (orbits.svg) (5 labels, 0 overlapping pairs)
+bar 10 PASS: labels: none cut by the edge (orbits.svg) (0 cut)
+bar 11 SKIP: labels: read back by OCR (orbits.svg) (skipped: tesseract not found (install it to run this bar))
+=== python scripts/mpw.py render sol2.map -o sol2-scale.svg --view scale
+wrote sol2-scale.svg
+=== python scripts/mpw.py gen planet --seed 5 --kind ocean --width 512 --out blue.map
+wrote blue.map: ocean planet texture 512x256, 0 craters in 0.74 s
+=== python scripts/mpw.py check blue.map
+bar 1 PASS: planet: texture is 2:1 (512x256)
+bar 2 PASS: planet: no seam where the edges meet (mean |col 0 - col 511| 1.29 vs 90th percentile adjacent-column 1.94 (limit x2.5 + 0.5 grey level))
+bar 3 PASS: planet: no pinch at the poles (pole rows uniform) (std of top row 0.00, bottom row 0.00 vs whole texture 86.35 (limit x0.50))
+bar 4 PASS: same seed gives byte-identical files (5 files identical)
+bar 5 PASS: labels: none overlap (0 labels, 0 overlapping pairs)
+bar 6 PASS: labels: none cut by the edge (0 cut)
+bar 7 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
+=== python scripts/mpw.py gen deck --seed 5 --hull ship --decks 2 --out ship.map
+wrote ship.map: Botomabiom, 2 deck(s), 26 rooms in 0.02 s
+=== python scripts/mpw.py check ship.map
+bar 1 PASS: deck: every room reached from the airlock (26 rooms on 2 deck(s), 0 unreached)
+bar 2 PASS: deck: every floor square reached (759 of 759 reached)
+bar 3 PASS: deck: every door joins two floors (26 doors, 0 bad)
+bar 4 PASS: deck: airlock has an inner door and an outer door to space (outer at [18, 1] opens to space: True; inner door: True)
+bar 5 PASS: deck: lifts line up on every deck (lift squares per deck: [1, 1])
+bar 6 PASS: same seed gives byte-identical files (5 files identical)
+bar 7 PASS: labels: none overlap (26 labels, 0 overlapping pairs)
+bar 8 PASS: labels: none cut by the edge (0 cut)
+bar 9 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
+=== ls town.map cave.map field.map spin.map sol2.map blue.map ship.map
+blue.map:
+map.svg
+planet.json
+recipe.json
+sources.json
+texture.png
+
+cave.map:
+features.geojson
+grid.json
+map.png
+map.svg
+names.json
+recipe.json
+sources.json
+
+field.map:
+features.geojson
+grid.json
+map.png
+map.svg
+names.json
+recipe.json
+sources.json
+
+ship.map:
+deck.json
+map.svg
+names.json
+recipe.json
+sources.json
+
+sol2.map:
+map.svg
+names.json
+orbits.svg
+recipe.json
+sources.json
+system.json
+
+spin.map:
+map.svg
+names.json
+recipe.json
+sector.json
+sector.tab
+sources.json
+
+town.map:
+features.geojson
+map.svg
+names.json
+recipe.json
+sources.json
+=== python scripts/mpw.py check tests/fixtures/dungeon-070-bsp
+bar 1 PASS: dungeon: every floor square reachable from the entrance (163 of 163 passable squares reached)
+bar 2 PASS: dungeon: every room reached, none overlap (2 rooms, 0 unreached, 0 overlapping pairs)
+bar 3 PASS: dungeon: every door reached and joins two floors (2 doors, 0 bad)
+bar 4 PASS: dungeon: walls closed (every wall end meets another) (12 wall runs, 0 loose ends)
+bar 5 PASS: dungeon: grid on whole pixels (map.png 192x128 = 24x16 squares x 8 px)
+bar 6 PASS: uvtt: loads, pixels_per_grid a whole number (ppg 8, 12 walls, 2 portals, 2 lights)
+bar 7 PASS: uvtt: walls inside the image (12 walls, 0 points outside 24x16)
+bar 8 PASS: uvtt: every door ends on a wall (0 door ends off a wall)
+bar 9 PASS: uvtt: image matches the grid (192x128 px for 24x16 squares at 8)
+bar 10 PASS: uvtt: colours alpha first, doors closed, no wall over a door (0 colours not ffRRGGBB, 0 portals not closed, 0 doors under a wall)
+bar 11 PASS: same seed gives byte-identical files (7 files identical)
+bar 12 PASS: labels: none overlap (2 labels, 0 overlapping pairs)
+bar 13 PASS: labels: none cut by the edge (0 cut)
+bar 14 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
+=== python scripts/mpw.py check tests/fixtures/dungeon-070-cave
+bar 1 PASS: dungeon: every floor square reachable from the entrance (139 of 139 passable squares reached)
+bar 2 PASS: dungeon: walls closed (every wall end meets another) (44 wall runs, 0 loose ends)
+bar 3 PASS: dungeon: grid on whole pixels (map.png 192x128 = 24x16 squares x 8 px)
+bar 4 PASS: uvtt: loads, pixels_per_grid a whole number (ppg 8, 44 walls, 0 portals, 1 lights)
+bar 5 PASS: uvtt: walls inside the image (44 walls, 0 points outside 24x16)
+bar 6 PASS: uvtt: every door ends on a wall (0 door ends off a wall)
+bar 7 PASS: uvtt: image matches the grid (192x128 px for 24x16 squares at 8)
+bar 8 PASS: uvtt: colours alpha first, doors closed, no wall over a door (0 colours not ffRRGGBB, 0 portals not closed, 0 doors under a wall)
+bar 9 PASS: same seed gives byte-identical files (7 files identical)
+bar 10 PASS: labels: none overlap (0 labels, 0 overlapping pairs)
+bar 11 PASS: labels: none cut by the edge (0 cut)
+bar 12 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
+=== python scripts/mpw.py export crypt.map -o crypt.dd2vtt
+PASS: uvtt: loads, pixels_per_grid a whole number (ppg 70, 96 walls, 19 portals, 14 lights)
+PASS: uvtt: walls inside the image (96 walls, 0 points outside 48x36)
+PASS: uvtt: every door ends on a wall (0 door ends off a wall)
+PASS: uvtt: image matches the grid (3360x2520 px for 48x36 squares at 70)
+PASS: uvtt: colours alpha first, doors closed, no wall over a door (0 colours not ffRRGGBB, 0 portals not closed, 0 doors under a wall)
+wrote crypt.dd2vtt
+=== python scripts/mpw.py export crypt.map -o crypt.tmj
+PASS: tiled: parses, one tile layer per level (1 tile layer(s), 2 object layer(s), version 1.10)
+PASS: tiled: layer size equals the recipe grid (48 x 36 tiles of 32 px)
+PASS: tiled: every gid is a tile in the tileset image (0 gids outside 1..6, image 192 x 32 for 6 tiles)
+PASS: tiled: floor cells equal the recipe's (835 floor cells, recipe 835, 0 cells differ)
+PASS: tiled: wall and door objects inside the map (115 objects, 0 points outside)
+wrote crypt.tmj, crypt.tiles.png
+=== python scripts/mpw.py export ship.map --to uvtt -o ship.dd2vtt
+PASS: deck 1 uvtt: loads, pixels_per_grid a whole number (ppg 50, 112 walls, 14 portals, 13 lights)
+PASS: deck 1 uvtt: walls inside the image (112 walls, 0 points outside 40x21)
+PASS: deck 1 uvtt: every door ends on a wall (0 door ends off a wall)
+PASS: deck 1 uvtt: image matches the grid (2000x1050 px for 40x21 squares at 50)
+PASS: deck 1 uvtt: colours alpha first, doors closed, no wall over a door (0 colours not ffRRGGBB, 0 portals not closed, 0 doors under a wall)
+PASS: deck 1 uvtt: one portal per door (14 portals, 14 door squares)
+PASS: deck 2 uvtt: loads, pixels_per_grid a whole number (ppg 50, 118 walls, 13 portals, 13 lights)
+PASS: deck 2 uvtt: walls inside the image (118 walls, 0 points outside 40x21)
+PASS: deck 2 uvtt: every door ends on a wall (0 door ends off a wall)
+PASS: deck 2 uvtt: image matches the grid (2000x1050 px for 40x21 squares at 50)
+PASS: deck 2 uvtt: colours alpha first, doors closed, no wall over a door (0 colours not ffRRGGBB, 0 portals not closed, 0 doors under a wall)
+PASS: deck 2 uvtt: one portal per door (13 portals, 13 door squares)
+wrote ship.deck1.dd2vtt, ship.deck2.dd2vtt
+=== python scripts/mpw.py export hexes.map -o hexes.png
+PASS: hex png: same size as the SVG (3050 x 1761 px, hex width 100 px)
+PASS: hex png: every hex centre has its cell's colour (0 of 600 hexes differ)
+wrote hexes.png
+=== python scripts/mpw.py export isles.map --to unity -o isles.raw
+PASS: unity heightmap: size the engine accepts (513 x 513, 16 bit, 526338 bytes)
+PASS: unity heightmap: reads back within one step (worst 0.06469 m, step 0.12938 m, range -2400.0 to 6079.0 m)
+wrote isles.raw, isles.import.json
+=== python scripts/mpw.py export isles.map --to unreal -o isles-unreal.png
+PASS: unreal heightmap: size the engine accepts (1009 x 1009, 16 bit)
+PASS: unreal heightmap: reads back within one step (worst 0.06483 m, step 0.12967 m, range -2400.0 to 6097.9 m)
+wrote isles-unreal.png, isles-unreal.import.json
+=== python scripts/mpw.py export isles.map --to godot -o isles.r16
+PASS: godot heightmap: size the engine accepts (512 x 512, 16 bit, 524288 bytes)
+PASS: godot heightmap: reads back within one step (worst 0.06477 m, step 0.12978 m, range -2400.0 to 6105.0 m)
+wrote isles.r16, isles.import.json
+=== python scripts/mpw.py export isles.map --to roblox -o isles-roblox.png
+PASS: roblox heightmap: size the engine accepts (512 x 512, 8 bit)
+PASS: roblox heightmap: reads back within one step (worst 16.64706 m, step 33.35294 m, range -2400.0 to 6105.0 m)
+PASS: roblox colormap: every colour is a material, same size (8 materials used, 512 x 512)
+wrote isles-roblox.png, isles-roblox.colormap.png, isles-roblox.import.json
+=== python scripts/mpw.py export isles-west.map -o west.obj --print-mm 150
+PASS: mesh: vertex and face counts match the grid (56196 vertices, 112388 faces for 257 x 215 samples with base)
+PASS: mesh: every face index is valid (0 bad faces)
+PASS: mesh: watertight (every edge shared by exactly two faces) (168582 edges, 0 open, 0 shared by more than two, 0 same-way, volume 59778.6 mm3)
+wrote west.obj, west.manifest.json
+=== python scripts/mpw.py export isles.map --to print -o isles-a4.pdf --bleed 3
+PASS: print pdf: MediaBox is the paper plus bleed within 0.5 pt (612.284 x 858.898 pt, wanted 612.283 x 858.898, difference 0.0000 pt (browser page was 613.92 x 860.88))
+PASS: print pdf: one page, TrimBox is the paper (1 page(s), trim difference 0.0000 pt)
+wrote isles-a4.pdf, isles-a4.print.json
+=== python scripts/mpw.py export blue.map --to sphere -o blue.png
+PASS: planet: texture is 2:1 (512x256)
+PASS: planet: no seam where the edges meet (mean |col 0 - col 511| 1.29 vs 90th percentile adjacent-column 1.94 (limit x2.5 + 0.5 grey level))
+PASS: planet: no pinch at the poles (pole rows uniform) (std of top row 0.00, bottom row 0.00 vs whole texture 86.35 (limit x0.50))
+wrote blue.png, blue.sphere.json
+=== python scripts/mpw.py export spin.map -o spin.tab
+PASS: T5 tab: reads back by header (57 of 57 worlds)
+wrote spin.tab
+=== python scripts/mpw.py path crypt.map --from 2,2 --to 30,20
+path: cost 62.1421 steps, 58 steps, 500 cells expanded -> crypt.map
+=== python scripts/mpw.py path crypt.map --from 2,2 --to 30,20 --moves 4
+path: cost 68.0000 steps, 68 steps, 462 cells expanded -> crypt.map
+=== python scripts/mpw.py path crypt.map --field --to 30,20
+field: 1 goal(s), 854 cells reached, 0 unreachable, max 73.627 steps -> crypt.map
+=== ls crypt.map
+fair.json
+features.geojson
+field.json
+field.svg
+grid.json
+map.png
+map.svg
+names.json
+path.geojson
+path.json
+path.svg
+recipe.json
+sources.json
+=== python scripts/mpw.py path ship.map --from 1,2,3 --to 2,19,10
+path: cost 36.3640 m, 22 steps, 53 cells expanded -> ship.map
+=== python scripts/mpw.py path isles.map --from 200,200 --to 400,300
+path: cost 471.8830 road cost (km x slope x terrain), 39 steps, 927 cells expanded -> isles.map
+=== python scripts/mpw.py travel isles.map --from 200,200 --to 400,300 --mode walk
+travel (walk): 6436 cells reached, farthest 224.55 h, bands of 6.0 h: [39, 82, 103, 132, 188, 182, 157, 127, 71, 89, 141, 137, 158, 166, 163, 193, 230, 190, 238, 256, 221, 235, 276, 238, 205, 254, 313, 349, 355, 268, 155, 121, 100, 73, 78, 92, 46, 15] -> isles.map; to goal 64.246561433 h
+=== python scripts/mpw.py travel isles.map --from 200,200 --to 400,300 --mode horse
+travel (horse): 6436 cells reached, farthest 179.64 h, bands of 6.0 h: [55, 115, 152, 222, 222, 194, 105, 105, 177, 178, 211, 199, 248, 298, 240, 321, 279, 311, 335, 250, 325, 418, 447, 349, 188, 146, 101, 92, 106, 47] -> isles.map; to goal 51.397249147 h
+=== python scripts/mpw.py find --list
+osm-extract         OpenStreetMap regional extract (Geofabri ODbL-1.0 | © OpenStreetMap contributors
+overpass            OpenStreetMap via Overpass API           ODbL-1.0 | © OpenStreetMap contributors
+nominatim           Nominatim geocoder (OSM)                 ODbL-1.0 | © OpenStreetMap contributors
+natural-earth       Natural Earth                            public domain | Made with Natural Earth
+gadm                GADM administrative areas                non-commercial, no redistribution | GADM 4.1, gadm.org
+geoboundaries       geoBoundaries                            per file: boundaryLicense in the API answer (often CC BY 4.0, some ODbL-1.0) | geoBoundaries (Runfola et al. 2020), https://www.geoboundaries.org
+geonames-dump       GeoNames dump                            CC BY 4.0 | GeoNames, CC BY 4.0
+wikidata            Wikidata                                 CC0 | Data from Wikidata
+copernicus-dem      Copernicus DEM GLO-30/90                 Copernicus WorldDEM licence (free, notice + no-liability) | © DLR e.V. 2010-2014 and © Airbus 2014-2018, provided under COPERNICUS by the European Union and ESA
+srtm                SRTM                                     CC0 (NASA) | NASA JPL SRTM
+usgs-3dep           USGS 3DEP                                public domain | USGS 3D Elevation Program
+opentopography      OpenTopography global DEM API            per dataset | OpenTopography (opentopography.org) and the dataset's source
+gebco               GEBCO bathymetry                         public domain (acknowledge, no endorsement, not for navigation) | GEBCO Compilation Group (2025) GEBCO 2025 Grid
+esa-worldcover      ESA WorldCover                           CC BY 4.0 | © ESA WorldCover project / Contains modified Copernicus Sentinel data processed by ESA WorldCover consortium
+historical-basemaps Historical Basemaps (aourednik)          GPL-3.0 | A. Ourednik, Historical Basemaps
+cshapes             CShapes 2.0                              CC BY-NC-SA 4.0 | Schvitz et al. 2022, CShapes 2.0
+rumsey              David Rumsey Map Collection              CC BY-NC-SA 3.0 | David Rumsey Map Collection, David Rumsey Map Center, Stanford Libraries
+loc                 Library of Congress, Geography and Map D mostly public domain, check each item | Library of Congress, Geography and Map Division
+commons             Wikimedia Commons                        per file | author and licence per file (see the file page)
+usgs-astro          USGS Astrogeology                        public domain | USGS Astrogeology Science Center and the mission team
+lola                Moon LOLA                                public domain | NASA/GSFC/LOLA Science Team
+mola                Mars MOLA                                public domain | NASA/JPL/GSFC MOLA Science Team
+hyg                 HYG star database                        CC BY-SA 4.0 | HYG Database, David Nash (astronexus)
+gaia-dr3            Gaia DR3                                 CC BY-NC 3.0 IGO | This work has made use of data from the ESA mission Gaia, processed by the Gaia DPAC
+exoplanet-archive   NASA Exoplanet Archive                   no licence stated; acknowledgement asked | This research has made use of the NASA Exoplanet Archive, operated by Caltech under contract with NASA
+=== python scripts/mpw.py find Iceland elevation
+query: Iceland elevation  (kinds: subject, place)
+- [copernicus-dem] Copernicus DEM GLO-30/90
+    https://registry.opendata.aws/copernicus-dem/
+    licence: Copernicus WorldDEM licence (free, notice + no-liability)
+    credit: © DLR e.V. 2010-2014 and © Airbus 2014-2018, provided under COPERNICUS by the European Union and ESA
+- [lola] Moon LOLA
+    https://pds-geosciences.wustl.edu/missions/lro/lola.htm
+    licence: public domain
+    credit: NASA/GSFC/LOLA Science Team
+- [mola] Mars MOLA
+    https://pds-geosciences.wustl.edu/missions/mgs/mola.html
+    licence: public domain
+    credit: NASA/JPL/GSFC MOLA Science Team
+- [opentopography] OpenTopography global DEM API
+    https://portal.opentopography.org/API/globaldem
+    licence: per dataset
+    credit: OpenTopography (opentopography.org) and the dataset's source
+    key: missing: set OPENTOPOGRAPHY_API_KEY
+- [srtm] SRTM
+    https://lpdaac.usgs.gov/
+    licence: CC0 (NASA)
+    credit: NASA JPL SRTM
+- [usgs-3dep] USGS 3DEP
+    https://apps.nationalmap.gov/downloader/
+    licence: public domain
+    credit: USGS 3D Elevation Program
+- [geoboundaries] geoBoundaries
+    https://www.geoboundaries.org/api.html
+    licence: per file: boundaryLicense in the API answer (often CC BY 4.0, some ODbL-1.0)
+    credit: geoBoundaries (Runfola et al. 2020), https://www.geoboundaries.org
+- [geonames-dump] GeoNames dump
+    https://download.geonames.org/export/dump/
+    licence: CC BY 4.0
+    credit: GeoNames, CC BY 4.0
+=== python scripts/mpw.py aistyle --list
+ink-and-parchment  over ink-and-parchment  brown ink on aged parchment, hachures, shore lines
+painted-atlas      over atlas              gouache atlas plate: soft greens, painted relief, pale blue sea
+satellite          over satellite          natural-colour orbital picture: deep ocean, forest, bare ground, relief
+watercolour        over topographic        loose washes on cold-press paper
+=== python scripts/mpw.py aistyle isles.map --look painted-atlas --dry-run
+dry run: wrote isles.map\aistyle-painted-atlas.control.png and isles.map\aistyle-painted-atlas.workflow.json (1024x1024, painted-atlas, seed 0, denoise 0.45 runs as 0.450); no server contacted
+=== serve
+GET / -> 200
+serving http://127.0.0.1:8765/ (127.0.0.1 only; Ctrl+C stops)
