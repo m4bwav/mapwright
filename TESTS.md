@@ -12,6 +12,10 @@ Entry shape: `### T-20261116-14 · 2026-11-16 · pytest (tests/) + port-share sw
 
 ## Runs
 
+### T-20261116-16 · 2026-11-16 · pytest (python -m pytest -q tests) after ink-and-parchment period 1600 · Windows · 255 passed, 2 skipped (live) in 78 s
+- New: test_builtin_style_period (ink-and-parchment carries 1600, topographic none; `check --style ink-and-parchment` on a world adds a passing period 1600 bar without --period).
+- led to: none
+
 ### T-20261116-15 · 2026-11-16 · pytest (python -m pytest -q tests) after row 3, `check --period` · Windows · 254 passed, 2 skipped (live) in 81 s
 - New: test_period_lint_rules (every row-3 year one year early fails and on the year passes; chart and mappa rules; Greenwich only warns; unknown convention or kind refused), test_check_period_cli (topographic world passes 1900, fails 1700 on bar scale, compass rose and tints; `--uses robinson` fails 1900; ink-and-parchment chart passes 1500).
 - led to: none

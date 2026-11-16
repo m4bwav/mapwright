@@ -1,6 +1,6 @@
 {
   "name": "mapwright",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "description": "Cartography for real, fantasy and sci-fi worlds: read, write, find and generate maps of places. Inspects and converts GeoJSON, GPX, KML, shapefiles, GeoPackage, MBTiles and heightmap PNGs, measures geodesic distance, bearing, area and scale, projects points (Web Mercator, Mollweide, Lambert equal-area, Robinson, Equal Earth), explains map terms, and grows invented worlds as recipe folders. Use whenever the user wants a map of a place or world: 'what is in this GPX', 'convert this KML to GeoJSON', 'how far is it from A to B', 'which projection for a world map', 'make a fantasy continent map', 'star map for my sci-fi setting'. Also 'refresh mapwright'. Not for code or repository maps (evergreen-map), charts of data on a map such as choropleths (chartwright) or 3D models of places (polywright).",
   "author": {
     "name": "Mark Rogers"

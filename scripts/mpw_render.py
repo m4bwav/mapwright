@@ -43,7 +43,8 @@ STYLES = {
                       dot="#ffffff", ink="#ffffff", halo="#101820", font=SANS, paper="#0e2740"),
     "ink-and-parchment": dict(desc="parchment land, ink lines, old serif", land="flat", landc="#ecdcb0", sea=("#d9c896", "#cbb680"),
                               shade=0.35, coast="#3b2a1a", river="#3b2a1a", lake="#d9c896", roads=("#5a3b22", "#5a3b22", "#7a5a3a"),
-                              dot="#3b2a1a", ink="#2b1d10", halo="#ecdcb0", font=OLD, paper="#e2d0a0"),
+                              dot="#3b2a1a", ink="#2b1d10", halo="#ecdcb0", font=OLD, paper="#e2d0a0",
+                              period=1600),  # early-modern look: check lints conventions younger than 1600
     "blueprint": dict(desc="white line work on blueprint blue, monospace", land="flat", landc="#2c66aa", sea=("#1d4e89", "#1d4e89"),
                       shade=0.15, coast="#e8f1fb", river="#cfe2f8", lake="#1d4e89", roads=("#ffffff", "#e0ecfa", "#c0d4ee"),
                       dot="#ffffff", ink="#ffffff", halo="#1d4e89", font=MONO, mono=True, grid="#5d8cc4", paper="#1d4e89"),
