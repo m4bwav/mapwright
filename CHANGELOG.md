@@ -4,6 +4,10 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261116-2 · 2026-11-16 · 0.10.3: VERSION constant, README bar count, Hill spacing note
+- because: wiki run for 0.10.2 found mpw.py VERSION stuck at 0.10.0, README "(0.2.0, unreleased)" and 13 bars, CHANGELOG 0.6.0 Hill spacing vs the check bar's 10
+- files: scripts/mpw.py, plugin.json, .claude-plugin/plugin.json, README.md, CHANGELOG.md
+- Version strings agree; README and the 0.6.0 entry match what the code does.
 ### C-20261116-1 · 2026-11-16 · 0.10.2: Step F description triggers, eval suite in evergreen format
 - because: Step F; T-20261116-1 (trigger-read-gpx 0/3 before the fix)
 - files: skills/mapwright/SKILL.md, evals/evals.json, TESTS.md, evergreen.json, plugin.json, .claude-plugin/plugin.json, ai-docs/log.md
@@ -66,7 +70,7 @@ Added evergreen.json (pointer mode, tier moderate, next due 2026-12-14), RESEARC
 ### C-20261115-3 · 2026-11-15 · 0.6.0: gen sector, gen system, gen planet, gen deck
 - because: user request (Step D.8), T-20261115-3, L-021, L-022, L-023
 - files: scripts/mpw_space.py (new), scripts/data/near-stars.csv (new), scripts/mpw.py, tests/test_space.py (new), skills/mapwright/SKILL.md, README.md, plugin.json, .claude-plugin/plugin.json
-- `gen sector` places one world per occupied hex of a subsector (8x10) or sector (32x40), joins them by the relative neighbourhood graph plus the minimum spanning tree so the graph is always connected, marks routes beyond the jump range as long, and writes a T5 tab-delimited file; `--real` places twelve near stars from a small bundled table by parallax. `gen system` builds a star, planets kept at least 12 mutual Hill radii apart, moons inside the Hill sphere, and draws a schematic and a to-scale diagram. `gen planet` samples 3D noise on the sphere for six kinds of world, so the texture has no seam and no pole pinch. `gen deck` lays out ship or station decks with a spine corridor, doors, an airlock and lifts. `check` runs the space bars; `export` writes a planet as a sphere PNG plus a hand-off note, or a sector as a T5 file; `render --view scale` draws a system to scale.
+- `gen sector` places one world per occupied hex of a subsector (8x10) or sector (32x40), joins them by the relative neighbourhood graph plus the minimum spanning tree so the graph is always connected, marks routes beyond the jump range as long, and writes a T5 tab-delimited file; `--real` places twelve near stars from a small bundled table by parallax. `gen system` builds a star, planets placed 12 mutual Hill radii apart (the check bar accepts 10 or more), moons inside the Hill sphere, and draws a schematic and a to-scale diagram. `gen planet` samples 3D noise on the sphere for six kinds of world, so the texture has no seam and no pole pinch. `gen deck` lays out ship or station decks with a spine corridor, doors, an airlock and lifts. `check` runs the space bars; `export` writes a planet as a sphere PNG plus a hand-off note, or a sector as a T5 file; `render --view scale` draws a system to scale.
 
 ### C-20261115-2 · 2026-11-15 · 0.5.0: gen city, gen dungeon, gen battle, export to Universal VTT
 - because: user request (Step D.7), T-20261115-2, L-018, L-019, L-020

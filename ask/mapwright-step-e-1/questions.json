@@ -51,7 +51,8 @@
         "confidence": "low"
       },
       "created": "2026-11-15T23:21:15-06:00",
-      "updated": "2026-11-15T23:21:15-06:00"
+      "updated": "2026-11-16T07:22:52-06:00",
+      "status": "closed"
     },
     {
       "id": "fantasy",
@@ -90,7 +91,8 @@
         "confidence": "low"
       },
       "created": "2026-11-15T23:21:15-06:00",
-      "updated": "2026-11-15T23:21:15-06:00"
+      "updated": "2026-11-16T07:22:52-06:00",
+      "status": "closed"
     },
     {
       "id": "sci-fi",
@@ -129,11 +131,12 @@
         "confidence": "low"
       },
       "created": "2026-11-15T23:21:15-06:00",
-      "updated": "2026-11-15T23:21:15-06:00"
+      "updated": "2026-11-16T07:22:52-06:00",
+      "status": "closed"
     }
   ],
   "created": "2026-11-15T23:21:09-06:00",
-  "updated": "2026-11-15T23:21:15-06:00",
+  "updated": "2026-11-16T07:22:52-06:00",
   "project": {
     "name": "mapwright",
     "path": "D:/m4bwa/Claude/Projects/Ai/mapwright"
