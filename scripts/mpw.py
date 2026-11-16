@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.20.0"
+VERSION = "0.21.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -1348,7 +1348,8 @@ def cmd_gen_place(a):
                     if getattr(a, k, None) is not None}
             r = P.gen_grid(a.what, a.seed, a.out, a.w, a.h, getattr(a, "method", "bsp"), getattr(a, "grid", "square"),
                            a.pps, a.style, VERSION, a.name_style, cave=cave or None,
-                           density=getattr(a, "density", None), branches=getattr(a, "branches", None))
+                           density=getattr(a, "density", None), branches=getattr(a, "branches", None),
+                           corridor=getattr(a, "corridor", None))
     except (ValueError, OSError, KeyError) as e:
         die(str(e))
     if a.json:
@@ -2051,6 +2052,8 @@ def build_parser():
     d.add_argument("--border", type=int, help="cave: solid border in squares (default 1)")
     d.add_argument("--branches", type=int, help="cyclic: dead-end side branches, 0 to 8 (treasure, secret doors; "
                                                 "never a key). Default none")
+    d.add_argument("--corridor", type=int, help="bsp: corridor width in squares, 1 to 3; above 1 the openings are "
+                                                "open gaps, so a body of that size reaches every room. Default 1")
     d.add_argument("--w", type=int, default=48, help="width in squares")
     d.add_argument("--h", type=int, default=36, help="height in squares")
     d.add_argument("--pps", type=int, default=70, help="pixels per square (whole number)")
