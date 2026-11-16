@@ -6,7 +6,7 @@ An agent plugin for maps of real places, fantasy worlds and science fiction sett
 
 mapwright is a skill for AI coding agents plus one small script, `mpw.py`, that needs nothing but Python's standard library.
 
-## What works in 0.8.0
+## What works in 0.9.0
 
 - **Inspect** a map file: GeoJSON, GPX, KML and KMZ, shapefiles, dBASE, PNG heightmaps with world files, GeoPackage and MBTiles. Feature counts, extent, properties and the CRS when the file states one.
 - **Convert** between GeoJSON, GPX and KML, and read shapefiles into GeoJSON. Ring order is fixed on the way (shapefiles clockwise, GeoJSON counter-clockwise).
@@ -24,6 +24,7 @@ mapwright is a skill for AI coding agents plus one small script, `mpw.py`, that 
 - **Fetch** one file politely: a plain mapwright User-Agent, each source's rate kept across runs, a disk cache, and `sources.json` plus `CREDITS.txt` written beside the data. The never-scrape list (Google, Bing, Mapbox, OSM tiles and the rest) and bulk sets over a size cap are refused.
 
 - **Cities, dungeons and battle maps** (0.5.0): `gen city` (streets, blocks, lots, wall and gates, districts, optionally sited on a world's settlement), `gen dungeon` (BSP rooms or caves, doors, lights), `gen battle` (square or hex grid, pixels per square), checked by reachability, whole-pixel grid and byte-identical regeneration bars, and `export` to Universal VTT (.dd2vtt) for Foundry and other tabletops.
+- **Dungeons** (0.9.0): `gen dungeon --method cyclic` builds a lock-and-key dungeon graph first (two paths from start to goal, nested cycles, one-way doors) and raises it to rooms and corridors; every dungeon gets a goal at its far end; cave parameters are flags; `check --range` measures a generator's expressive range over 500 seeds and draws the heatmap. `fetch` records the licence of each geoBoundaries file from the API answer instead of assuming CC BY 4.0.
 
 - **Space** (0.6.0): `gen sector` (hex subsector or sector, worlds, connected jump routes, a T5 tab-delimited file; `--real` for twelve near stars placed by parallax), `gen system` (star, planets on stable orbits, moons, schematic and to-scale diagrams), `gen planet` (rocky, ice, ocean, gas giant, cratered moon or tidally locked sphere textures with no seam and no pole pinch), `gen deck` (ship or station deck plans, every room reachable from the airlock). `check` proves the route graph connected, star distances, orbit spacing, the seam and poles, and deck reachability; `export` writes a planet as a sphere PNG with a hand-off note for three.js and Blender.
 

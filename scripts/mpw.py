@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.8.0"
+VERSION = "0.9.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -1332,8 +1332,10 @@ def cmd_gen_place(a):
             r = P.gen_city(a.seed, a.out, a.bands, None if a.no_walls else a.wall, a.spokes, a.ring_m, a.lot_m2,
                            a.parent, a.settlement, a.sea, a.river, a.style, VERSION, a.name_style)
         else:
+            cave = {k: getattr(a, k) for k in ("fill", "passes", "birth", "survival", "radius", "border")
+                    if getattr(a, k, None) is not None}
             r = P.gen_grid(a.what, a.seed, a.out, a.w, a.h, getattr(a, "method", "bsp"), getattr(a, "grid", "square"),
-                           a.pps, a.style, VERSION, a.name_style)
+                           a.pps, a.style, VERSION, a.name_style, cave=cave or None)
     except (ValueError, OSError, KeyError) as e:
         die(str(e))
     if a.json:
@@ -1377,7 +1379,38 @@ def cmd_zoom(a):
     cmd_gen(a)
 
 
+def cmd_check_range(a):
+    P = _places()
+    if a.seeds < 2:
+        die("--seeds must be at least 2")
+    out = a.dir or "range-" + a.range
+    try:
+        rep = P.dungeon_range(a.range, a.seeds, a.w, a.h)
+    except ValueError as e:
+        die(str(e))
+    os.makedirs(out, exist_ok=True)
+    with open(os.path.join(out, "range.json"), "w", encoding="utf-8", newline="\n") as f:
+        json.dump(rep, f, indent=1)
+        f.write("\n")
+    with open(os.path.join(out, "range.svg"), "w", encoding="utf-8", newline="\n") as f:
+        f.write(P.range_svg(rep))
+    if a.json:
+        print(json.dumps({k: v for k, v in rep.items() if k != "rows"}, indent=1))
+        return
+    print("expressive range: gen dungeon --method %s, %d seeds, %dx%d -> %s" % (a.range, a.seeds, a.w, a.h, out))
+    for k, m in rep["metrics"].items():
+        print("  %-19s min %.3f  mean %.3f  max %.3f" % (k, m["min"], m["mean"], m["max"]))
+    for p in rep["pairs"]:
+        print("  %s x %s: %d of %d bins used, fullest bin %.1f%%%s, %s TV %.3f"
+              % (p["x"], p["y"], p["occupied"], P.RANGE_BINS ** 2, 100 * p["fullest_share"],
+                 " DOMINANT" if p["dominant"] else "", rep["stability"], p["stability_tv"]))
+
+
 def cmd_check(a):
+    if a.range:
+        return cmd_check_range(a)
+    if not a.dir:
+        die("check needs a recipe folder (or --range METHOD)")
     g = _gen()
     if not os.path.isfile(os.path.join(a.dir, "recipe.json")):
         die("no recipe.json in " + a.dir)
@@ -1808,9 +1841,16 @@ def build_parser():
     c.add_argument("--settlement", type=int, help="settlement id in the parent (default: the top-scored one)")
     c.add_argument("--sea", type=float, help="direction of the sea in radians (0 east, pi/2 south)")
     c.add_argument("--river", type=float, help="direction a river runs through the city, radians")
-    d = gs.add_parser("dungeon", help="seeded dungeon on a square grid: BSP rooms or cellular caves, doors, lights")
+    d = gs.add_parser("dungeon", help="seeded dungeon on a square grid: BSP rooms, cellular caves or a cyclic "
+                                      "lock-and-key graph; doors, lights, entrance and goal")
     d.add_argument("--seed", type=int, required=True)
-    d.add_argument("--method", choices=("bsp", "cave"), default="bsp")
+    d.add_argument("--method", choices=("bsp", "cave", "cyclic"), default="bsp")
+    d.add_argument("--fill", type=float, help="cave: share of squares that start as wall (default 0.45)")
+    d.add_argument("--passes", type=int, help="cave: smoothing passes (default 5)")
+    d.add_argument("--birth", type=int, help="cave: floor turns to wall at this many wall neighbours (default 5)")
+    d.add_argument("--survival", type=int, help="cave: wall stays wall at this many wall neighbours (default 4)")
+    d.add_argument("--radius", type=int, choices=(1, 2), help="cave: neighbourhood radius, 1 = 8 cells, 2 = 24")
+    d.add_argument("--border", type=int, help="cave: solid border in squares (default 1)")
     d.add_argument("--w", type=int, default=48, help="width in squares")
     d.add_argument("--h", type=int, default=36, help="height in squares")
     d.add_argument("--pps", type=int, default=70, help="pixels per square (whole number)")
@@ -1895,7 +1935,11 @@ def build_parser():
     s.set_defaults(fn=cmd_zoom)
 
     s = sub.add_parser("check", help="run the proof bars on a recipe folder (world, region, city, dungeon, battle, sector, system, planet, deck)")
-    s.add_argument("dir")
+    s.add_argument("dir", nargs="?", help="recipe folder (with --range: where range.json and range.svg go)")
+    s.add_argument("--range", choices=("bsp", "cave", "cyclic"), help="expressive range of gen dungeon --method over many seeds")
+    s.add_argument("--seeds", type=int, default=500, help="--range: number of seeds (default 500)")
+    s.add_argument("--w", type=int, default=48, help="--range: width in squares")
+    s.add_argument("--h", type=int, default=36, help="--range: height in squares")
     s.add_argument("--no-regen", action="store_true", help="skip the byte-identical regeneration bar")
     s.add_argument("--no-labels", action="store_true", help="skip the label bars (overlap, edge, OCR)")
     s.add_argument("--style", default="topographic", help="style the label bars render with")

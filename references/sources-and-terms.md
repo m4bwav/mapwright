@@ -311,7 +311,7 @@ Rates are the published ceiling; mapwright runs at or below them. `bulk` = downl
 | overpass | ODbL-1.0 | © OpenStreetMap contributors | ~10k requests and ~1 GB/day; obey /api/status slots | no |
 | natural-earth | public domain | Made with Natural Earth | bulk | no |
 | gadm | non-commercial, no redistribution | GADM <version>, gadm.org | bulk | no |
-| geoboundaries | CC BY 4.0 | geoBoundaries + link; Runfola et al. 2020 | API + bulk, polite | no |
+| geoboundaries | per file (`boundaryLicense`; often CC BY 4.0, some ODbL-1.0) | geoBoundaries + link; Runfola et al. 2020 | API + bulk, polite | no |
 | geonames-dump | CC BY 4.0 | GeoNames, CC BY 4.0 | bulk, daily | no |
 | geonames-api | CC BY 4.0 | GeoNames, CC BY 4.0 | 1,000/h, 10,000/day credits | yes (username) |
 | wikidata | CC0 | Data from Wikidata (optional) | SPARQL 60 s/60 s, 5 parallel | no (UA required) |

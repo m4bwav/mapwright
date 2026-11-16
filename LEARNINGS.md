@@ -219,6 +219,27 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 - Evidence: T-20261115-5
 - Scope: skill
 
+### L-033 · 2026-11-15 · `gate-on-a-recipe-key`: key new generator behaviour on a recipe field old recipes lack
+- Trigger: adding a goal, wall cleanup and a new entrance to `gen dungeon` would change every file a 0.7.0 recipe regenerates.
+- Hypothesis: a version-string comparison breaks when tests call the generator with its default version, and a new flag default that changes the draw order breaks the old seed (L-020).
+- Rule: new behaviour runs only when the recipe carries the new key (`params.goal`); `regenerate` passes `legacy=True` without it. New flags default to the old behaviour draw for draw (the cave border test keeps its short-circuit, so border squares draw nothing). Keep a fixture written by the old release and run `check` on it.
+- Evidence: T-20261115-6 (both 0.7.0 fixtures byte-identical; the cave defaults redraw the 0.7.0 cave cell for cell)
+- Scope: skill
+
+### L-034 · 2026-11-15 · `squares-forget-one-way`: a square BFS walks through a one-way door both ways
+- Trigger: the first cyclic map passed every graph bar but the square-level gate bar found the goal reachable with the lock shut.
+- Hypothesis: the route ran up the valve from the key to the goal; squares carry no direction, so the gate looked open.
+- Rule: any square walk over a cyclic map uses `door_dist`, which lets a one-way door be entered only from its source side and a locked door only with the key. Measure the cyclic path as the completion walk (entrance to key, key to goal), not the plain shortest path.
+- Evidence: T-20261115-6
+- Scope: skill
+
+### L-035 · 2026-11-15 · `corridor-means-no-2x2`: a corridor square is one in no 2x2 open block
+- Trigger: the first range run gave bsp a dead-end share of 0 on all 500 maps and counted room corners as corridors.
+- Hypothesis: peeling one-neighbour squares stops at any room three squares wide, and a two-neighbour rule catches every room corner.
+- Rule: corridor squares are those in no 2x2 open block; dead-end share counts the parts that hang off a single bridge. Check a new metric on a hand-drawn ring and a room-with-stub before trusting a sweep.
+- Evidence: T-20261115-6 (the ring scores loop 1, dead end 0; the stub scores loop 0)
+- Scope: skill
+
 ### L-006 · 2026-11-14 · Embedded RGB PNG drew blank: width passed as bytes per row
 - Trigger: map.svg showed only the sea colour.
 - Hypothesis: the PNG width was len(row) of an RGB bytearray, three times the pixel width.

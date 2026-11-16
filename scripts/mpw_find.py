@@ -35,8 +35,10 @@ _C = [
      "non-commercial, no redistribution", "GADM 4.1, gadm.org", 5, ["geodata.ucdavis.edu", "gadm.org"],
      "https://gadm.org/download_country.html", None, "non-commercial; prefer geoBoundaries"),
     ("geoboundaries", "geoBoundaries", "border admin province county district place",
-     "CC BY 4.0", "geoBoundaries (Runfola et al. 2020), https://www.geoboundaries.org", 2,
-     ["www.geoboundaries.org", "github.com"], "https://www.geoboundaries.org/api.html", None, ""),
+     "per file: boundaryLicense in the API answer (often CC BY 4.0, some ODbL-1.0)",
+     "geoBoundaries (Runfola et al. 2020), https://www.geoboundaries.org", 2,
+     ["www.geoboundaries.org", "github.com"], "https://www.geoboundaries.org/api.html", None,
+     "fetch the API answer (api/current/gbOpen/ISO/ADMn/) first: fetch records its boundaryLicense for each file"),
     ("geonames-dump", "GeoNames dump", "place name gazetteer city town",
      "CC BY 4.0", "GeoNames, CC BY 4.0", 86400, ["download.geonames.org"],
      "https://download.geonames.org/export/dump/", None, "daily dumps"),
@@ -430,6 +432,35 @@ def record(out_dir, entry):
     write_credits(out_dir)
 
 
+GB_LINKS = ("gjDownloadURL", "tjDownloadURL", "simplifiedGeometryGeoJSON", "staticDownloadLink", "imagePreview")
+GB_UNKNOWN = "unknown: fetch this boundary's geoBoundaries API answer first and read its boundaryLicense"
+
+
+def geoboundaries_licence(data, url, out_dir):
+    """geoBoundaries licences are per file. An API answer (one object, or a list for ALL) names it in
+    boundaryLicense; a download link is matched against API answers already recorded in sources.json."""
+    try:
+        meta = json.loads(data.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        meta = None
+    items = meta if isinstance(meta, list) else [meta]
+    items = [m for m in items if isinstance(m, dict) and m.get("boundaryLicense")]
+    if items:
+        lic = sorted({m["boundaryLicense"].strip() for m in items})
+        srcs = sorted({str(m.get("boundarySource", "")).strip() for m in items} - {""})
+        files = [dict(url=m[k], licence=m["boundaryLicense"].strip(), source=str(m.get("boundarySource", "")).strip())
+                 for m in items for k in GB_LINKS if m.get(k)]
+        return dict(licence="; ".join(lic), source=", ".join(srcs), files=files)
+    path = os.path.join(out_dir, "sources.json")
+    if os.path.isfile(path):
+        with open(path, encoding="utf-8") as f:
+            for e in json.load(f):
+                for lf in e.get("licence_for", []):
+                    if lf["url"] == url:
+                        return dict(licence=lf["licence"], source=lf.get("source"))
+    return dict(licence=GB_UNKNOWN)
+
+
 def fetch(url, out_dir, http, source_id=None, name=None, licence=None, credit=None, today=None):
     check_url(url)
     if source_id:
@@ -450,6 +481,12 @@ def fetch(url, out_dir, http, source_id=None, name=None, licence=None, credit=No
             raise Refused("%s needs your own free key in %s" % (src["id"], src["key_env"]))
     data, hit = http.get(url, src, add_key=key)
     os.makedirs(out_dir, exist_ok=True)
+    gb = {}
+    if src["id"] == "geoboundaries" and not licence:
+        gb = geoboundaries_licence(data, url, out_dir)
+        licence = gb.get("licence")
+        if gb.get("source"):
+            credit = credit or "%s; boundary source: %s" % (src["credit"], gb["source"])
     fname = name or _safe_name(url)
     with open(os.path.join(out_dir, fname), "wb") as f:
         f.write(data)
@@ -457,5 +494,7 @@ def fetch(url, out_dir, http, source_id=None, name=None, licence=None, credit=No
                  credit=credit or src["credit"], fetched=today or time.strftime("%Y-%m-%d"),
                  rate="at most 1 request per %g s" % src["min_interval"], bytes=len(data),
                  sha256=hashlib.sha256(data).hexdigest(), cache="hit" if hit else "miss")
+    if gb.get("files"):
+        entry["licence_for"] = gb["files"]
     record(out_dir, entry)
     return entry

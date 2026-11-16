@@ -235,5 +235,187 @@ class TestPlaceLabelsAndCli(PlacesBase):
             self.assertIn("#1d4e89", f.read())
 
 
+FIX = os.path.join(HERE, "fixtures")
+
+
+def core_gj(D, w, h):
+    gj = dict(w=w, h=h, cells=["".join(r) for r in D["g"]], entrance=D["entrance"], goal=D["goal"])
+    if D["graph"]:
+        gj["graph"] = D["graph"]
+    return gj
+
+
+class TestDungeonGoal(PlacesBase):
+    def test_070_recipes_still_pass(self):
+        for m in ("bsp", "cave"):
+            bars = P.check(os.path.join(FIX, "dungeon-070-" + m))
+            self.assertEqual(failed(bars), [], (m, bars))
+            self.assertTrue(named(bars, "byte-identical")[-2])
+            self.assertFalse([b for b in bars if "goal" in b[1]], "a 0.7.0 recipe gets no goal bars")
+
+    def test_goal_farthest_path_and_walls(self):
+        for m in ("bsp", "cave"):
+            out = self.d("goal-" + m)
+            P.gen_grid("dungeon", 5, out, 40, 30, m, pps=20)
+            gj = P.load(out, "grid.json")
+            rc = P.load(out, "recipe.json")
+            self.assertEqual(rc["params"]["goal"], "farthest")
+            dist = P.bfs_dist(gj["cells"], 40, 30, gj["entrance"])
+            self.assertEqual(dist[tuple(gj["goal"])], max(dist.values()))
+            self.assertGreaterEqual(dist[tuple(gj["goal"])], P.min_path(40, 30))
+            self.assertEqual(P.isolated_walls(gj["cells"], 40, 30), [])
+            kinds = [f["properties"]["kind"] for f in P.load(out, "features.geojson")["features"]]
+            self.assertIn("goal", kinds)
+            with open(os.path.join(out, "map.svg"), encoding="utf-8") as f:
+                self.assertIn('class="goal"', f.read())
+            self.assertEqual(failed(P.check(out, labels=False)), [])
+
+    def test_goal_bars_catch_faults(self):
+        out = self.d("goal-bad")
+        P.gen_grid("dungeon", 5, out, 40, 30, "bsp", pps=20)
+        gj = P.load(out, "grid.json")
+        ex, ey = gj["entrance"]
+        near = [p for p in P.nbrs4(ex, ey) if gj["cells"][p[1]][p[0]] in P.PASS][0]
+        gj["goal"] = list(near)
+        cells = [list(r) for r in gj["cells"]]
+        x, y = 20, 15
+        while cells[y][x] != "#":
+            x += 1
+        for nx, ny in P.nbrs4(x, y):
+            if 0 < nx < 39 and 0 < ny < 29:
+                cells[ny][nx] = "."
+        gj["cells"] = ["".join(r) for r in cells]
+        bars = P.goal_bars(gj, {})
+        self.assertFalse(named(bars, "farthest")[-2])
+        self.assertFalse(named(bars, "path at least")[-2])
+        self.assertFalse(named(bars, "isolated")[-2])
+
+    def test_goal_sweep(self):
+        for seed in range(1, 41):
+            for m in ("bsp", "cave"):
+                D = P.build_dungeon(seed, 40, 30, m)
+                self.assertEqual([b for b in P.goal_bars(core_gj(D, 40, 30), {}) if not b[1]], [], (seed, m))
+
+
+class TestCaveFlags(PlacesBase):
+    def test_defaults_match_070_draws(self):
+        gj = P.load(os.path.join(FIX, "dungeon-070-cave"), "grid.json")
+        rc = P.load(os.path.join(FIX, "dungeon-070-cave"), "recipe.json")
+        g, _ = P.cave_dungeon(gj["w"], gj["h"], P.Rng(rc["seed"], 2), **P.CAVE_DEFAULTS)
+        self.assertEqual(["".join(r) for r in g], gj["cells"])
+
+    def test_flags_in_recipe_and_regen(self):
+        out = self.d("cave-flags")
+        txt = run_cli("gen", "dungeon", "--seed", "4", "--method", "cave", "--fill", "0.55", "--passes", "2",
+                      "--birth", "6", "--survival", "5", "--border", "2", "--w", "40", "--h", "30", "--pps", "20",
+                      "--out", out)
+        self.assertIn("40x30", txt)
+        cv = P.load(out, "recipe.json")["params"]["cave"]
+        self.assertEqual(cv, dict(fill=0.55, passes=2, birth=6, survival=5, radius=1, border=2))
+        bars = P.check(out, labels=False)
+        self.assertEqual(failed(bars), [], bars)
+        g = P.load(out, "grid.json")["cells"]
+        self.assertTrue(all(c == "#" for c in g[1]))      # two-square border
+
+    def test_cave_flag_on_bsp_refused(self):
+        with self.assertRaisesRegex(ValueError, "cave flags"):
+            P.gen_grid("dungeon", 1, self.d("x"), 40, 30, "bsp", cave=dict(fill=0.5))
+
+    def test_settings_move_the_cave(self):
+        lo, hi = {}, {}
+        P.cave_dungeon(48, 36, P.Rng(3, 2), fill=0.40, stats=lo)
+        P.cave_dungeon(48, 36, P.Rng(3, 2), fill=0.55, stats=hi)
+        self.assertGreater(lo["largest_region_share"], hi["largest_region_share"])
+
+
+class TestCyclic(PlacesBase):
+    def test_cyclic_passes_and_regens(self):
+        out = self.d("cyc")
+        r = P.gen_grid("dungeon", 11, out, 48, 36, "cyclic", pps=20)
+        self.assertGreaterEqual(r["rooms"], 6)
+        bars = P.check(out)
+        self.assertEqual(failed(bars), [], bars)
+        for part in ("cycle rank", "share a border", "key reached before", "return path", "lock shut",
+                     "byte-identical", "every room reached"):
+            self.assertTrue(named(bars, part)[-2], part)
+        gr = P.load(out, "grid.json")["graph"]
+        self.assertTrue(any("lock" in e for e in gr["edges"]) and any("oneway" in e for e in gr["edges"]))
+        with open(os.path.join(out, "map.svg"), encoding="utf-8") as f:
+            svg = f.read()
+        for c in ("key", "lock", "one-way", "goal", "entrance"):
+            self.assertIn('class="%s"' % c, svg)
+
+    def test_cyclic_sweep_200(self):
+        rerolls = 0
+        for seed in range(1, 201):
+            D = P.build_dungeon(seed, 48, 36, "cyclic")
+            rerolls += D["graph"]["rerolls"]
+            bad = [b for b in P.goal_bars(core_gj(D, 48, 36), {}) if not b[1]]
+            self.assertEqual(bad, [], seed)
+        self.assertLess(rerolls, 200)
+
+    def test_graph_bars_catch_faults(self):
+        D = P.build_dungeon(11, 48, 36, "cyclic")
+        gj = core_gj(D, 48, 36)
+        gr = gj["graph"]
+
+        def bars(mut):
+            g2 = json.loads(json.dumps(gj))
+            mut(g2["graph"])
+            return P.goal_bars(g2, {})
+        i = [k for k, e in enumerate(gr["edges"]) if "lock" in e][0]
+        j = [k for k, e in enumerate(gr["edges"]) if e.get("oneway") and gr["goal"] in e["oneway"]][0]
+        lock = gr["edges"][i]
+        b = bars(lambda g: g["keys"][0].update(node=g["goal"]))
+        self.assertFalse(named(b, "key reached before")[-2])
+        b = bars(lambda g: g["edges"][j].update(oneway=g["edges"][j]["oneway"][::-1]))
+        self.assertFalse(named(b, "key reached before")[-2])          # the lock is no longer a gate
+        self.assertFalse(named(b, "lock shut")[-2])
+        far = lock["a"] if lock["b"] == gr["goal"] else lock["b"]
+
+        def jam(g):
+            g["edges"][i].update(oneway=[far, gr["goal"]])
+            g["edges"][j].update(oneway=[g["edges"][j]["oneway"][1], gr["goal"]])
+        b = bars(jam)
+        self.assertFalse(named(b, "return path")[-2])
+        b = bars(lambda g: g["edges"].append(dict(a=0, b=g["goal"], door=lock["door"])))
+        self.assertFalse(named(b, "share a border")[-2])
+        b = bars(lambda g: g["edges"].extend([dict(g["edges"][0]) for _ in range(5)]))
+        self.assertFalse(named(b, "cycle rank")[-2])
+
+    def test_small_map_refused(self):
+        with self.assertRaisesRegex(ValueError, "at least 22x22"):
+            P.gen_grid("dungeon", 1, self.d("small"), 21, 30, "cyclic")
+
+
+class TestRange(PlacesBase):
+    def test_range_report_and_cli(self):
+        rep = P.dungeon_range("bsp", 20, 40, 30)
+        self.assertEqual(len(rep["rows"]), 20)
+        for k in P.RANGE_METRICS:
+            self.assertLessEqual(rep["metrics"][k]["min"], rep["metrics"][k]["max"])
+        self.assertEqual(sum(map(sum, rep["pairs"][0]["bins"])), 20)
+        cy = P.dungeon_range("cyclic", 20, 48, 36)
+        self.assertTrue(cy["pairs"][0]["dominant"])     # every corridor on a loop: one bin holds all
+        out = self.d("range")
+        txt = run_cli("check", "--range", "cave", "--seeds", "12", "--w", "40", "--h", "30", out)
+        self.assertIn("first 6 seeds against all 12", txt)
+        import xml.etree.ElementTree as ET
+        ET.parse(os.path.join(out, "range.svg"))
+        with open(os.path.join(out, "range.json"), encoding="utf-8") as f:
+            self.assertEqual(json.load(f)["seeds"], 12)
+
+    def test_metrics_on_known_shapes(self):
+        ring = ["#######", "#.....#", "#.###.#", "#.....#", "#######"]
+        m = P.range_metrics(dict(w=7, h=5, cells=ring, entrance=[1, 1], goal=[5, 3]))
+        self.assertEqual(m["loop_share"], 1.0)
+        self.assertEqual(m["dead_end_share"], 0.0)
+        lolly = ["########", "#...####", "#.......", "#...####", "########"]
+        m = P.range_metrics(dict(w=8, h=5, cells=lolly, entrance=[1, 1], goal=[7, 2]))
+        self.assertEqual(m["loop_share"], 0.0)
+        self.assertGreater(m["dead_end_share"], 0.0)
+        self.assertAlmostEqual(m["open_floor_share"], 13 / 40.0)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -4,6 +4,17 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261115-6 · 2026-11-15 · 0.9.0: dungeons (goal, cave flags, cyclic, expressive range) and geoBoundaries licences
+- because: user request (book build backlog rows 1, 2, 5, 8, 9, 10), T-20261115-6, L-033, L-034, L-035
+- files: scripts/mpw_places.py, scripts/mpw.py, scripts/mpw_find.py, tests/test_places.py, tests/test_find.py, tests/fixtures/dungeon-070-bsp (new), tests/fixtures/dungeon-070-cave (new), skills/mapwright/SKILL.md, README.md, references/sources-and-terms.md, ai-docs/notes/book-build-backlog.md, plugin.json, .claude-plugin/plugin.json
+- Every new dungeon has an entrance and a goal, both drawn on map.svg and written to grid.json and features.geojson. bsp and cave place the goal at the square farthest from the entrance. `check` adds bars for that, for an entrance-to-goal path at least the map width, and for no isolated wall squares. Cave rules are flags (`--fill --passes --birth --survival --radius --border`) kept in the recipe. `gen dungeon --method cyclic` builds a lock-and-key graph on a grid of 7-square cells and raises it to the same grid.json BSP writes, so render, export and check work on it; check adds cycle rank, adjacency, key before lock, the lock as a gate on the squares, and a return path. `check --range METHOD` writes range.json and range.svg. `fetch` reads `boundaryLicense` from a geoBoundaries API answer and records it for the answer and its download links.
+- Rulings:
+  - Recipes without `params.goal` (0.7.0 and older) are rebuilt the old way, so they still regenerate byte for byte.
+  - Minimum path is the map width, as the notes suggest; a bsp or cave map under it is re-rolled from a new stream (at most 16), a cyclic graph that cannot be placed from stream 2000 + k (at most 64); the count is stored in grid.json.
+  - Cyclic pattern: path a short and locked at the goal, the key at the far end of b next to the goal, a one-way valve from the goal down to the key. b is enterable from the start (the book's "not enterable there" is not built). Nested cycles are two-cell bumps that keep the edge they sit on, half of them with a one-way middle door (hidden shortcut).
+  - The cave default stays 0.45, 5 passes, 5/4 (TESTS.md table).
+  - Expressive range metrics are mapwright's own; dead-end share counts the parts joined by one bridge, loop share counts corridor squares on a loop.
+  - Version 0.9.0, skipping 0.8.0, which another branch takes.
 ### C-20261115-5 · 2026-11-15 · 0.8.0: aistyle, an optional AI style pass that keeps the coast
 - because: user request (Step D.10), T-20261115-5, L-028, L-029, L-030, L-031, L-032
 - files: scripts/mpw_aistyle.py (new), scripts/data/aistyle-zimage-turbo.json (new), scripts/mpw.py, scripts/mpw_render.py, tests/test_aistyle.py (new), tests/aistyle_grid.py (new), skills/mapwright/SKILL.md, README.md, TESTS.md, LEARNINGS.md, references/ai-image-models.md, ai-docs/notes/2026-11-15-aistyle-measurements.md (new), plugin.json, .claude-plugin/plugin.json

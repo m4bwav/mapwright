@@ -225,6 +225,30 @@ class FetchTests(unittest.TestCase):
             self.assertIn("© OpenStreetMap contributors", cr)
             self.assertIn("ODbL-1.0", cr)
 
+    def test_geoboundaries_licence_per_file(self):
+        self.assertIn("boundaryLicense", F.BY_ID["geoboundaries"]["licence"])
+        api = "https://www.geoboundaries.org/api/current/gbOpen/LIE/ADM0/"
+        gj = "https://github.com/wmgeolab/geoBoundaries/raw/main/releaseData/gbOpen/LIE/ADM0/geoBoundaries-LIE-ADM0.geojson"
+        meta = json.dumps({"boundaryISO": "LIE", "boundaryType": "ADM0", "boundarySource": "OpenStreetMap",
+                           "boundaryLicense": "Open Data Commons Open Database License 1.0",
+                           "gjDownloadURL": gj}).encode()
+        with tempfile.TemporaryDirectory() as tmp:
+            http, _ = make_http(tmp, FakeNet({api: meta, gj: b'{"type":"FeatureCollection","features":[]}'}))
+            out = os.path.join(tmp, "recipe")
+            e = F.fetch(api, out, http, name="LIE-ADM0.json", today="2026-11-15")
+            self.assertEqual(e["licence"], "Open Data Commons Open Database License 1.0")
+            self.assertIn("OpenStreetMap", e["credit"])
+            e2 = F.fetch(gj, out, http, today="2026-11-15")
+            self.assertEqual(e2["licence"], "Open Data Commons Open Database License 1.0")
+            other = gj.replace("LIE", "PER")
+            e3 = F.fetch(other, out, http, today="2026-11-15")
+            self.assertTrue(e3["licence"].startswith("unknown"))
+            with open(os.path.join(out, "CREDITS.txt"), encoding="utf-8") as f:
+                cr = f.read()
+            self.assertIn("geoBoundaries-LIE-ADM0.geojson: geoBoundaries", cr)
+            self.assertIn("Open Database License 1.0", cr)
+            self.assertNotIn("CC BY 4.0", cr)
+
     def test_unknown_host_needs_licence_and_credit(self):
         with tempfile.TemporaryDirectory() as tmp:
             http, _ = make_http(tmp, FakeNet())
