@@ -89,7 +89,7 @@ Esri's own table lists 0.00000898 at the equator and 0.00001792 at 60 degrees [E
 
 - Generalise first. Shading a full-resolution DEM at small scale gives noise; resample or blur the DEM to the output pixel size, or use a Gaussian or median filter [Patterson-SR]. Leonowicz, Jenny and Hurni's Terrain Sculptor generalises DEMs for this reason [Leonowicz2010].
 - Lighten flats. Pure Lambert shading makes flat land mid-grey; cartographers lift it toward white so tints show through [Patterson-SR]. A curve such as `out = 255 - (255 - shade) * k` or a gamma on the shade layer is common.
-- Blend with multiply over tints, at about 50-80 percent opacity (practice, unverified range). In SVG: `mix-blend-mode: multiply` on the shade `<image>`, or composite to PNG in Python.
+- Blend with multiply over tints, at about 50-80 percent opacity (practice figure, no single source; tunable default). In SVG: `mix-blend-mode: multiply` on the shade `<image>`, or composite to PNG in Python.
 - Aerial perspective: Imhof makes high peaks more contrasty and low land paler and hazier [Imhof1982]; Jenny and Patterson describe implementing this digitally [Jenny-Patterson2007].
 
 ## 2. Contours
@@ -114,7 +114,7 @@ Checkable rules:
 
 ### 2.2 Interval choice
 
-USGS topographic maps use intervals tied to scale and relief; 1:24,000 quads use a basic interval of 5, 10, 20, 40 or 80 ft chosen per sheet for the terrain, and US Topo allows 100 ft or more in steep areas [USGS-Topo] (USGS manual 800-2, checked 2026-11-16 via the UNT web archive: https://webarchive.library.unt.edu/eot2008/20090512131010/http:/www.usgs.gov/usgs-manual/800/800-2.html). A workable rule: pick the interval from the series 1, 2, 2.5, 5, 10, 20, 25, 50, 100, 200, 250, 500 so that the steepest common slope gives lines no closer than about 0.2-0.3 mm on the page, and the map has roughly 10-30 levels (practical rule; unverified numbers). Imhof notes contour spacing is set by the scale and by the minimum separation the eye can resolve [Imhof1982].
+USGS topographic maps use intervals tied to scale and relief; 1:24,000 quads use a basic interval of 5, 10, 20, 40 or 80 ft chosen per sheet for the terrain, and US Topo allows 100 ft or more in steep areas [USGS-Topo] (USGS manual 800-2, checked 2026-11-16 via the UNT web archive: https://webarchive.library.unt.edu/eot2008/20090512131010/http:/www.usgs.gov/usgs-manual/800/800-2.html). A workable rule: pick the interval from the series 1, 2, 2.5, 5, 10, 20, 25, 50, 100, 200, 250, 500 so that the steepest common slope gives lines no closer than about 0.2-0.3 mm on the page, and the map has roughly 10-30 levels (practice figure, no single source; tunable default). Imhof notes contour spacing is set by the scale and by the minimum separation the eye can resolve [Imhof1982].
 
 Compute the minimum spacing: horizontal distance between lines on the page = `interval / tan(slope) / scale_denominator`. Reject an interval if that is below the threshold over more than a few percent of the area.
 
@@ -131,8 +131,8 @@ Labels sit on index contours, read uphill (top of the letters toward higher grou
 Layer tints colour elevation bands. The classic green-lowland to brown-highland scheme confuses readers into reading green as vegetation and brown as dry [Patterson-Jenny2011]. Patterson and Jenny's cross-blended tints vary the lowland colour by climate (humid green vs arid tan) and blend between them [Patterson-Jenny2011]. Imhof preferred light-to-dark or pale-highs schemes combined with shading so that tints do not fight shadows [Imhof1982].
 
 Implementation rules:
-- Define tints as a list of `(elevation, rgb)` stops and interpolate in a perceptual space (CIELAB or Oklab) rather than RGB to avoid muddy midpoints (common practice; unverified as a cartographic source).
-- Use class breaks that follow the data: more classes low, fewer high, often geometric (e.g. 0, 100, 200, 500, 1000, 2000, 4000 m) because area per elevation band falls off with height (unverified generalisation).
+- Define tints as a list of `(elevation, rgb)` stops and interpolate in a perceptual space (CIELAB or Oklab) rather than RGB to avoid muddy midpoints (practice figure, no single source; tunable default).
+- Use class breaks that follow the data: more classes low, fewer high, often geometric (e.g. 0, 100, 200, 500, 1000, 2000, 4000 m) because area per elevation band falls off with height (practice figure, no single source; tunable default).
 - Water is not a tint class; bathymetric tints darken with depth [Patterson-SR].
 - Shade on top with multiply; tints must stay distinguishable after shading (test with a contrast check per class against its darkest shaded value).
 - Pick the ramp by climate, not elevation alone: arid lowlands get tan cross-blended tints so green is not read as lush; record whether tints are discrete bands or continuous, since discrete bands read better for values and continuous for form (Kimerling et al., Map Use, ch. 10).
@@ -210,7 +210,7 @@ Yoeli (1972) and Imhof (1975) rank positions around a point; upper right is pref
 Some authorities rank lower right above upper left, or right-centre second (Slocum et al.; unverified). Implement the order as data so it can be switched. Further rules [Imhof1975]:
 - Labels for coastal or riverside places go entirely on land or entirely on the water side of the shore, not straddling it.
 - Avoid placing a settlement name across a river or border from its symbol.
-- Offset from the symbol by a small fixed gap, about 0.5-1 mm (unverified figure).
+- Offset from the symbol by a small fixed gap, about 0.5-1 mm (practice figure, no single source; tunable default).
 - A point label sits beside its symbol, never on a text row running through the symbol (Tyner, Principles of Map Design, ch. 3).
 - Each point label is nearer its own symbol than any other symbol (test: nearest symbol to the label box is its own) (Brewer, Designing Better Maps, ch. 7).
 - Labels placed left of the symbol are right-justified, so the ragged edge is away from the symbol (Brewer, Designing Better Maps, ch. 7).
@@ -235,7 +235,7 @@ Brewer allows a line to be broken (knocked out) under a label (Brewer, Designing
 
 ### 7.4 Area labels
 
-Name spans the area, follows its main axis, curved in a gentle arc if the shape is curved, spaced out letters for large areas [Imhof1975]. Algorithms use the medial axis or skeleton of the polygon to find a baseline [Barrault2001 (unverified citation)]. Simple stdlib version: principal axis from the polygon's second moments; fit a circular arc or quadratic through skeleton points; spread letters to 60-80 percent of the axis length (unverified ratio). Small areas get a horizontal label inside or a point-style label outside.
+Name spans the area, follows its main axis, curved in a gentle arc if the shape is curved, spaced out letters for large areas [Imhof1975]. Algorithms use the medial axis or skeleton of the polygon to find a baseline [Barrault2001 (unverified citation)]. Simple stdlib version: principal axis from the polygon's second moments; fit a circular arc or quadratic through skeleton points; spread letters to 60-80 percent of the axis length (practice figure, no single source; tunable default). Small areas get a horizontal label inside or a point-style label outside.
 
 ### 7.5 Type choice
 
@@ -244,7 +244,7 @@ Conventions [Imhof1975][Imhof1982][USGS-Topo]:
 - Landforms (mountains, ranges) in a different style, often upright or sans, brown or black; ranges letterspaced.
 - Settlements in upright type, size by population class.
 - Hierarchy shown by size, weight, case (capitals for larger regions) and spacing, with no more than a few size steps.
-- Minimum legible size: about 6-7 pt for print on paper; 5 pt is a hard floor for high-quality print (unverified thresholds; 2026-11-16 the US Topo spec sets contour labels at 6 pt, consistent with the 6 pt floor). For screen output use 10-11 px minimum (unverified).
+- Minimum legible size: about 6-7 pt for print on paper; 5 pt is a hard floor for high-quality print (practice figure, no single source; tunable default; 2026-11-16 the US Topo spec sets contour labels at 6 pt, consistent with the 6 pt floor). For screen output use 10-11 px minimum (practice figure, no single source; tunable default).
 - Halos (a thin background-coloured stroke behind text) improve legibility over relief; keep them narrow (about 1-1.5 px or 0.3 mm; 2026-11-16 the US Topo spec uses a 0.70 pt, about 0.25 mm, halo on 6 pt contour labels) and use `paint-order: stroke` in SVG [SVG2].
 
 ## 8. Curved text in SVG
@@ -255,11 +255,11 @@ Conventions [Imhof1975][Imhof1982][USGS-Topo]:
 - `method="stretch"` and `spacing="auto"` are in the spec; MDN browser-compat-data lists both attributes as supported in Chrome, Firefox and Safari but does not record whether `stretch` renders differently from `align`, and `side` and `path` are Firefox-only or Firefox and Safari 27.3 (https://github.com/mdn/browser-compat-data/blob/main/svg/elements/textPath.json, checked 2026-11-16), so test output in the target viewer; do letter spacing with `letter-spacing` or by computing glyph positions yourself.
 - Glyphs falling off the path end are not rendered [SVG11]; so the path must be longer than the text.
 
-Text width without a font engine: stdlib Python cannot measure glyphs. Options: ship a per-font advance-width table (parse the TTF `hmtx` table with `struct`: one advanceWidth (uint16, font units; divide by `head.unitsPerEm`) per glyph up to `hhea.numberOfHMetrics`, after which the last advance repeats [OpenType], checked 2026-11-16) or use an average width factor (about 0.5-0.6 em per character for typical sans; unverified). Collision tests depend on this, so prefer the `hmtx` table.
+Text width without a font engine: stdlib Python cannot measure glyphs. Options: ship a per-font advance-width table (parse the TTF `hmtx` table with `struct`: one advanceWidth (uint16, font units; divide by `head.unitsPerEm`) per glyph up to `hhea.numberOfHMetrics`, after which the last advance repeats [OpenType], checked 2026-11-16) or use an average width factor (about 0.5-0.6 em per character for typical sans; practice figure, no single source). Collision tests depend on this, so prefer the `hmtx` table.
 
 For PNG output, curved text needs per-glyph rotation; place each glyph at arc length `s_i` along the path, rotate by the tangent angle there.
 
-Curvature limit: reject a candidate line position if the turning angle between adjacent glyphs exceeds about 20-30 degrees, or if total curvature over the label exceeds about 45-60 degrees (heuristic; unverified numbers, cf. Edmondson et al. on line label quality).
+Curvature limit: reject a candidate line position if the turning angle between adjacent glyphs exceeds about 20-30 degrees, or if total curvature over the label exceeds about 45-60 degrees (practice figure, no single source; tunable default; cf. Edmondson et al. on line label quality).
 
 ## 9. Collision handling and algorithms
 

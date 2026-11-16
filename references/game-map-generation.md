@@ -104,7 +104,7 @@ From Darius Kazemi's write-up of the Spelunky Classic source [SPEL]:
 - Room types carry exit guarantees: type 1 has left and right exits; type 2 has left, right and bottom; type 3 has left, right and top; type 0 is off the path and has no guaranteed exit.
 - A room the path drops out of becomes type 2. The room it lands in must be type 2 or 3.
 - Every cell off the path gets a type 0 room.
-- Each type has several hand-drawn templates with tiles that are filled in by chance; the write-up covers that in its second part (unverified, not read; room size of 10x8 tiles also unverified).
+- Each type has several hand-drawn templates with tiles that are filled in by chance; the write-up covers that in its second part (checked 2026-11-16 https://tinysubversions.com/spelunkyGen2/ : 8 to 16 templates per room type, 10x8 tiles each, with chance tiles).
 - Guarantee: a route from entrance to exit that needs no bombs or ropes. Failure by design: off-path rooms can be sealed, which is what the player's tools are for.
 
 ### 2.2 Diablo: predungeon, then tiles, then pattern patches
@@ -118,7 +118,7 @@ From Boris the Brave's reading of Devilution, the fan reconstruction of the Diab
 - Hell: bud rooms inside a 20x20 quarter, then mirror both ways.
 - Set pieces are pre-authored chunks, one per level. "Minisets" are small pattern-matched patches (about 3x3) for stairs and fixes. Tile substitution swaps in look-alike tiles and avoids repeats close together.
 - Guarantee: a "lockout" check tests that the whole dungeon is walkable and restarts generation if not. Failure: restarts cost time; quality depends on the fix-up patterns.
-- Diablo II uses hand-made preset rooms joined on a generated layout per area (unverified).
+- Diablo II uses hand-made preset rooms joined on a generated layout per area (unverified; 2026-11-16: no developer source known, not found).
 
 ### 2.3 Dead Cells: hand-built rooms on a hand-built graph
 
@@ -156,7 +156,7 @@ From Boris the Brave's reading of the game [GUN]:
 
 ### 2.6 Hades and Into the Breach: mostly hand-made
 
-- Hades draws hand-built chambers from a pool per region and shows the next reward on each exit door. There is no spatial layout to solve (unverified, no developer source found).
+- Hades draws hand-built chambers from a pool per region and shows the next reward on each exit door. There is no spatial layout to solve (unverified, no developer source found; still none 2026-11-16).
 - Into the Breach uses about 100 hand-designed 8x8 maps. Matthew Davis: "It was important to control the map design in a way that it didn't generate maps that aren't fun to play on." At 8x8, drawing 100 maps cost less than writing a generator [ITB].
 - Lesson: when the map is small and every tile matters, authored maps plus random selection and random dressing beat generation.
 
@@ -185,13 +185,13 @@ From a community write-up of the reverse-engineered rules [STS]. This is not a d
 - A grid 7 wide and 15 floors tall.
 - Six paths are traced from floor 1 to floor 15. Each step goes to one of the 3 closest nodes on the next floor. The first two paths must start on different nodes. Paths may not cross. Nodes on no path are removed.
 - Fixed floors: floor 1 is all monsters, floor 9 all treasure, floor 15 all rest sites. One boss node sits above and all floor 15 nodes lead to it.
-- Other nodes are rolled by odds: monster 45 percent and elite 16 percent at Ascension 1 and above (53 and 8 below) [STS]; event 22, rest 12, shop 5 (unverified, the write-up shows them only in images).
+- Other nodes are rolled by odds: monster 45 percent and elite 16 percent at Ascension 1 and above (53 and 8 below) [STS]; event 22, rest 12, shop 5 (unverified, the write-up shows them only in images; 2026-11-16: search found no text source for these numbers).
 - Rules that override the roll: no elite or rest site below floor 6; elite, shop and rest site cannot follow each other along a path; a node with 2 or more exits must lead to different room types; no rest site on floor 14. A node that breaks a rule is re-rolled until it passes.
 - Guarantee: every node lies on a start-to-boss path, and each run meets the same pacing beats. Failure: with few paths, choices can collapse into one line.
 
 ### 4.2 FTL and others
 
-- FTL: each sector is a field of jump beacons joined when they are close, with the exit on the far side and a pursuing fleet that sweeps across as a clock. Sectors number about 20 beacons each (unverified; the fan wiki that states 19 to 24 refused the fetch). The run is a tree of sectors chosen one column at a time (unverified).
+- FTL: each sector is a field of jump beacons joined when they are close, with the exit on the far side and a pursuing fleet that sweeps across as a clock. Sectors number about 20 beacons each (checked 2026-11-16 https://ftl.fandom.com/wiki/Sectors via search result: 19 to 24 beacons; a Subset forum survey says 20 to 24 including entrance and exit). The run is a tree of sectors chosen one column at a time (unverified; 2026-11-16: not checked, fan wiki fetch refused earlier).
 - Into the Breach islands are fixed; the missions offered on them vary (section 2.6).
 
 ### 4.3 Checks for a node map
@@ -212,28 +212,28 @@ Terrain is a function of position and seed, so the world can be made in pieces, 
 - A chunk moves through ordered statuses: empty, structure_starts, structure_references, biomes, terrain (base terrain and liquids, then surface blocks, then carvers), features, light, spawn, full [MC-WG].
 - Overworld biomes are picked from six noise parameters: temperature, humidity, continentalness, erosion, weirdness and depth. Only depth changes with height, by 1/128 per block [MC-WG].
 - 1.18 raised the world to 384 blocks, from Y -64 to 319, moved the Overworld to the multi-noise biome source, and made terrain "independent from biomes": terrain shape comes first and biomes adapt to it. It added "cheese", "spaghetti" and "noodle" noise caves and aquifers with their own water levels, and blends old chunks into new ones [MC-118].
-- Before 1.18, biomes were chosen first from stacked 2D layers and each biome set its own terrain height (unverified).
+- Before 1.18, biomes were chosen first from stacked 2D layers and each biome set its own terrain height through depth and scale values (layer stack checked 2026-11-16 https://minecraft.fandom.com/wiki/Biome/Before_1.18 ; the height role is from secondhand posts only).
 - Structures are why there are two early statuses: a structure's start is decided per chunk, then every chunk it touches records a reference, so a village is the same whichever chunk loads first [MC-WG] (the reason given here is an inference).
 
 ### 5.2 Terraria
 
 - The world is finite and built once, up front: small 4200x1200 tiles, medium 6400x1800, large 8400x2400 [TER-SIZE].
 - Generation is an ordered list of 109 passes (Desktop 1.4.4.9). It opens with Reset, Terrain, Dunes, Ocean Sand, Sand Patches, Tunnels, Mount Caves, Dirt Wall Backgrounds, Rocks In Dirt. Later passes include Jungle (20), Full Desert (22), Floating Islands (26), Underworld (31), Corruption (32), Dungeon (36) and Final Cleanup (109) [TER-WG].
-- The method is "paint in order": each pass overwrites what earlier passes left. Order is the design. Failure: late passes can destroy early features, so each pass carries its own placement tests (unverified).
+- The method is "paint in order": each pass overwrites what earlier passes left. Order is the design. Failure: late passes can destroy early features, so each pass carries its own placement tests (practice figure, no single source; tunable default).
 
 ### 5.3 Valheim
 
 - The world is cut into zones of 64 by 64 metres [VAL].
 - Locations (points of interest) are assigned once at world generation from the seed: the game tries up to 100,000 times to place each location's quota, at most one per zone. The location's objects are only created when a player comes near. Vegetation is placed when a zone is first discovered [VAL].
-- The world is a disc of radius 10,000 m plus a 500 m edge, and biomes depend on distance from the centre plus noise (unverified, search snippets of community tools).
+- The world is a disc of radius 10,000 m plus a 500 m edge, and biomes depend on distance from the centre plus noise (radius and edge checked 2026-11-16 https://thunderstore.io/c/valheim/p/JereKuusela/Expand_World/v/1.4.0 , a mod's settings: 10000 + 500 = 10500 m; biome rule from [VAL]).
 
 ### 5.4 No Man's Sky
 
-- Sean Murray's GDC 2017 talk "Building Worlds Using Math(s)" covers the terrain noise [NMS]. Only the session page was read. Details from memory: planets are density fields built from layered noise, polygonised from voxels around the player, and everything on a planet derives from its seed (unverified).
+- Sean Murray's GDC 2017 talk "Building Worlds Using Math(s)" covers the terrain noise [NMS]. Only the session page was read. Details from memory: planets are density fields built from layered noise, polygonised from voxels around the player, and everything on a planet derives from its seed (unverified; 2026-11-16: GDC Vault talk is members only).
 
 ### 5.5 Chunks and seeds: rules that carry over
 
-- A chunk's random stream is a hash of (world seed, chunk coordinates, pass name). Never draw from one shared generator in load order, or the world depends on the player's route (general practice; Minecraft's exact scheme unverified).
+- A chunk's random stream is a hash of (world seed, chunk coordinates, pass name). Never draw from one shared generator in load order, or the world depends on the player's route (practice figure, no single source; tunable default. Minecraft's exact scheme not checked).
 - A feature larger than a chunk needs a decision made in one place and read by all chunks it touches (Minecraft's two structure statuses), or a finite world generated whole (Terraria).
 - Johnson et al. 2010 store one seed per cave grid and blend neighbours with extra automaton passes; see [realistic-land.md section 10b](realistic-land.md#10b-caves-and-noise-terrain).
 - mapwright's seed rules are items 5 and 6 of [the checkable proof rules](cities-and-dungeons.md#7-checkable-proof-rules-implement-as-tests).
@@ -255,21 +255,21 @@ Tarn Adams, in a 2008 interview [DF], gives this order:
 7. Real rivers are then forced to the ocean, lakes are bulged out, loops are removed, flow is summed to find tributaries, and rivers are named.
 8. Regions are formed and named, then plant and animal populations are set: "a canvas for world history".
 
-Worlds that fail checks are rejected and rerolled, and history is then simulated year by year (unverified).
+Worlds that fail checks are rejected and rerolled, and history is then simulated year by year (checked 2026-11-16 https://dwarffortresswiki.org/index.php/World_rejection : a world failing any rejection check is rerolled; history runs to the end year or a beasts-dead stop).
 
 ### 6.2 RimWorld
 
 - The planet is a globe of hexagon tiles with 12 pentagons. Coverage can be 30, 50 or 100 percent [RW].
 - Each tile holds a biome, elevation, temperature, rainfall in mm per year and a terrain class (flat, small hills, large hills, mountains) [RW].
 - A seed fixes landmasses, rivers and mountains. Roads and faction bases may not be tied to it [RW].
-- The local map is generated from the tile: terrain class sets how much rock, a river on the tile becomes a river across the map, caves can form in mountains. Sizes run 200x200 to 325x325 cells [RW]; 250x250 is the default (unverified).
+- The local map is generated from the tile: terrain class sets how much rock, a river on the tile becomes a river across the map, caves can form in mountains. Sizes run 200x200 to 325x325 cells [RW]; the wiki names Small 200-225, Medium 250-275, Large 300-325 and does not state a default (corrected 2026-11-16 https://rimworldwiki.com/wiki/World_generation ; 250x250 as default is unconfirmed).
 - This is the two-scale pattern mapwright already has in `gen world` and `gen region`: the parent fixes the facts, the child adds detail.
 
 ### 6.3 Caves of Qud: history first
 
 - World generation starts from the history of five generated sultans. For each of five periods, new regions and locations are created (2 to 3 regions per period), then "the sultan history for that period is generated, using those regions and locations" [QUD].
 - A few main-quest places are pre-built and fixed [QUD].
-- Qud also uses Wave Function Collapse for parts of its maps [MS]; how is from Brian Bucklew's talk, which was not read (unverified).
+- Qud also uses Wave Function Collapse for parts of its maps [MS]; how is from Brian Bucklew's talk, which was not read (unverified; 2026-11-16: not reached).
 - Contrast: Dwarf Fortress builds land, then history on it. Qud builds history and makes places to hold it.
 
 ---
@@ -278,9 +278,9 @@ Worlds that fail checks are rejected and rerolled, and history is then simulated
 
 ### 7.1 Civilization map scripts
 
-- Each map type is a script (Python in Civilization IV, Lua in V and VI) that fills plot types, terrain, features and rivers, then calls a shared start-placement library (unverified).
-- "Continents" and "Fractal" scripts threshold a fractal height field at a sea level; grain sets the number and size of landmasses (unverified).
-- Civilization V's `AssignStartingPlots.lua` divides land into regions by fertility, one per player, places a start in each, then adds resources near weak starts (unverified: forum posts seen in search snippets say distribution is "based on land fertility, not land size"; the Lua was not read).
+- Each map type is a script (Python in Civilization IV, Lua in V and VI) that fills plot types, terrain, features and rivers, then calls a shared start-placement library (unverified; 2026-11-16: scripts not read, no primary source reached).
+- "Continents" and "Fractal" scripts threshold a fractal height field at a sea level; grain sets the number and size of landmasses (unverified; 2026-11-16: scripts not read).
+- Civilization V's `AssignStartingPlots.lua` divides land into regions by fertility, one per player, places a start in each, then adds resources near weak starts (community-checked 2026-11-16: https://modiki.civfanatics.com/index.php/AssignStartingPlots_(Civ5_Type) lists DivideIntoRegions with a fertility table, and CivFanatics posts say distribution is "based on land fertility, not land size"; the Lua itself was not read).
 - Guarantee sought: comparable starts. Failure: balance by one score hides what matters (coast, neighbours, room to grow).
 
 ### 7.2 Age of Empires II random map scripts
@@ -295,11 +295,11 @@ A script has up to seven sections, and the game always runs them in this order w
 6. `<CONNECTION-GENERATION>`: replaces terrain along paths between land origins (roads, shallows). A connection that is not possible is not made.
 7. `<OBJECTS-GENERATION>`: resources, units, buildings, in order. An object that finds no valid position is not generated, so the script must place the most important objects first.
 
-Guarantee: none; the script author must order things so that failure hits unimportant objects. Fairness comes from placing each player's resources by distance rings around the start (unverified).
+Guarantee: none; the script author must order things so that failure hits unimportant objects. Fairness comes from placing each player's resources by distance rings around the start (practice figure, no single source; tunable default).
 
 ### 7.3 4X galaxies
 
-- Stellaris picks star positions by galaxy shape (elliptical, spiral with 2 or 4 arms, ring), then joins stars into a hyperlane graph, with script settings for lane density and maximum lane length (unverified: the wiki refused the fetch; setting names `num_hyperlanes` and `max_hyperlane_distance` were seen only in forum snippets).
+- Stellaris picks star positions by galaxy shape (elliptical, spiral with 2 or 4 arms, ring), then joins stars into a hyperlane graph, with script settings for lane density and maximum lane length (unverified: the wiki refused the fetch; setting names `num_hyperlanes` and `max_hyperlane_distance` appear in community setup-scenario examples, e.g. https://steamcommunity.com/app/281990/discussions/0/1692662484242008327 (checked 2026-11-16 via search result; no Paradox documentation found)).
 - The graph recipe that works: points by a density function, a minimum spanning tree so the galaxy is connected, then extra short edges for loops, then a check for chokepoints. See [scifi-maps.md section 4](scifi-maps.md#4-jump-routes-and-hyperlane-graphs) and [pathfinding.md section 8.4](pathfinding.md#84-route-graphs-in-space). mapwright's `gen sector` does this with a relative neighbourhood graph plus the spanning tree.
 
 ### 7.4 Hex strategy maps
@@ -316,7 +316,7 @@ The algorithm is in [cities-and-dungeons.md section 5.4](cities-and-dungeons.md#
 - Townscaper: the grid is irregular, made from a hexagon grid split into quads with points then moved. Modules are corner pieces chosen in the manner of marching cubes. The solver runs each time the player adds a block, and where two cells cannot fit "it is actually allowed to fail silently". The player controls large shapes; the solver picks details [TS].
 - Dead Cells moved its room fitting to exit matching, close to this method (section 2.3).
 - What the method guarantees: local adjacency only. It gives no path, no connectivity and no large structure [WFC-EX]. Shipped uses add a second constraint (Bad North's navigability) or a person (Townscaper's player).
-- Answer set programming: Smith and Mateas 2011 describe a design space as a logic program and let a solver return levels that meet every stated constraint [ASP] (citation and abstract through a search result). It shipped in the puzzle game Refraction, and a Warzone 2100 map generator named Diorama used it (both unverified, search snippets only). Strength: hard guarantees such as "a solution exists and needs this tool". Cost: solve time grows fast with map size.
+- Answer set programming: Smith and Mateas 2011 describe a design space as a logic program and let a solver return levels that meet every stated constraint [ASP] (citation and abstract through a search result). It shipped in the puzzle game Refraction, and a Warzone 2100 map generator named Diorama used it (both unverified, search snippets only; not rechecked 2026-11-16). Strength: hard guarantees such as "a solution exists and needs this tool". Cost: solve time grows fast with map size.
 
 ---
 
@@ -326,9 +326,9 @@ What large studios automate and what they place by hand. Only the session pages 
 
 | Game | Source | Automated | By hand |
 |---|---|---|---|
-| Far Cry 5 | Carrier, GDC 2018 [FC5] | Tools that generate biomes, texture the terrain, set up freshwater networks and generate cliff rocks; built to refill large areas on each iteration | Fine-tuning of smaller locations. Houdini as the tool, and roads, fences and power lines as outputs (unverified) |
+| Far Cry 5 | Carrier, GDC 2018 [FC5] | Tools that generate biomes, texture the terrain, set up freshwater networks and generate cliff rocks; built to refill large areas on each iteration | Fine-tuning of smaller locations. Houdini as the tool, and roads, fences and power lines as outputs (unverified; 2026-11-16: GDC Vault members only) |
 | Horizon Zero Dawn | van Muijden, 2017 [HZD] | Run-time GPU placement around the player of plants, rocks, sounds, effects, wildlife and gameplay elements, from rules artists build in a graph editor | Painted inputs such as a tree line or a road, which the system reacts to |
-| Ghost Recon Wildlands | Werle and Martinez, GDC 2017 [GRW] | A terrain tool chain and renderer for Ubisoft's largest open world | Terrain sculpted first, then roads, rivers and settlements laid by tools from hand-set points (unverified) |
+| Ghost Recon Wildlands | Werle and Martinez, GDC 2017 [GRW] | A terrain tool chain and renderer for Ubisoft's largest open world | Terrain sculpted first, then roads, rivers and settlements laid by tools from hand-set points (unverified; 2026-11-16: GDC Vault members only) |
 
 Pattern: people author inputs that are cheap to change (masks, splines, rules) and tools regenerate everything downstream. Nothing is placed directly that a rule could place. Landmarks, quest sites and anything a player must find stay hand-made.
 
@@ -369,7 +369,7 @@ Smith and Whitehead 2010 [ER]: pick metrics that describe a level, generate many
 
 ### 10.4 Sameness
 
-- Kate Compton's "10,000 bowls of oatmeal": outputs can all differ and still feel the same; what matters is difference a person can see (unverified, the post refused the fetch).
+- Kate Compton's "10,000 bowls of oatmeal": outputs can all differ and still feel the same; what matters is difference a person can see (checked 2026-11-16 through a secondary source, https://gamedeveloper.com/design/practical-procedural-generation-for-everyone- ; Compton's own post still refused).
 - What shipped games do about it: hand-made set pieces and vaults (sections 1.3 to 1.5), several layout algorithms per game (DCSS layouts, Diablo's four level types), authored structure with generated detail (sections 2.3 and 2.5), rare events, and large template pools.
 
 ### 10.5 Seeds
