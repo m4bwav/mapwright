@@ -67,6 +67,69 @@ def style(name):
     return STYLES[name]
 
 
+# ------------------------------------------------------------------ period lint
+# First-use years ("not before") from references/cartography-design.md 1.6 and projections.md 3.14.
+# Book facts, not cross-checked; where two sources differ the earlier year is used.
+# (convention, year, level, label, period kinds it applies to; None = every kind)
+PERIOD_RULES = [
+    ("square-grid", 200, "fail", "square scale grid (3rd century, China)", None),
+    ("bar-scale", 1275, "fail", "bar scale (Pisan chart, c. 1275)", ("map", "chart")),
+    ("bar-scale", 1400, "fail", "bar scale on a mappa mundi (15th century)", ("mappa",)),
+    ("rhumb-lines", 1300, "fail", "rhumb-line network (late 13th century)", None),
+    ("compass-rose", 1375, "fail", "drawn compass rose (1375)", None),
+    ("graticule", 1400, "fail", "graticule (15th century, Ptolemy in Latin)", ("map", "mappa")),
+    ("graticule", 1500, "fail", "graticule on a sea chart (16th century)", ("chart",)),
+    ("latitude-scale", 1500, "fail", "latitude scale on a sea chart (16th century)", None),
+    ("mercator", 1569, "fail", "Mercator projection (1569)", None),
+    ("land-contours", 1791, "fail", "land contours (1791)", None),
+    ("hachures", 1799, "fail", "hachures as a system (1799)", None),
+    ("elevation-tints", 1804, "fail", "elevation by tone or tint (1804)", None),
+    ("mollweide", 1805, "fail", "Mollweide projection (1805)", None),
+    ("albers", 1805, "fail", "Albers equal-area conic (about 1805)", None),
+    ("ratio-scale", 1806, "fail", "ratio scale 1:N (1806)", None),
+    ("dot-map", 1830, "fail", "dot map (1830)", None),
+    ("shaded-area", 1831, "fail", "shaded-area map (1831)", None),
+    ("flow-lines", 1837, "fail", "flow lines (1837)", None),
+    ("greenwich", 1884, "warn", "Greenwich as prime meridian (1884)", None),
+    ("robinson", 1963, "fail", "Robinson projection (1963)", None),
+]
+PERIOD_KINDS = ("map", "chart", "mappa")
+PERIOD_CONVENTIONS = sorted({r[0] for r in PERIOD_RULES})
+
+
+def map_conventions(style_name=DEFAULT_STYLE, rc=None):
+    """Conventions the renderer draws on a world or region map in this style."""
+    st = style(style_name)
+    used = {"bar-scale", "compass-rose"}  # render_parts always draws a scale bar and a north arrow
+    if st.get("land") == "hypso":
+        used.add("elevation-tints")
+    if st.get("grid"):
+        used.add("square-grid")
+    proj = ((rc or {}).get("projection") or {})
+    name = str(proj.get("name") or proj.get("kind") or "").lower()
+    if name in PERIOD_CONVENTIONS:
+        used.add(name)
+    return used
+
+
+def period_lint(conventions, year, kind="map"):
+    """List every convention younger than YEAR. Returns check bars (name, ok, detail)."""
+    if kind not in PERIOD_KINDS:
+        raise ValueError("unknown period kind %r; kinds: %s" % (kind, ", ".join(PERIOD_KINDS)))
+    bad = sorted(set(conventions) - set(PERIOD_CONVENTIONS))
+    if bad:
+        raise ValueError("unknown convention(s) %s; known: %s" % (", ".join(bad), ", ".join(PERIOD_CONVENTIONS)))
+    fails, warns = [], []
+    for conv, since, level, label, kinds in PERIOD_RULES:
+        if conv in conventions and (kinds is None or kind in kinds) and year < since:
+            (fails if level == "fail" else warns).append(label)
+    bars = [("period %d (%s): nothing younger than the year" % (year, kind), not fails,
+             "; ".join(fails) if fails else "%d conventions checked" % len(set(conventions)))]
+    if warns:
+        bars.append(("period %d: warnings" % year, True, "WARN " + "; ".join(warns)))
+    return bars
+
+
 # ------------------------------------------------------------------ text metrics
 # Advance widths in em. Deliberately on the wide side of common serif and sans faces,
 # so a label measured here is never shorter than it draws. Not copied from any font.
