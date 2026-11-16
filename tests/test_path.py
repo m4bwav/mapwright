@@ -278,5 +278,144 @@ class CheckBars(Fixtures):
         self.assertEqual(a1, read(d, "fair.json"))
 
 
+def gen(tmp, name, *args):
+    out = os.path.join(tmp, name)
+    run_cli("gen", *args, "--out", out)
+    return out
+
+
+class LocksAndKeys(unittest.TestCase):
+    """Backlog: path honours locks and keys on cyclic dungeons (30-seed sweep)."""
+    SEEDS = range(1, 31)
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.mkdtemp(prefix="mpw-lock-")
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def test_sweep_key_before_lock(self):
+        found = 0
+        for seed in self.SEEDS:
+            d = gen(self.tmp, "c%d" % seed, "dungeon", "--seed", str(seed), "--method", "cyclic")
+            G, _ = M.build(d)
+            gj = json.loads(read(d, "grid.json"))
+            ent, goal = tuple(gj["entrance"]), tuple(gj["goal"])
+            self.assertTrue(G.lockdoor and G.keycell, seed)
+            for c in G.keycell:
+                self.assertIn(c, G.ok, seed)
+            cost, path, picks, _ = M.lock_search(G, ent, goal)
+            self.assertIsNotNone(cost, "seed %d: no lock-aware path" % seed)
+            self.assertEqual((path[0], path[-1]), (ent, goal))
+            self.assertAlmostEqual(M.resum(G, path), cost, delta=1e-9)
+            held, order = set(), []
+            for c in path:
+                if c in G.lockdoor:
+                    self.assertIn(G.lockdoor[c], held, "seed %d: lock crossed before its key" % seed)
+                if c in G.keycell and G.keycell[c] not in held:
+                    held.add(G.keycell[c])
+                    order.append(G.keycell[c])
+            self.assertEqual([p["key"] for p in picks], order)
+            for p in picks:
+                self.assertEqual(G.keycell.get(path[p["step"]]), p["key"])
+            for u, v in zip(path, path[1:]):
+                if v in G.rule:
+                    self.assertEqual((u[0] - v[0], u[1] - v[1]), G.rule[v], seed)
+            free = M.search(G, ent, [goal])[0]
+            self.assertLessEqual(free, cost + 1e-9, seed)
+            found += 1
+        self.assertGreaterEqual(found, 30)
+
+    def test_cli_reports_keys_and_ignore_locks(self):
+        d = gen(self.tmp, "cli", "dungeon", "--seed", "5", "--method", "cyclic")
+        gj = json.loads(read(d, "grid.json"))
+        fr, to = "%d,%d" % tuple(gj["entrance"]), "%d,%d" % tuple(gj["goal"])
+        rep = json.loads(run_cli("path", d, "--from", fr, "--to", to, "--json"))
+        self.assertEqual(rep["locks"], 1)
+        self.assertEqual([k["key"] for k in rep["keys"]], ["k1"])
+        free = json.loads(run_cli("path", d, "--from", fr, "--to", to, "--ignore-locks", "--json"))
+        self.assertEqual(free["locks_open"], 1)
+        self.assertLessEqual(free["cost"], rep["cost"])
+        jp = json.loads(run_cli("path", d, "--from", fr, "--to", to, "--ignore-locks", "--jps", "--json"))
+        self.assertAlmostEqual(jp["cost"], free["cost"], delta=1e-9)
+        self.assertEqual(jp["search"], "jps")
+        with self.assertRaises(SystemExit):
+            run_cli("path", d, "--from", fr, "--to", to, "--jps")
+
+
+class JumpPoints(unittest.TestCase):
+    """Backlog: path --jps returns A*'s cost on 48 generated grid maps; expansions recorded for both."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.mkdtemp(prefix="mpw-jps-")
+        cls.maps = []
+        for seed in range(1, 13):
+            cls.maps.append(gen(cls.tmp, "b%d" % seed, "dungeon", "--seed", str(seed), "--w", "48", "--h", "36"))
+            cls.maps.append(gen(cls.tmp, "v%d" % seed, "dungeon", "--seed", str(seed), "--method", "cave",
+                                "--w", "48", "--h", "36"))
+            cls.maps.append(gen(cls.tmp, "y%d" % seed, "dungeon", "--seed", str(seed), "--method", "cyclic"))
+            cls.maps.append(gen(cls.tmp, "t%d" % seed, "battle", "--seed", str(seed), "--w", "40", "--h", "30"))
+        cls.maps.append(gen(cls.tmp, "hex", "battle", "--seed", "2", "--grid", "hex", "--w", "16", "--h", "14"))
+        cls.maps.append(gen(cls.tmp, "deck", "deck", "--seed", "3", "--w", "30", "--h", "15"))
+        cls.maps.append(gen(cls.tmp, "world", "world", "--seed", "2", "--cells", "500"))
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def test_same_cost_as_astar(self):
+        import time
+        stats = dict(maps=0, pairs=0, astar_exp=0, jps_exp=0, astar_s=0.0, jps_s=0.0)
+        for d in self.maps[:-3]:
+            G, _ = M.build(d)
+            stats["maps"] += 1
+            for a, b in pairs(G, 25, seed=stats["maps"]):
+                t0 = time.perf_counter()
+                c1, _, e1 = M.search(G, a, [b])
+                t1 = time.perf_counter()
+                c2, p2, e2 = M.jps(G, a, b)
+                t2 = time.perf_counter()
+                if c1 is None:
+                    self.assertIsNone(c2, d)
+                    continue
+                self.assertAlmostEqual(c1, c2, delta=1e-9, msg="%s %r %r" % (d, a, b))
+                self.assertAlmostEqual(M.resum(G, p2), c2, delta=1e-9)
+                self.assertEqual((p2[0], p2[-1]), (a, b))
+                stats["pairs"] += 1
+                stats["astar_exp"] += e1
+                stats["jps_exp"] += e2
+                stats["astar_s"] += t1 - t0
+                stats["jps_s"] += t2 - t1
+        self.assertGreaterEqual(stats["maps"], 48)
+        self.assertGreater(stats["pairs"], 1000)
+        self.assertLess(stats["jps_exp"], stats["astar_exp"])
+        if os.environ.get("MPW_JPS_STATS"):
+            print("JPS stats:", json.dumps(stats))
+
+    def test_hand_grid_open_room(self):
+        G = square(["." * 20] * 20)
+        c1, _, e1 = M.search(G, (0, 0), [(19, 13)])
+        c2, _, e2 = M.jps(G, (0, 0), (19, 13))
+        self.assertAlmostEqual(c1, c2, delta=1e-12)
+        self.assertLess(e2, e1)
+
+    def test_refusals(self):
+        for d in self.maps[-3:]:
+            G, _ = M.build(d)
+            self.assertIsNotNone(M.jps_refusal(G))
+            with self.assertRaises(ValueError):
+                M.jps(G, G.nodes[0], G.nodes[-1])
+        G4, _ = M.build(self.maps[0], moves=4)
+        self.assertIn("--moves 4", M.jps_refusal(G4))
+        with self.assertRaises(SystemExit):
+            run_cli("path", self.maps[-3], "--from", "1,1", "--to", "2,2", "--jps")
+        self.assertIn("references/pathfinding.md", run_cli("explain", "jps"))
+        self.assertIn("references/pathfinding.md", run_cli("explain", "locks"))
+        self.assertIn("references/games-film-print.md", run_cli("explain", "navmesh"))
+
+
 if __name__ == "__main__":
     unittest.main()

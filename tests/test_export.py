@@ -870,5 +870,78 @@ class TestTargets(unittest.TestCase):
             self.assertIn("references/games-film-print.md", run_cli("explain", term))
 
 
+class TestNav(Base):
+    """Backlog: export --nav, walkable squares as rectangles with portals."""
+
+    def recipes(self):
+        out = []
+        for seed in range(1, 6):
+            for name, args in (("b", ("dungeon", "--w", "40", "--h", "30")),
+                               ("v", ("dungeon", "--method", "cave", "--w", "40", "--h", "30")),
+                               ("y", ("dungeon", "--method", "cyclic")),
+                               ("t", ("battle", "--w", "30", "--h", "24"))):
+                d = self.d("nav-%s%d" % (name, seed))
+                if not os.path.isdir(d):
+                    run_cli("gen", *args, "--seed", str(seed), "--out", d)
+                out.append(d)
+        return out
+
+    def test_bars_and_independent_check(self):
+        for d in self.recipes():
+            out = os.path.join(d, "map.nav.json")
+            bars, files = X.export(d, out, None, "t", nav=True)
+            self.assertTrue(all(ok for _, ok, _ in bars), (d, bars))
+            nav = json.load(open(out, encoding="utf-8"))
+            gj = json.load(open(os.path.join(d, "grid.json"), encoding="utf-8"))
+            g = gj["cells"]
+            seen = {}
+            for r in nav["rects"]:
+                for y in range(r["y"], r["y"] + r["h"]):
+                    for x in range(r["x"], r["x"] + r["w"]):
+                        self.assertNotIn((x, y), seen)
+                        self.assertIn(g[y][x], ".+")
+                        seen[(x, y)] = r["id"]
+            walk = {(x, y) for y in range(gj["h"]) for x in range(gj["w"]) if g[y][x] in ".+"}
+            self.assertEqual(set(seen), walk)
+            adj = {r["id"]: set() for r in nav["rects"]}
+            for p in nav["portals"]:
+                adj[p["a"]].add(p["b"])
+                adj[p["b"]].add(p["a"])
+            # every pair of 4-neighbour walkable squares in different rects must be joined by a portal
+            for x, y in walk:
+                for q in ((x + 1, y), (x, y + 1)):
+                    if q in walk and seen[q] != seen[(x, y)]:
+                        self.assertIn(seen[q], adj[seen[(x, y)]])
+            self.assertLess(len(nav["rects"]), len(walk))
+
+    def test_byte_identical_and_cli(self):
+        d = self.recipes()[2]
+        a, b = os.path.join(self.tmp, "n1.json"), os.path.join(self.tmp, "n2.json")
+        run_cli("export", d, "--nav", "-o", a)
+        run_cli("export", d, "--to", "nav", "-o", b)
+        with open(a, "rb") as f1, open(b, "rb") as f2:
+            self.assertEqual(f1.read(), f2.read())
+        nav = json.load(open(a, encoding="utf-8"))
+        self.assertTrue(any("lock" in r for r in nav["rects"]))
+        self.assertTrue(any("enter_from" in r for r in nav["rects"]))
+        self.assertEqual(nav["format"], "mapwright-nav")
+
+    def test_forced_failure_and_refusals(self):
+        g = ["....", ".##.", "...."]
+        nav = dict(rects=[dict(id=0, x=0, y=0, w=4, h=2)], portals=[])
+        names = [n for n, ok, _ in X.nav_bars(g, 4, 3, nav) if not ok]
+        self.assertEqual(len(names), 3)
+        hexd = self.d("nav-hex")
+        run_cli("gen", "battle", "--grid", "hex", "--seed", "2", "--w", "12", "--h", "10", "--out", hexd)
+        code, err = cli_fails("export", hexd, "--nav", "-o", os.path.join(self.tmp, "h.json"))
+        self.assertNotEqual(code, 0)
+        self.assertIn("square-grid only", err)
+        wd = self.d("nav-world")
+        run_cli("gen", "world", "--seed", "2", "--cells", "300", "--out", wd)
+        code, err = cli_fails("export", wd, "--nav", "-o", os.path.join(self.tmp, "w.json"))
+        self.assertNotEqual(code, 0)
+        self.assertIn("square dungeon and battle", err)
+
+
 if __name__ == "__main__":
     unittest.main()

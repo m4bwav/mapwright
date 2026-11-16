@@ -3,7 +3,8 @@
 Graphs come from the recipe itself:
 - dungeon and square battle maps: 8-way moves (or 4 with --moves 4), diagonals cost sqrt(2), no corner cutting,
   no diagonal step into or out of a door, one-way doors of cyclic dungeons entered only from their source side
-  (locks are treated as open: the walker holds every key);
+  (`path` honours locks by default with lock_search over (square, keys held); fields, --ignore-locks and the
+  check commands treat locks as open: the walker holds every key);
 - hex battle maps: odd-r neighbours, every step costs 1;
 - decks: 8-way squares of 1.5 m in metres, a lift square joins the same square on the deck above and below (3 m);
 - world and region meshes: the road router's step cost (distance x slope x terrain, bridge to enter a river);
@@ -83,6 +84,11 @@ class SquareGraph(Graph):
                 self.rule[(dx, dy)] = ((cx > dx) - (cx < dx), (cy > dy) - (cy < dy))
         self.directed = bool(self.rule)
         self.locks = sum(1 for e in (gr or {}).get("edges", []) if "lock" in e)
+        self.lockdoor = {tuple(e["door"]): e["lock"] for e in (gr or {}).get("edges", []) if "lock" in e}
+        self.keycell = {}
+        for k in (gr or {}).get("keys", []):
+            cx, cy = gr["cells"][k["node"]]
+            self.keycell[(cx * P.CELL + P.CELL // 2, cy * P.CELL + P.CELL // 2)] = k["id"]
         self._cache = {}
 
     def _out(self, n):
@@ -323,6 +329,191 @@ def search(G, src, goals, heuristic=True):
                 dist[m] = nd
                 prev[m] = n
                 heapq.heappush(pq, (nd + (G.est(m, goals) if heuristic else 0.0), nd, m))
+    return None, None, len(closed)
+
+
+def lock_search(G, src, goal):
+    """A* over (square, keys held) on a cyclic dungeon: a locked door is passed only with its key, a key is
+    picked up on entering its square (the centre of its room's cell), one-way doors as in G.out.
+    Returns (cost, squares, pickups, expanded); pickups are dicts key, cell index along the path."""
+    gl = [goal]
+    k0 = frozenset([G.keycell[src]]) if src in G.keycell else frozenset()
+    s0 = (src, k0)
+    dist = {s0: 0.0}
+    prev = {}
+    closed = set()
+    pq = [(G.est(src, gl), 0.0, src, tuple(sorted(k0)))]
+    while pq:
+        _, gc, n, kt = heapq.heappop(pq)
+        st = (n, frozenset(kt))
+        if st in closed:
+            continue
+        closed.add(st)
+        if n == goal:
+            seq = [st]
+            while seq[-1] in prev:
+                seq.append(prev[seq[-1]])
+            seq.reverse()
+            picks = []
+            held = set()
+            for i, (c, ks) in enumerate(seq):
+                for k in sorted(ks - held):
+                    picks.append(dict(key=k, step=i))
+                held |= ks
+            return gc, [c for c, _ in seq], picks, len(closed)
+        keys = st[1]
+        for m, c in G.out(n):
+            lk = G.lockdoor.get(m)
+            if lk is not None and lk not in keys:
+                continue
+            km = G.keycell.get(m)
+            nk = keys | {km} if km is not None else keys
+            ns = (m, nk)
+            nd = gc + c
+            if ns not in closed and nd < dist.get(ns, 1e300):
+                dist[ns] = nd
+                prev[ns] = st
+                heapq.heappush(pq, (nd + G.est(m, gl), nd, m, tuple(sorted(nk))))
+    return None, None, [], len(closed)
+
+
+def jps_refusal(G):
+    """None when jump point search can run on G, else the reason it cannot."""
+    if not isinstance(G, SquareGraph):
+        return ("--jps needs a uniform-cost square grid (dungeon or square battle map); %s graphs have %s"
+                % (G.kind, {"hex": "six neighbours per cell", "deck": "lifts between decks",
+                            "mesh": "weighted, directed road or Tobler steps"}.get(G.kind, "other steps")))
+    if G.moves != 8:
+        return "--jps is for 8-way moves; with --moves 4 use plain A*"
+    return None
+
+
+def jps(G, src, goal):
+    """Jump point search (Harabor and Grastien 2011) with the same moves as SquareGraph.out: 8-way, diagonals
+    sqrt(2), no corner cutting. Doors break uniform cost (no diagonal through them, one-way entry), so any square
+    within one step of a door is a jump point expanded with every move G.out gives. Returns
+    (cost, squares, expanded) like search(); expanded counts jump points closed."""
+    err = jps_refusal(G)
+    if err:
+        raise ValueError(err)
+    ok = G.ok
+    special = set()
+    for x, y in G.doors:
+        for ddx in (-1, 0, 1):
+            for ddy in (-1, 0, 1):
+                special.add((x + ddx, y + ddy))
+
+    def stop(c):
+        return c == goal or c in special
+
+    def straight(x, y, dx, dy):
+        while True:
+            if (x, y) not in ok:
+                return None
+            if stop((x, y)):
+                return (x, y)
+            if dx:
+                if (((x, y - 1) in ok and (x - dx, y - 1) not in ok) or
+                        ((x, y + 1) in ok and (x - dx, y + 1) not in ok)):
+                    return (x, y)
+            else:
+                if (((x - 1, y) in ok and (x - 1, y - dy) not in ok) or
+                        ((x + 1, y) in ok and (x + 1, y - dy) not in ok)):
+                    return (x, y)
+            x += dx
+            y += dy
+
+    def jump(x, y, dx, dy):
+        if not (dx and dy):
+            return straight(x, y, dx, dy)
+        while True:
+            if (x, y) not in ok:
+                return None
+            if stop((x, y)):
+                return (x, y)
+            if straight(x + dx, y, dx, 0) or straight(x, y + dy, 0, dy):
+                return (x, y)
+            if (x + dx, y) in ok and (x, y + dy) in ok:
+                x += dx
+                y += dy
+            else:
+                return None
+
+    def nbrs(n, par):
+        x, y = n
+        if par is None or n in special:
+            return [m for m, _ in G.out(n)]
+        dx = (x > par[0]) - (x < par[0])
+        dy = (y > par[1]) - (y < par[1])
+        res = []
+        if dx and dy:
+            a, b = (x, y + dy) in ok, (x + dx, y) in ok
+            if a:
+                res.append((x, y + dy))
+            if b:
+                res.append((x + dx, y))
+            if a and b and (x + dx, y + dy) in ok:
+                res.append((x + dx, y + dy))
+        elif dx:
+            nx, up, dn = (x + dx, y) in ok, (x, y - 1) in ok, (x, y + 1) in ok
+            if nx:
+                res.append((x + dx, y))
+                if up and (x + dx, y - 1) in ok:
+                    res.append((x + dx, y - 1))
+                if dn and (x + dx, y + 1) in ok:
+                    res.append((x + dx, y + 1))
+            if up:
+                res.append((x, y - 1))
+            if dn:
+                res.append((x, y + 1))
+        else:
+            nx, lf, rt = (x, y + dy) in ok, (x - 1, y) in ok, (x + 1, y) in ok
+            if nx:
+                res.append((x, y + dy))
+                if lf and (x - 1, y + dy) in ok:
+                    res.append((x - 1, y + dy))
+                if rt and (x + 1, y + dy) in ok:
+                    res.append((x + 1, y + dy))
+            if lf:
+                res.append((x - 1, y))
+            if rt:
+                res.append((x + 1, y))
+        return res
+
+    gl = [goal]
+    dist = {src: 0.0}
+    prev = {}
+    closed = set()
+    pq = [(G.est(src, gl), 0.0, src)]
+    while pq:
+        _, gc, n = heapq.heappop(pq)
+        if n in closed:
+            continue
+        closed.add(n)
+        if n == goal:
+            jp = [n]
+            while jp[-1] in prev:
+                jp.append(prev[jp[-1]])
+            jp.reverse()
+            path = [jp[0]]
+            for a, b in zip(jp, jp[1:]):
+                sx, sy = (b[0] > a[0]) - (b[0] < a[0]), (b[1] > a[1]) - (b[1] < a[1])
+                c = a
+                while c != b:
+                    c = (c[0] + sx, c[1] + sy)
+                    path.append(c)
+            return gc, path, len(closed)
+        for m in nbrs(n, prev.get(n)):
+            dx, dy = m[0] - n[0], m[1] - n[1]
+            j = jump(m[0], m[1], dx, dy)
+            if j is None or j in closed:
+                continue
+            k = max(abs(j[0] - n[0]), abs(j[1] - n[1]))
+            nd = gc + k * (SQ2 if dx and dy else 1.0)
+            if nd < dist.get(j, 1e300):
+                dist[j] = nd
+                prev[j] = n
+                heapq.heappush(pq, (nd + G.est(j, gl), nd, j))
     return None, None, len(closed)
 
 
