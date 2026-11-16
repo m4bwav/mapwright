@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.17.0"
+VERSION = "0.18.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
