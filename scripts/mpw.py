@@ -1727,6 +1727,28 @@ def cmd_label(a):
 def cmd_legend(a):
     r = _render()
     _need_recipe(a.dir)
+    kind = _kind(a.dir)
+    if kind == "battle":
+        P = _places()
+        ents = [dict(kind=k, label=t) for k, t in P.battle_legend(P.load(a.dir, "grid.json"))]
+        if a.out and ents:
+            _, st = P.pstyle(None, "battle")
+            body, box = P.legend_box_svg([(e["kind"], e["label"]) for e in ents], 0, 0, st, 40)
+            w, h = box[2] - box[0] + 8, box[3] - box[1] + 8
+            svg = "\n".join(['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="%.1f %.1f %d %d">'
+                             % (w, h, box[0] - 4, box[1] - 4, w, h), body, "</svg>", ""])
+            try:
+                r.write_out(svg, a.out)
+            except (ValueError, RuntimeError) as e:
+                die(str(e))
+        if a.json:
+            print(json.dumps(ents, indent=1))
+        else:
+            for e in ents:
+                print("%-6s %s" % (e["kind"], e["label"]))
+        return
+    if not os.path.exists(os.path.join(a.dir, "mesh.json")):
+        die("legend lists symbols on world, region and battle maps; this %s map has no legend" % (kind or "unknown"))
     try:
         st = r.style(a.style)
     except ValueError as e:

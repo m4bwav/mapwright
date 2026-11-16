@@ -524,7 +524,11 @@ class TestTiled(Base):
         w, h, rows = S.decode_png(rb(out))
         svg = rb(os.path.join(self.bh, "map.svg")).decode("utf-8")
         m = re.search(r'<svg[^>]*width="(\d+)" height="(\d+)"', svg)
-        self.assertEqual((w, h), (int(m.group(1)), int(m.group(2))))   # same canvas as the SVG
+        # s18: the SVG adds a title band above and a legend band below; the PNG is the grid alone
+        _, _, gw, gh = P.hex_geometry(gj["w"], gj["h"], pps)
+        self.assertEqual((w, h), (gw, gh))
+        self.assertEqual(int(m.group(1)), w)
+        self.assertGreater(int(m.group(2)), h)
         _, st = P.pstyle(None, "battle")
         col = {"#": st["rock"], ".": st["floor"], "+": st["door"], "T": st["tree"]}
         size = pps / math.sqrt(3)

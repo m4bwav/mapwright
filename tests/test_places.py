@@ -2,11 +2,12 @@
 import io
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "scripts"))
@@ -472,3 +473,64 @@ class TestCyclicBranches(PlacesBase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestS18BattleFrameAndTreasure(unittest.TestCase):
+    """s18: battle title and legend sit outside the grid; treasure always lands on a floor cell in its room."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_title_and_legend_outside_grid(self):
+        for grid in ("square", "hex"):
+            for seed in (31, 7, 12):
+                out = os.path.join(self.tmp, "%s-%d" % (grid, seed))
+                P.gen_grid("battle", seed, out, 30, 20, grid=grid, pps=40)
+                self.assertEqual(failed(P.check(out, determinism=seed == 31, labels=False)), [], (grid, seed))
+                with open(os.path.join(out, "map.svg"), encoding="utf-8") as f:
+                    svg = f.read()
+                top = int(re.search(r'class="map" transform="translate\(0,(\d+)\)"', svg).group(1))
+                gh = 20 * 40 if grid == "square" else P.hex_geometry(30, 20, 40)[3]
+                lg = re.search(r'<g class="legend"[^>]*>\s*<rect x="[\d.]+" y="([\d.]+)"', svg)
+                self.assertGreaterEqual(float(lg.group(1)), top + gh, (grid, seed))
+                ty = float(re.search(r'<g class="labels".*?<text x="[\d.]+" y="([\d.]+)"', svg).group(1))
+                self.assertLessEqual(ty, top, (grid, seed))
+
+    def test_treasure_on_floor_in_room(self):
+        n = 0
+        for br in (2, 4, 8):
+            for seed in range(1, 41):
+                out = os.path.join(self.tmp, "c%d-%d" % (br, seed))
+                P.gen_grid("dungeon", seed, out, 48, 36, method="cyclic", pps=20, branches=br)
+                gj = P.load(out, "grid.json")
+                for b in gj["graph"]["branches"]:
+                    if not b["treasure"]:
+                        continue
+                    r = gj["rooms"][b["nodes"][-1]]
+                    x, y = P.treasure_cell(gj, b["nodes"][-1])
+                    self.assertTrue(r["x"] <= x < r["x"] + r["w"] and r["y"] <= y < r["y"] + r["h"], (br, seed))
+                    self.assertEqual(gj["cells"][y][x], P.FLOOR, (br, seed))
+                    n += 1
+                shutil.rmtree(out, ignore_errors=True)
+        self.assertGreater(n, 50)
+
+    def test_legend_cli_on_place_recipes(self):
+        b = os.path.join(self.tmp, "b")
+        P.gen_grid("battle", 31, b, 30, 20, pps=40)
+        txt = run_cli("legend", b)
+        self.assertIn("rock or ruined wall", txt)
+        ents = json.loads(run_cli("legend", b, "--json"))
+        self.assertEqual({e["kind"] for e in ents}, {"rock", "tree", "door"})
+        svg = os.path.join(self.tmp, "leg.svg")
+        run_cli("legend", b, "-o", svg, "--json")
+        with open(svg, encoding="utf-8") as f:
+            self.assertIn('class="legend-tree"', f.read())
+        d = os.path.join(self.tmp, "d")
+        P.gen_grid("dungeon", 3, d, 40, 30, pps=20)
+        err = io.StringIO()
+        with redirect_stderr(err), self.assertRaises(SystemExit):
+            run_cli("legend", d)
+        self.assertIn("no legend", err.getvalue())

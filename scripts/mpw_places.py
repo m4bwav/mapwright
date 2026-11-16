@@ -1267,6 +1267,15 @@ def hex_geometry(w, h, pps):
     return centre, verts, W, H
 
 
+def treasure_cell(gj, node):
+    """The floor cell inside room `node` nearest one square below its centre (keys sit at the centre)."""
+    r, g = gj["rooms"][node], gj["cells"]
+    cx, cy = r["x"] + (r["w"] - 1) / 2.0, r["y"] + (r["h"] - 1) / 2.0 + 1
+    cells = [(x, y) for y in range(r["y"], r["y"] + r["h"]) for x in range(r["x"], r["x"] + r["w"])
+             if g[y][x] == FLOOR]
+    return min(cells, key=lambda p: ((p[0] - cx) ** 2 + (p[1] - cy) ** 2, p[1], p[0]))
+
+
 def markers_svg(gj, pps):
     """Entrance (green ring), goal (red disc), keys (gold diamond), locked doors (red bar), one-way doors
     (triangle pointing the way it opens)."""
@@ -1288,8 +1297,7 @@ def markers_svg(gj, pps):
                      % (kx, ky - r, kx + r, ky, kx, ky + r, kx - r, ky))
         for b in gr.get("branches", []):
             if b["treasure"]:
-                tx, ty = gr["cells"][b["nodes"][-1]]
-                kx, ky = c((tx * CELL + CELL // 2, ty * CELL + CELL // 2 + 1))
+                kx, ky = c(treasure_cell(gj, b["nodes"][-1]))
                 o.append('<circle class="treasure" cx="%.1f" cy="%.1f" r="%.1f" fill="#e0b020" stroke="#7a5a10" '
                          'stroke-width="%.1f"/>' % (kx, ky, r * 0.8, max(1.0, pps * 0.04)))
         for e in gr["edges"]:
@@ -1312,6 +1320,26 @@ def markers_svg(gj, pps):
     return "\n".join(o)
 
 
+def battle_frame(o, cands, W, H, gj, st, pps):
+    """Battle maps: move the title into a band above the grid and the legend into a band below it,
+    so neither hides a square. Returns the new parts, label candidates, height and legend box."""
+    name, _, _, size = cands[0]
+    top = int(math.ceil(size * 1.8))
+    rows = battle_legend(gj)
+    fs = max(11.0, min(16.0, pps * 0.3))
+    bottom = int(math.ceil((fs * 1.6 * len(rows) + fs * 0.8) + 2 * fs)) if rows else 0
+    H2 = H + top + bottom
+    under = o[1].replace('width="100%" height="100%"', 'width="%d" height="%d"' % (W, H))
+    head = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">' % (W, H2, W, H2),
+            '<rect width="100%%" height="100%%" fill="%s"/>' % st["bg"],
+            '<g class="map" transform="translate(0,%d)">' % top, under]
+    o = head + o[2:] + ["</g>"]
+    lsvg, lbox = legend_box_svg(rows, W, H2, st, pps)
+    o.append(lsvg)
+    cands = [(name, W / 2, top - size * 0.55, size)]
+    return o, cands, H2, lbox
+
+
 def render_grid_svg(rc, gj, st):
     w, h, pps = gj["w"], gj["h"], rc["params"]["pps"]
     g = gj["cells"]
@@ -1328,9 +1356,6 @@ def render_grid_svg(rc, gj, st):
                 o.append('<polygon points="%s" fill="%s"/>' % (" ".join("%d,%d" % p for p in v), col[g[y][x]]))
         o.append("</g>")
         cands = [(rc["name"], W / 2, 30.0, 22.0)]
-        if rc["kind"] == "battle":
-            lsvg, lbox = legend_box_svg(battle_legend(gj), W, H, st, pps)
-            o.append(lsvg)
     else:
         W, H = w * pps, h * pps
         o = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">' % (W, H, W, H),
@@ -1358,14 +1383,13 @@ def render_grid_svg(rc, gj, st):
         o.append("</g>")
         if gj.get("goal"):
             o.append(markers_svg(gj, pps))
-        if rc["kind"] == "battle":
-            lsvg, lbox = legend_box_svg(battle_legend(gj), W, H, st, pps)
-            o.append(lsvg)
         cands = []
         for r in gj.get("rooms", []):
             cands.append((str(r["id"] + 1), (r["x"] + r["w"] / 2) * pps, (r["y"] + r["h"] / 2) * pps + pps * 0.3,
                           max(10.0, pps * 0.55)))
         cands.insert(0, (rc["name"], W / 2, pps * 0.75, max(14.0, pps * 0.6)))
+    if rc["kind"] == "battle":
+        o, cands, H, lbox = battle_frame(o, cands, W, H, gj, st, pps)
     labs, _ = place_labels(cands, W, H, st["mono"], reserved=[lbox] if lbox else ())
     o.append(labels_svg(labs, st))
     o.append("</svg>")
@@ -1511,10 +1535,10 @@ def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style
         feats.append({"type": "Feature", "properties": dict(kind="key", id=k["id"], room=k["node"]),
                       "geometry": {"type": "Point", "coordinates": [r["x"] + r["w"] / 2, r["y"] + r["h"] / 2]}})
     for b in (graph or {}).get("branches", []):
-        r = rooms[b["nodes"][-1]]
         if b["treasure"]:
+            tx, ty = treasure_cell(dict(rooms=rooms, cells=g), b["nodes"][-1])
             feats.append({"type": "Feature", "properties": dict(kind="treasure", room=b["nodes"][-1]),
-                          "geometry": {"type": "Point", "coordinates": [r["x"] + r["w"] / 2, r["y"] + r["h"] / 2]}})
+                          "geometry": {"type": "Point", "coordinates": [tx + 0.5, ty + 0.5]}})
     for e in (graph or {}).get("edges", []):
         if e.get("secret"):
             feats.append({"type": "Feature", "properties": dict(kind="secret door"),
