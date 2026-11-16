@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261116-17 · 2026-11-16 · 0.24.0: ControlNet hold for aistyle
+- because: HANDOFF next item "ControlNet aistyle", T-20261116-24, L-061
+- files: scripts/mpw_aistyle.py, scripts/mpw.py, scripts/data/aistyle-zimage-cnet.json, tests, references/ai-image-models.md, skills/mapwright/SKILL.md, README.md
+- `aistyle --control canny|depth --strength S` (Z-Image Fun ControlNet Union, hint drawn from the recipe's geometry). Canny at 0.9 holds the land bar up to denoise 0.75 (was 0.45 without control). Default none is byte-identical. Tests: 274 pass, 2 skip.
+
 ### C-20261116-16 · 2026-11-16 · 0.23.0: wide halls for block dungeons
 - because: HANDOFF backlog "corridor for blocks", T-20261116-23, L-060
 - files: scripts/mpw_places.py, scripts/mpw.py, tests, references/cli-generate.md, README.md
