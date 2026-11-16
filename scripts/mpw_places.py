@@ -923,12 +923,13 @@ def block_grid(cols, rows, rng):
     return placed
 
 
-def blocks_dungeon(w, h, seed, k0=0):
+def blocks_dungeon(w, h, seed, k0=0, corridor=1):
     """Exit-matched block grid (Short and Adams ch. 7): blocks with an exit flag per side on a grid of
     BLOCK-square blocks, open edges merged into one-square halls. A grid under the placement bar is thrown
     away and grown again from stream BLOCK_STREAM + k (build_dungeon also restarts on a short path). Returns (grid, rooms, info)."""
     L = block_layout(w, h)
     m = BLOCK // 2
+    off = range(-((corridor - 1) // 2), corridor // 2 + 1)
     for k in range(k0, BLOCK_TRIES):
         rng = Rng(seed, BLOCK_STREAM + k)
         placed = block_grid(L["cols"], L["rows"], rng)
@@ -946,11 +947,14 @@ def blocks_dungeon(w, h, seed, k0=0):
                     for xx in range(rx, rx + rw):
                         g[yy][xx] = FLOOR
                 rooms.append(dict(id=len(rooms), x=rx, y=ry, w=rw, h=rh))
-            g[y0 + m][x0 + m] = FLOOR
+            for oy in off:
+                for ox in off:
+                    g[y0 + m + oy][x0 + m + ox] = FLOOR
             for side, dx, dy, _ in SIDES:
                 if side in placed[(cx, cy)]:
                     for i in range(m + 1):
-                        g[y0 + m + dy * i][x0 + m + dx * i] = FLOOR
+                        for o in off:   # corridor > 1: the hall N wide around the block's middle line
+                            g[y0 + m + dy * i + (o if dy == 0 else 0)][x0 + m + dx * i + (o if dx == 0 else 0)] = FLOOR
         info = dict(L, placed=len(placed), rerolls=k,
                     cells=[[cx, cy, "".join(s for s, _, _, _ in SIDES if s in placed[(cx, cy)])] for cx, cy in order])
         return g, rooms, info
@@ -1546,7 +1550,7 @@ def build_dungeon(seed, w, h, method="bsp", cave=None, legacy=False, branches=0,
     if method == "blocks":     # one restart counter for both causes: too few placements, path too short
         k0 = 0
         while True:
-            D = _build_once(seed, w, h, method, cave, legacy, k0)
+            D = _build_once(seed, w, h, method, cave, legacy, k0, corridor=corridor)
             if bfs_dist(D["g"], w, h, D["entrance"])[tuple(D["goal"])] >= min_path(w, h):
                 return D
             k0 = D["stats"]["rerolls"] + 1
@@ -1571,7 +1575,7 @@ def _build_once(seed, w, h, method, cave, legacy, rng, branches=0, corridor=1):
         g, rr, graph = cyclic_dungeon(w, h, seed, rng, branches, corridor)
         rooms = [dict(id=i, x=r[0], y=r[1], w=r[2], h=r[3]) for i, r in enumerate(rr)]
     elif method == "blocks" and not legacy:
-        g, rooms, stats["blocks"] = blocks_dungeon(w, h, seed, rng)    # rng: first restart index
+        g, rooms, stats["blocks"] = blocks_dungeon(w, h, seed, rng, corridor)    # rng: first restart index
         stats["rerolls"] = stats["blocks"]["rerolls"]
     else:
         raise ValueError("unknown dungeon method %r (bsp, cave, cyclic, blocks)" % method)
@@ -1629,8 +1633,8 @@ def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style
             raise ValueError("--branches works with --method cyclic")
         if branches is not None and not 0 <= branches <= 8:
             raise ValueError("--branches must be 0 to 8")
-        if corridor is not None and (method not in ("bsp", "cyclic") or not 1 <= corridor <= 3):
-            raise ValueError("--corridor works with --method bsp or cyclic and must be 1 to 3")
+        if corridor is not None and (method not in ("bsp", "cyclic", "blocks") or not 1 <= corridor <= 3):
+            raise ValueError("--corridor works with --method bsp, cyclic or blocks and must be 1 to 3")
         D = build_dungeon(seed, w, h, method, cave, legacy, branches or 0, corridor or 1)
         g, rooms, lights, entrance, goal, graph = D["g"], D["rooms"], D["lights"], D["entrance"], D["goal"], D["graph"]
         nb = nbrs4

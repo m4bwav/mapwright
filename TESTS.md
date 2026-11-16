@@ -155,6 +155,9 @@ New TestPlaceSeeds: `place_seed` pinned and stable; `gen system --sector-seed 7 
 
 Older runs (T-20261114-1 to T-20261115-5): [TESTS-ARCHIVE.md](TESTS-ARCHIVE.md).
 
+### T-20261116-23 · 2026-11-16 · gen dungeon --corridor on blocks
+- pytest tests: 268 pass, 2 skip (84 s). CorridorWidth.test_blocks_wide_halls: seeds 1-20 default equals corridor 1; corridor 2 one agent-2 region on at least 18 of 20. Sweep seeds 1-100 at 48x36: agent 2 at corridor 2 one region 97/100; agent 3 at corridor 3 84/100; corridor 1 agent 2 0/100.
+
 ### T-20261116-22 · 2026-11-16 · gen dungeon --corridor on cyclic
 - pytest tests: 267 pass, 2 skip (81 s). New test_cyclic_wide_corridors_keep_the_gate: seeds 1-10 corridor 1 equals default; corridor 2 has no door squares, goal unreachable without the key (gap gated), completion path found, eroded agent 2 is one region touching every room; cyclic corridor 4 refused. Sweep seeds 1-100: agent 2 joins all rooms 0/100 at corridor 1, 100/100 at 2; agent 3 at corridor 3 90/100. Default cyclic seed 3 files byte-identical to origin/main; check passes at corridor 2 (L-059).
 
