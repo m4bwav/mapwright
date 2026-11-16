@@ -449,6 +449,76 @@ class TestRun(Base):
         self.assertGreaterEqual(j["overlap"]["land_iou"], 0.99)
 
 
+class TestControlNet(Base):
+    def test_canny_hint_is_the_coast(self):
+        tr = A.truth(self.world, SIZE, SIZE)
+        png = A.hint_png(self.world, "canny", SIZE, SIZE, tr)
+        self.assertEqual(png[:8], b"\x89PNG\r\n\x1a\n")
+        rows = A.canny_rows(tr["land"], SIZE, SIZE)
+        edge = A._dilate(A._edge(tr["land"], SIZE), SIZE, 1)
+        white = sum(1 for r in rows for v in r if v == 255)
+        self.assertGreater(white, 0)
+        self.assertEqual(white, A._pc(edge))
+        self.assertTrue(all(v in (0, 255) for r in rows for v in r))
+
+    def test_depth_hint_sea_black_land_grey(self):
+        tr = A.truth(self.world, SIZE, SIZE)
+        rows = A.depth_rows(self.world, SIZE, SIZE)
+        self.assertEqual((len(rows), len(rows[0])), (SIZE, SIZE))
+        land = sea = 0
+        for y, r in enumerate(rows):
+            for x, v in enumerate(r):
+                if A._get(tr["land"], SIZE, x, y):
+                    land += v >= 96
+                else:
+                    sea += v == 0
+        n_land = A._pc(tr["land"])
+        self.assertEqual(land, n_land)
+        self.assertEqual(sea, SIZE * SIZE - n_land)
+
+    def test_default_is_unchanged_and_flags_are_checked(self):
+        d = self.fresh_world("cnet-dry")
+        p = A.plan(d, "painted-atlas", size=SIZE)
+        self.assertEqual(p["control"], "none")
+        self.assertNotIn("hint", p["files"])
+        wf = A.build_workflow(p, "x.png")
+        self.assertEqual(sorted(wf, key=int), [str(i) for i in range(1, 11)])
+        self.assertEqual(wf["8"]["inputs"]["model"], ["1", 0])
+        with self.assertRaises(ValueError):
+            A.plan(d, "painted-atlas", size=SIZE, strength=0.6)
+        with self.assertRaises(ValueError):
+            A.plan(d, "painted-atlas", size=SIZE, control="sketch")
+        j = json.loads(run_cli("aistyle", d, "--look", "painted-atlas", "--dry-run", "--control", "depth",
+                               "--strength", "0.6", "--denoise", "0.75", "--size", str(SIZE), "--json"))
+        self.assertEqual((j["controlnet"], j["strength"]), ("depth", 0.6))
+        self.assertNotIn("warning", j)
+        self.assertTrue(os.path.isfile(j["hint"]))
+        with open(j["workflow"], encoding="utf-8") as f:
+            wf = json.load(f)
+        self.assertEqual(wf["8"]["inputs"]["model"], ["13", 0])
+        self.assertEqual(wf["13"]["class_type"], "ZImageFunControlnet")
+        self.assertEqual(wf["13"]["inputs"]["strength"], 0.6)
+        self.assertTrue(wf["12"]["inputs"]["image"].startswith("mapwright-aistyle-hint-"))
+        self.assertEqual(wf["11"]["inputs"]["name"], A.load_template(A.CNET_TEMPLATE)["model"]["patch"])
+
+    def test_full_pass_with_canny_uploads_the_hint(self):
+        d = self.fresh_world("cnet-full")
+        srv = FakeServer()
+        out = os.path.join(d, "c.png")
+        res = A.run(d, "watercolour", out=out, host="http://fake.test", seed=3, size=SIZE, call=srv,
+                    sleep=lambda s: None, control="canny", denoise=0.75)
+        self.assertEqual(len(srv.uploads), 2)
+        wf = srv.prompts["job1"]["wf"]
+        self.assertIn(wf["12"]["inputs"]["image"], srv.uploads)
+        self.assertEqual(srv.uploads[wf["12"]["inputs"]["image"]], A._read(res["hint"]))
+        self.assertEqual(wf["13"]["inputs"]["strength"], A.DEFAULT_CNET_STRENGTH)
+        with open(res["sidecar"], encoding="utf-8") as f:
+            sc = json.load(f)
+        self.assertEqual(sc["controlnet"]["kind"], "canny")
+        self.assertEqual(sc["files"]["hint"], "c.hint.png")
+        self.assertTrue(res["overlap"]["ok"], res["overlap"]["detail"])
+
+
 class TestDoctor(Base):
     def test_unset_is_not_probed(self):
         def boom(*a, **k):
@@ -518,6 +588,9 @@ class TestLive(unittest.TestCase):
             self.assertTrue(os.path.isfile(res["out"]))
             self.assertEqual(len(A.bars(world)), 1)
             self.assertTrue(A.bars(world)[0][1])
+            res = A.run(world, "watercolour", seed=1, denoise=0.75, control="canny",
+                        out=os.path.join(world, "cnet.png"))
+            self.assertTrue(res["overlap"]["ok"], res["overlap"]["detail"])
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 

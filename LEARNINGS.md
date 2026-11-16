@@ -6,6 +6,13 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 
 ## Active
 
+### L-061 · 2026-11-16 · `canny-from-geometry-doubles-the-denoise`: a coast hint drawn from the recipe lets the repaint run to 0.75
+- Trigger: L-032 capped img2img at denoise 0.45; above it the coast drifted (0 of 4 pictures at 0.75).
+- Hypothesis: a second hold on the coast, independent of the init image, lets the model repaint texture without moving the shore.
+- Rule: for a stronger look use `--control canny` (strength 0.9, the default) and denoise up to 0.75: 8 of 8 pictures held the bar, IoU 0.94-0.96. Prefer canny over depth (depth 0.6 failed half at 0.75). Draw the hint from the land mask, never edge-detect a render. At 0.90 even canny slips (3 of 4).
+- Evidence: T-20261116-24
+- Scope: skill
+
 ### L-060 · 2026-11-16 · `perpendicular-offset-not-signed`: widen a hall along the perpendicular axis, never by dx*o / dy*o
 - When widening a hall drawn along (dx, dy), the first try added `dy*o` to x and `dx*o` to y: the sign flips between N and S (or E and W) halls, so the two halves of a 2-wide hall met one square apart and agent 2 reached every room on 0/100 block dungeons. Offset x by o when dx == 0 and y by o when dy == 0: 97/100. Status: applied in 0.23.0 (T-20261116-23).
 

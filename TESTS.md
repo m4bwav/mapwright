@@ -155,6 +155,20 @@ New TestPlaceSeeds: `place_seed` pinned and stable; `gen system --sector-seed 7 
 
 Older runs (T-20261114-1 to T-20261115-5): [TESTS-ARCHIVE.md](TESTS-ARCHIVE.md).
 
+### T-20261116-24 · 2026-11-16 · aistyle --control (Z-Image Fun ControlNet union)
+- Unit: python -m unittest tests.test_aistyle 29 pass (4 new in TestControlNet: canny hint equals the dilated coast edge, depth hint sea 0 / land 96-255, default workflow unchanged (nodes 1-10, KSampler on node 1), full fake pass uploads the hint and records `controlnet` in the sidecar). Live (MAPWRIGHT_LIVE=1) passes, including watercolour canny 0.9 at denoise 0.75. Full suite 274 pass, 2 skip.
+- Grid: `tests/aistyle_grid.py` on a seed-3 world (gen world, 1024 px), looks painted-atlas and watercolour, seeds 1-2, denoise 0.45/0.60/0.75/0.90, control none, canny and depth at strength 0.6 and 0.9; 80 passes, about 16 s each on the RTX 5060 Ti. Pictures passing the bar (land IoU 0.92 plus rivers and settlements on painted land), of 4 per cell:
+
+| control | d 0.45 | d 0.60 | d 0.75 | d 0.90 |
+|---|---|---|---|---|
+| none | 4 | 1 | 0 | 0 |
+| canny 0.6 | 4 | 4 | 4 | 0 |
+| canny 0.9 | 4 | 4 | 4 | 3 |
+| depth 0.6 | 4 | 4 | 2 | 0 |
+| depth 0.9 | 4 | 3 | 4 | 0 |
+
+- Land IoU means at 0.75: none 0.80/0.82, canny 0.9 0.951/0.956 (painted-atlas/watercolour); at 0.90 none 0.48, canny 0.9 0.947/0.927. Canny 0.9 holds the bar to denoise 0.75 on every picture (old ceiling without control: 0.45). Depth holds less: it carries the coast only as a step. Samples kept outside the repo.
+
 ### T-20261116-23 · 2026-11-16 · gen dungeon --corridor on blocks
 - pytest tests: 268 pass, 2 skip (84 s). CorridorWidth.test_blocks_wide_halls: seeds 1-20 default equals corridor 1; corridor 2 one agent-2 region on at least 18 of 20. Sweep seeds 1-100 at 48x36: agent 2 at corridor 2 one region 97/100; agent 3 at corridor 3 84/100; corridor 1 agent 2 0/100.
 

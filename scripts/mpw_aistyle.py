@@ -17,6 +17,8 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import struct
+import zlib
 
 import mpw_gen as G
 import mpw_read as RD
@@ -25,6 +27,10 @@ import mpw_render as R
 ENV_HOST = "MAPWRIGHT_COMFYUI"
 DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 DEFAULT_TEMPLATE = os.path.join(DATA, "aistyle-zimage-turbo.json")
+CNET_TEMPLATE = os.path.join(DATA, "aistyle-zimage-cnet.json")
+CONTROLS = ("none", "canny", "depth")
+DEFAULT_CNET_STRENGTH = 0.9
+CNET_DENOISE_CEILING = 0.75  # with --control canny at 0.9: every measured picture held the bar (T-20261116-24)
 PREFIX = "mapwright-aistyle"
 SIDECAR = ".aistyle.json"
 
@@ -278,6 +284,50 @@ def truth(d, w, h):
                 t = (i + 0.5) / max(1, int(L))
                 pts.append((ax + (bx - ax) * t, ay + (by - ay) * t, tx, ty, wd))
     return dict(land=land, lakes=lake, rivers=pts, towns=towns, w=w, h=h)
+
+
+# ------------------------------------------------------------------ control hints drawn from the geometry
+def png_grey8(rows, w, h):
+    """A greyscale PNG from h rows of w byte values (stdlib only)."""
+    def chunk(t, b):
+        return struct.pack(">I", len(b)) + t + b + struct.pack(">I", zlib.crc32(t + b) & 0xffffffff)
+    raw = b"".join(b"\x00" + bytes(r) for r in rows)
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 0, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
+
+
+def canny_rows(land, w, h, thick=1):
+    """White coast lines on black from a land bit-row mask: the edge pixels, grown by `thick` px."""
+    e = _edge(land, w)
+    if thick:
+        e = _dilate(e, w, thick)
+    full = (1 << w) - 1
+    return [bytes(255 if (r >> (w - 1 - x)) & 1 else 0 for x in range(w)) for r in (v & full for v in e)]
+
+
+def depth_rows(d, w, h):
+    """Depth-like grey from the recipe's heights: sea black, land 96 (shore) to 255 (highest peak)."""
+    rc, m, _ = R.load(d)
+    x0, y0, x1, y1 = rc["extent"]
+    M = dict(X=m["x"], Y=m["y"], tris=G._tris(m))
+    Z, _, _ = G.raster(M, m["h"], m["biome"], x0, y0, x1, y1, w)
+    n = len(Z)
+    top = max([z for row in Z for z in row] + [1e-9])
+    out = []
+    for r in range(h):
+        row = Z[min(n - 1, int((r + 0.5) * n / h))]
+        out.append(bytes(0 if z < 0 else min(255, 96 + int(159 * z / top)) for z in row[:w]))
+    return out
+
+
+def hint_png(d, kind, w, h, tr=None):
+    """The control image for --control canny|depth at the model's pixel size, drawn from the recipe."""
+    if kind == "canny":
+        tr = tr or truth(d, w, h)
+        return png_grey8(canny_rows(tr["land"], w, h), w, h)
+    if kind == "depth":
+        return png_grey8(depth_rows(d, w, h), w, h)
+    raise ValueError("--control wants one of %s" % ", ".join(CONTROLS))
 
 
 # ------------------------------------------------------------------ measuring a picture against the recipe
@@ -659,9 +709,16 @@ def _read(path):
 
 
 def plan(d, look_name, out=None, denoise=None, seed=0, template=None, model=None, clip=None, vae=None,
-         size=None, style=None, font=None, title=None):
+         size=None, style=None, font=None, title=None, control="none", strength=None):
     """Everything that can be settled without a server or a browser."""
     lk = look(look_name)
+    control = control or "none"
+    if control not in CONTROLS:
+        raise ValueError("--control wants one of %s" % ", ".join(CONTROLS))
+    if control == "none" and strength is not None:
+        raise ValueError("--strength needs --control canny or depth")
+    if control != "none" and template is None:
+        template = CNET_TEMPLATE
     rc = G.load(d, "recipe.json")
     if rc.get("kind") not in ("world", "region"):
         raise ValueError("aistyle works on world and region recipes, not %r" % rc.get("kind"))
@@ -690,16 +747,21 @@ def plan(d, look_name, out=None, denoise=None, seed=0, template=None, model=None
                 sampler=st["sampler"], scheduler=st["scheduler"],
                 denoise_effective=round(effective_denoise(int(st["steps"]), denoise), 4),
                 template=t, model=md, size=(wm, hm), svg=svg, info=info, recipe=rc, out=out,
+                control=control, strength=None if control == "none" else
+                float(DEFAULT_CNET_STRENGTH if strength is None else strength),
                 files=dict(control=stem + ".control.png", workflow=stem + ".workflow.json",
-                           styled=stem + ".styled.png", sidecar=stem + SIDECAR, out=out))
+                           styled=stem + ".styled.png", sidecar=stem + SIDECAR, out=out,
+                           **({} if control == "none" else dict(hint=stem + ".hint.png"))))
 
 
-def build_workflow(p, image_name):
+def build_workflow(p, image_name, hint_name=None):
     md = p["model"]
     slots = dict(UNET=md.get("unet"), CLIP=md.get("clip"), CLIP_TYPE=md.get("clip_type"), VAE=md.get("vae"),
                  IMAGE=image_name, PROMPT=p["prompt"], NEGATIVE=p["negative"], SEED=p["seed"], STEPS=p["steps"],
                  CFG=p["cfg"], SAMPLER=p["sampler"], SCHEDULER=p["scheduler"], DENOISE=p["denoise"],
                  PREFIX=PREFIX)
+    if p.get("control", "none") != "none":
+        slots.update(PATCH=md.get("patch"), HINT=hint_name, STRENGTH=p["strength"])
     return fill(p["template"]["workflow"], slots)
 
 
@@ -719,7 +781,8 @@ def sidecar(p, wf, control_png, styled_png, overlap, control_overlap, server=Non
                    vae=md.get("vae"), licence=md.get("licence"), licence_class=md.get("licence_class"),
                    card=md.get("card")),
         workflow=dict(template=p["template"]["name"], sha256=workflow_hash(wf), file=rel["workflow"]),
-        files=dict(control=rel["control"], styled=rel["styled"], out=rel["out"]),
+        files=dict(control=rel["control"], styled=rel["styled"], out=rel["out"],
+                   **({"hint": rel["hint"]} if "hint" in rel else {})),
         sha256=dict(control=sha(control_png), styled=sha(styled_png)),
         server=server or {},
         overlap=dict(styled=overlap, control=control_overlap, ok=ok, detail=detail,
@@ -727,14 +790,18 @@ def sidecar(p, wf, control_png, styled_png, overlap, control_overlap, server=Non
                                     denoise_ceiling=DENOISE_CEILING)),
         labels=dict(placed=p["info"]["placed"], dropped=p["info"]["dropped"],
                     note="lakes, rivers, roads, symbols, labels, legend, scale bar and north arrow are set in "
-                         "code after the pass"))
+                         "code after the pass"),
+        **({} if p.get("control", "none") == "none" else
+           {"controlnet": dict(kind=p["control"], strength=p["strength"], patch=md.get("patch"),
+                               note="hint drawn from the recipe's geometry, not edge-detected from a render")}))
 
 
 def run(d, look_name, out=None, host=None, denoise=None, seed=0, dry_run=False, template=None, model=None,
         clip=None, vae=None, size=None, style=None, font=None, title=None, timeout=900, do_measure=True,
-        call=None, env=None, sleep=time.sleep):
+        call=None, env=None, sleep=time.sleep, control="none", strength=None):
     """Render the control picture, run the pass, composite the code-set layer, measure, write the sidecar."""
-    p = plan(d, look_name, out, denoise, seed, template, model, clip, vae, size, style, font, title)
+    p = plan(d, look_name, out, denoise, seed, template, model, clip, vae, size, style, font, title,
+             control, strength)
     f = p["files"]
     wm, hm = p["size"]
     if not dry_run:
@@ -743,20 +810,31 @@ def run(d, look_name, out=None, host=None, denoise=None, seed=0, dry_run=False, 
     R.write_out(control_svg(p["svg"], wm, hm), f["control"])
     control_png = _read(f["control"])
     image_name = "%s-%s.png" % (PREFIX, sha(control_png)[:16])
-    wf = build_workflow(p, image_name)
+    hint, hint_name = None, None
+    if p["control"] != "none":
+        hint = hint_png(d, p["control"], wm, hm)
+        _write(f["hint"], hint)
+        hint_name = "%s-hint-%s.png" % (PREFIX, sha(hint)[:16])
+    wf = build_workflow(p, image_name, hint_name)
     _write_text(f["workflow"], json.dumps(wf, indent=1, sort_keys=True) + "\n")
     res = dict(look=look_name, base_style=p["base_style"], seed=p["seed"], denoise=p["denoise"],
                denoise_effective=p["denoise_effective"], size=[wm, hm], control=f["control"],
                workflow=f["workflow"], workflow_sha256=workflow_hash(wf), model=p["model"].get("unet"),
                licence_class=p["model"].get("licence_class"), dry_run=bool(dry_run))
-    if p["denoise"] > DENOISE_CEILING:
+    if hint is not None:
+        res.update(controlnet=p["control"], strength=p["strength"], hint=f["hint"])
+    if hint is not None and p["denoise"] > CNET_DENOISE_CEILING:
+        res["warning"] = ("denoise %.2f is above the measured ControlNet ceiling %.2f: expect the coast to drift"
+                          % (p["denoise"], CNET_DENOISE_CEILING))
+    if p["denoise"] > DENOISE_CEILING and hint is None:
         res["warning"] = ("denoise %.2f is above the measured ceiling %.2f: expect the coast to drift"
                           % (p["denoise"], DENOISE_CEILING))
     if dry_run:
         return res
     c = Comfy(host, call)
     server = dict(comfyui=c.stats().get("system", {}).get("comfyui_version"))
-    wf = build_workflow(p, c.upload(image_name, control_png))
+    up_hint = c.upload(hint_name, hint) if hint is not None else None
+    wf = build_workflow(p, c.upload(image_name, control_png), up_hint)
     t0 = time.monotonic()
     styled_png = c.fetch(c.wait(c.queue(wf), timeout=timeout, sleep=sleep))
     res["seconds"] = round(time.monotonic() - t0, 1)
