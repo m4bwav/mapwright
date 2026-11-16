@@ -8,6 +8,15 @@ Entry shape: `### T-YYYYMMDD-n · date · harness · env · passed/total`, then 
 
 ## Runs
 
+### T-20261116-1 · 2026-11-16 · skill evals, `claude -p --plugin-dir` (sonnet, Claude Code 2.1.281, other installed plugins present) · Windows · 14/14 passed
+- Triggers 8/8 at 3 of 3 (read, write, find, fantasy gen, sci-fi sector, deck plan, path and chokepoints, engine/VTT export). trigger-read-gpx first went 0/3 (the description had dropped "reads"); fixed by "Reads and converts" and the phrase 'what is in this GPX', then 3/3. write-kml 2/3 and find-place 2/3 before the fix, 3/3 after.
+- Decoys 4/4 at 0 of 3: codemap (no skill), choropleth (no skill), 3D town park (polywright-capture fired), pixel tileset (pixelwright fired).
+- action-gen-dungeon: with plugin `mpw.py gen dungeon` + `check`, out/dng passes `check` (exit 0). Baseline (no plugin) wrote its own script, no recipe.json, `check` fails.
+- action-export-vtt: with plugin `gen battle` + `export` (dd2vtt 100 px, 41 LOS segments, recipe kept). Baseline also wrote a valid dd2vtt by hand (70 px, 24 segments): redundant on file evidence, so the evidence now requires the recipe folder to pass `check`.
+- One run per arm for actions; trigger runs are headless `claude -p`, not the interactive loop. Untested elsewhere (no second OS run).
+- Worth (lite, `evergreen.py worth --lite`): UNPROVEN, listing ~250 tokens per session, body ~5.9K per use, 0 uses in 60 days (new plugin); baseline gap closed. Static note: Generate and Export sections could move to references/. Verdict stays UNPROVEN until real use or a `--heavy` A/B.
+- led to: C-20261116-1
+
 ### T-20261115-7 · 2026-11-15 · unittest (tests/) + path sweeps · Windows, Python 3.14 · 221/221 passed, 2 skipped (live) in 57 s
 - New (18, tests/test_path.py): fixtures are generated in the test (bsp 30x24, cyclic 48x36, cave 30x24, square battle 20x16, hex battle 16x14, deck 30x15, world 500 cells); the file runs in about 2.5 s.
 - `path`: A* cost equals no-heuristic Dijkstra to 1e-9 on 60 random pairs per fixture (over 300 reachable pairs); re-summed step costs equal the reported cost; every step is an edge, enters a floor square, and a diagonal has both orthogonal squares open and touches no door; symmetric fixtures give A to B = B to A; one-way doors of the cyclic fixture are entered only from their source side over 200 pairs; CLI output byte-identical on rerun; a city is refused. Hand grids: two diagonal floors between walls give no route; a 3x3 room costs 2 sqrt 2 corner to corner, 4 with `--moves 4`.
