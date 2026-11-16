@@ -473,6 +473,39 @@ class TestGen(unittest.TestCase):
         self.assertEqual(rc["kind"], "region")
         self.assertEqual(rc["parent"]["window"], r["window"])
 
+    def test_region_chunk_place_seed(self):
+        # backlog row 4: a chunk's own seed regenerates it alone, byte-identical, and it still passes the
+        # zoom bars against its parent (coast band, rivers)
+        a, b = os.path.join(self.tmp, "ch1"), os.path.join(self.tmp, "ch2")
+        for d in (a, b):
+            run_cli("gen", "region", "--parent", self.world, "--chunk", "1,1", "--cells", "1600", "--raster", "96",
+                    "--out", d)
+        for fn in GEN_FILES:
+            with open(os.path.join(a, fn), "rb") as x, open(os.path.join(b, fn), "rb") as y:
+                self.assertEqual(x.read(), y.read(), fn)
+        rc = json.load(open(os.path.join(a, "recipe.json")))
+        self.assertEqual(rc["parent"]["window"], [250.0, 250.0, 500.0, 500.0])
+        self.assertEqual(rc["place"], dict(world_seed=7, chunk=[1, 1], chunk_km=250.0))
+        self.assertEqual(rc["seed"], mpw_gen.place_seed(7, "region", "1,1@250"))
+        self.assertNotEqual(rc["seed"], 7)
+        import mpw_space
+        self.assertEqual(mpw_gen.place_seed(7, "system", "0118"), mpw_space.place_seed(7, "system", "0118"))
+        # same window via --window keeps the world seed: different detail, so the per-place seed is in use
+        w = os.path.join(self.tmp, "chw")
+        run_cli("gen", "region", "--parent", self.world, "--window", "250,250,500,500", "--cells", "1600",
+                "--raster", "96", "--out", w)
+        self.assertEqual(json.load(open(os.path.join(w, "recipe.json")))["seed"], 7)
+        with open(os.path.join(a, "mesh.json"), "rb") as x, open(os.path.join(w, "mesh.json"), "rb") as y:
+            self.assertNotEqual(x.read(), y.read())
+        out = run_cli("check", a)
+        self.assertEqual(out.count("FAIL"), 0, out)
+
+    def test_region_chunk_errors(self):
+        for extra in (("--chunk", "4,0"), ("--chunk", "1"), ("--chunk", "0,0", "--window", "0,0,250,250")):
+            with self.assertRaises(SystemExit):
+                run_cli("gen", "region", "--parent", self.world, "--cells", "1600", "--out",
+                        os.path.join(self.tmp, "bad-chunk"), *extra)
+
     def test_region_rejects_coarse_child(self):
         with self.assertRaises(SystemExit):
             run_cli("gen", "region", "--parent", self.world, "--window", "0,0,1000,1000", "--cells", "100",

@@ -1375,7 +1375,14 @@ def cmd_gen(a):
                             style=a.style, pattern=a.pattern)
         else:
             win = _window(a.window) if a.window else None
-            r = g.gen_region(a.parent, win, a.cells, a.out, a.detail, a.raster, VERSION)
+            ch = None
+            if getattr(a, "chunk", None):
+                try:
+                    c_, r_ = (int(v) for v in a.chunk.split(","))
+                except ValueError:
+                    die("--chunk is COL,ROW, e.g. 1,2")
+                ch = (c_, r_, a.chunk_km)
+            r = g.gen_region(a.parent, win, a.cells, a.out, a.detail, a.raster, VERSION, chunk=ch)
     except (ValueError, OSError) as e:
         die(str(e))
     if a.json:
@@ -2009,6 +2016,9 @@ def build_parser():
     rg.add_argument("--parent", required=True)
     for x in (rg,):
         x.add_argument("--window", help="x0,y0,x1,y1 in parent map km; default: the coast-richest quarter tile")
+        x.add_argument("--chunk", help="COL,ROW: that chunk of the parent as the window, with its own per-place "
+                       "seed so it regenerates alone (instead of --window)")
+        x.add_argument("--chunk-km", type=float, default=250.0, help="with --chunk: chunk width in km (default 250)")
         x.add_argument("--cells", type=int, default=16000)
         x.add_argument("--detail", type=float, default=0.03, help="detail noise amplitude (height units)")
         x.add_argument("--out", required=True)

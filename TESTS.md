@@ -12,6 +12,9 @@ Entry shape: `### T-20261116-14 · 2026-11-16 · pytest (tests/) + port-share sw
 
 ## Runs
 
+### T-20261116-18 · 2026-11-16 · pytest (python -m pytest -q tests) after row 4, region chunks · Windows · 260 passed, 2 skipped (live) in 74 s
+New TestGen cases: `gen region --chunk 1,1` twice gives byte-identical files; recipe carries place (world_seed, chunk, chunk_km) and seed = `place_seed(7, "region", "1,1@250")`; same window via --window keeps seed 7 and a different mesh; `check` on the chunk has no FAIL (zoom bars vs parent); bad chunks exit. Default world, region and zoom outputs for seed 7 diffed byte-identical against origin/main. No existing expectation changed.
+
 ### T-20261116-17 · 2026-11-16 · pytest (python -m pytest -q tests) after row 4, per-place seeds · Windows · 258 passed, 2 skipped (live) in 81 s
 New TestPlaceSeeds: `place_seed` pinned and stable; `gen system --sector-seed 7 --hex H` byte-identical to `gen sector --seed 7 --systems` systems/H for three hexes (system.json, names.json, recipe.json, map.svg, orbits.svg); default sector writes no systems/. No existing expectation changed.
 
