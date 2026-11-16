@@ -2,7 +2,7 @@
 
 Reference for the mapwright plugin: what a datum and a CRS are, which EPSG codes matter, what each common projection keeps and breaks, how to pick one, how to handle the antimeridian and the poles, which projections a pure-Python (stdlib `math`) implementation can carry, and how to map invented worlds and other bodies.
 
-Status: written 2026-11-14 from primary sources named inline. Only items marked "checked 2026-11-14" were verified against a fetched source (Snyder PP 1395 is confirmed as Snyder, J. P., 1987, "Map projections: A working manual", USGS Professional Paper 1395, 385 p., https://doi.org/10.3133/pp1395, checked 2026-11-14 via the USGS Publications Warehouse listing; its page numbers and worked examples were not re-read because pubs.usgs.gov returned 403 to the fetcher. EPSG terms: the dataset is free from IOGP, may be subset and redistributed but not for profit, IOGP ownership must be acknowledged and the terms passed on, https://epsg.org/terms-of-use.html, revised 2016-04-08, via search 2026-11-14; the page itself returned 403); every other number below was taken from the sources as remembered and **must be checked against the source before it becomes a test fixture**. Items carrying a specific risk are marked "(unverified)". The Sources list gives the access date 2026-11-14 for all URLs.
+Status: written 2026-11-14 from primary sources named inline. Only items marked "checked 2026-11-14" were verified against a fetched source (Snyder PP 1395 is confirmed as Snyder, J. P., 1987, "Map projections: A working manual", USGS Professional Paper 1395, 385 p., https://doi.org/10.3133/pp1395, checked 2026-11-14 via the USGS Publications Warehouse listing; its page numbers and worked examples were not re-read because pubs.usgs.gov returned 403 to the fetcher; pass 5 on 2026-11-16 read the PDF via curl and checked the appendix A rows and p.99. EPSG terms: the dataset is free from IOGP, may be subset and redistributed but not for profit, IOGP ownership must be acknowledged and the terms passed on, https://epsg.org/terms-of-use.html, revised 2016-04-08, via search 2026-11-14; the page itself returned 403); every other number below was taken from the sources as remembered and **must be checked against the source before it becomes a test fixture**. Items carrying a specific risk are marked "(unverified)". The Sources list gives the access date 2026-11-14 for all URLs.
 
 ## 1. Terms
 
@@ -88,7 +88,7 @@ Each entry gives the property kept, what breaks, and the source. "Conformal" kee
 
 ### 3.8 Robinson (pseudocylindrical compromise)
 - Keeps: nothing exactly; designed to "look right" for world maps; poles are lines 0.5322 of the equator length. Used by National Geographic 1988-1998 (Snyder, "Flattening the Earth", 1993, p.214-216; Robinson 1974).
-- Defined by a table of `X` and `Y` factors at 5° steps with interpolation, not a closed formula; the inverse needs iteration (Snyder & Voxland, "An Album of Map Projections", USGS PP 1453, 1989, p.82-83, https://pubs.usgs.gov/publication/pp1453; PROJ `+proj=robin`, https://proj.org/en/stable/operations/projections/robin.html). PROJ evaluates a cubic polynomial per 5° interval from four stored coefficients per node, `c0 + z(c1 + z(c2 + z c3))` (https://raw.githubusercontent.com/OSGeo/PROJ/master/src/projections/robin.cpp, checked 2026-11-15). That plain linear interpolation gives visibly kinked meridians is unverified (no source found; plot both to see).
+- Defined by a table of `X` and `Y` factors at 5° steps with interpolation, not a closed formula; the inverse needs iteration (Snyder & Voxland, "An Album of Map Projections", USGS PP 1453, 1989, p.82-83, https://pubs.usgs.gov/publication/pp1453; PROJ `+proj=robin`, https://proj.org/en/stable/operations/projections/robin.html). PROJ evaluates a cubic polynomial per 5° interval from four stored coefficients per node, `c0 + z(c1 + z(c2 + z c3))` (https://raw.githubusercontent.com/OSGeo/PROJ/master/src/projections/robin.cpp, checked 2026-11-15). That plain linear interpolation gives visibly kinked meridians is a practice figure, no single source; tunable default (pass 5 on 2026-11-16 found none; plot both to see).
 
 ### 3.9 Equal Earth (pseudocylindrical, equal-area)
 - Keeps: area; meridians are smooth curves, look similar to Robinson. Published 2018 as a free equal-area alternative to Robinson and Gall-Peters (Šavrič, Patterson, Jenny, "The Equal Earth map projection", IJGIS 33(3), 2019, https://doi.org/10.1080/13658816.2018.1504949).
@@ -97,7 +97,7 @@ Each entry gives the property kept, what breaks, and the source. "Conformal" kee
 
 ### 3.10 Winkel tripel (azimuthal-derived compromise)
 - Keeps: nothing exactly; low combined distortion of area, angle and distance; National Geographic's world projection since 1998 (Goldberg & Gott, "Flexion and Skewness in Map Projections of the Earth", Cartographica 42(4), 2007, https://arxiv.org/abs/astro-ph/0608501).
-- Mean of Aitoff and equirectangular with φ1 = acos(2/π): `α = acos(cos φ cos(λ/2))`, `sinc α = sin α / α`, `x = ½ R [λ cos φ1 + 2 cos φ sin(λ/2)/sinc α]`, `y = ½ R [φ + sin φ / sinc α]` (Snyder 1993 p.233; PROJ `+proj=wintri`, https://proj.org/en/stable/operations/projections/wintri.html). No closed inverse; use 2D Newton (Ipbüker & Bildirici 2002, "A general algorithm for the inverse transformation of map projections using Jacobian matrices", Proc. Third Int. Symposium on Mathematical & Computational Applications, Konya, 2002, pp. 175-182 per reference lists; the paper text was not found online, so the citation stays unverified).
+- Mean of Aitoff and equirectangular with φ1 = acos(2/π): `α = acos(cos φ cos(λ/2))`, `sinc α = sin α / α`, `x = ½ R [λ cos φ1 + 2 cos φ sin(λ/2)/sinc α]`, `y = ½ R [φ + sin φ / sinc α]` (Snyder 1993 p.233; PROJ `+proj=wintri`, https://proj.org/en/stable/operations/projections/wintri.html). No closed inverse; use 2D Newton (Ipbüker & Bildirici 2002, "A general algorithm for the inverse transformation of map projections using Jacobian matrices", Proc. Third Int. Symposium on Mathematical & Computational Applications, Konya, 2002, pp. 175-182; title, venue and pages checked 2026-11-16 in the reference list of Applications of Mathematics 2018, https://link.springer.com/article/10.21136/AM.2018.0096-18; the paper text is still not online, blocked. The later Ipbüker & Bildirici 2005 Winkel paper in J. Surveying Engineering is a citable substitute).
 
 ### 3.11 Orthographic (azimuthal, perspective from infinity)
 - Keeps: the look of a globe from space; only one hemisphere visible. Breaks: area and shape severely near the edge (Snyder 1987 p.145-153).
@@ -164,7 +164,7 @@ Snyder's rule of thumb, which mapwright can apply automatically from the boundin
 | Globe illustration | Orthographic |
 | Raw raster storage, game world texture | Equirectangular (plate carrée) |
 
-The 1/6 and 5/6 rule for conic standard parallels is from Deetz and Adams via Snyder 1987 p.99 (unverified page number). Projection Wizard's thresholds: whole world, hemisphere, continent, then regions by aspect ratio and latitude of centre (Šavrič et al. 2016).
+The 1/6 and 5/6 rule for conic standard parallels is from Deetz and Adams via Snyder 1987 p.99 (checked 2026-11-16 in https://pubs.usgs.gov/pp/1395/report.pdf: Deetz and Adams 1934 p.79, 91 recommend one-sixth of the central meridian's length in from the north and south limits; Hinks 1912 suggested one-seventh). Projection Wizard's thresholds: whole world, hemisphere, continent, then regions by aspect ratio and latitude of centre (Šavrič et al. 2016).
 
 ## 5. Tissot's indicatrix
 
@@ -178,7 +178,7 @@ The 1/6 and 5/6 rule for conic standard parallels is from Deetz and Adams via Sn
 - **Antimeridian (±180°)**: a polygon or line crossing it must be split before projecting in any projection whose central meridian is not chosen to avoid it; otherwise segments wrap across the whole map. RFC 7946 section 3.1.9 requires GeoJSON geometries that cross the antimeridian to be cut into a MultiLineString or MultiPolygon, and bounding boxes may have `west > east` (section 5.2).
 - Detect a crossing by `|lon2 - lon1| > 180` between consecutive vertices; interpolate the latitude at ±180 (along the great circle for long edges, linearly for short ones) and split. Re-centring with a new `λ0` moves the seam to `λ0 ± 180` and the split must be done there.
 - Normalise longitudes to `[-180, 180)` with `((lon + 180) % 360) - 180` (Python `%` already returns a non-negative result for a positive divisor).
-- **Poles**: Mercator and 3857 cannot show them (clip to ±85.0511° for 3857, about ±85° or ±89° for Mercator). A polygon containing a pole (Antarctica) has no closing edge in lon/lat; it needs vertices added along the map's pole line (`lat = -90` from 180 to -180) before projecting into a pseudocylindrical projection, and in polar azimuthals the seam disappears (Natural Earth notes Antarctica is closed this way, unverified; d3-geo handles this with spherical clipping, https://d3js.org/d3-geo).
+- **Poles**: Mercator and 3857 cannot show them (clip to ±85.0511° for 3857, about ±85° or ±89° for Mercator). A polygon containing a pole (Antarctica) has no closing edge in lon/lat; it needs vertices added along the map's pole line (`lat = -90` from 180 to -180) before projecting into a pseudocylindrical projection, and in polar azimuthals the seam disappears (Natural Earth notes Antarctica is closed this way: blocked, no Natural Earth page saying so found on 2026-11-16; d3-geo handles this with spherical clipping, https://d3js.org/d3-geo).
 - Densify long edges before projecting (add points every ~1°), since straight lines in lon/lat become curves in most projections (PROJ `cs2cs` does not densify; GDAL `-segmentize`/`ogr2ogr -segmentize` does, https://gdal.org/programs/ogr2ogr.html).
 - Azimuthals: clip at the horizon (`cos c < 0` for orthographic and gnomonic-limit `cos c ≤ small ε`), not after projecting.
 
@@ -209,7 +209,7 @@ Policy: implement the table above in stdlib; if `pyproj` is importable, offer it
 - The IAU Working Group on Cartographic Coordinates and Rotational Elements (WGCCRE) publishes radii and rotation models; the latest full report is Archinal et al. 2018, "Report of the IAU WGCCRE: 2015", Celestial Mechanics and Dynamical Astronomy 130:22, https://doi.org/10.1007/s10569-017-9805-5.
 - PROJ ships these as authority `IAU_2015` since PROJ 8.2 (2021), code scheme `body*100 + type`: `00` sphere planetocentric, `01` ellipsoid planetographic, `02` ellipsoid planetocentric (fixed 2026-11-15 from PROJ's iau.sql: the draft had `01` and `02` the wrong way round), then projected codes `10`, `15`, `20`... for equirectangular, Mercator, polar stereographic and others (https://proj.org/en/stable/news.html 8.2.0 notes; Marmo et al., GDAL/PROJ IAU codes RFC, https://github.com/OSGeo/PROJ/pull/2876, "Add IAU_2015 CRS definitions", merged 2021-10-05, checked 2026-11-15).
 - Examples: `IAU_2015:49900` "Mars (2015) - Sphere / Ocentric" (https://spatialreference.org/ref/iau_2015/49900/, checked 2026-11-14); `IAU_2015:49901` "Mars (2015) / Ographic" and `IAU_2015:49902` "Mars (2015) / Ocentric" (fixed 2026-11-15: the draft called 49901 planetocentric, it is planetographic), `IAU_2015:30100` "Moon (2015) - Sphere / Ocentric", `IAU_2015:39900` "Earth (2015) - Sphere / Ocentric" (names from PROJ's iau.sql, https://raw.githubusercontent.com/OSGeo/PROJ/master/data/sql/iau.sql, checked 2026-11-15).
-- Older OGC WMS codes `IAU2000:49900` etc. appear in USGS and NASA services (https://pds-imaging.jpl.nasa.gov/, unverified).
+- Older OGC WMS codes `IAU2000:49900` etc. appear in USGS and NASA services (https://pds-imaging.jpl.nasa.gov/; blocked 2026-11-16: an archived USGS page offers IAU2000 codes for web services, https://webarchive.library.unt.edu/web/20130215033216/http://webgis.wr.usgs.gov/ogc/index.htm, but no fetched page shows 49900 itself; current codes live under IAU_2015 at https://spatialreference.org/ref/iau_2015/49901/).
 
 ### 8.2 Radii (IAU 2015 report, Archinal et al. 2018, table 4-5)
 
@@ -257,16 +257,16 @@ Each rule is checkable by a test.
 
 ### Test values
 
-From Snyder 1987 numerical examples (appendix A pages are part of the cited chapter; page numbers unverified, values to be re-checked against the PDF before use; pass 3 on 2026-11-15 could not read the PDF either: pubs.usgs.gov answered 403 and the Wayback Machine copy of https://pubs.usgs.gov/pp/1395/report.pdf answered 429 twice, and PROJ's builtins.gie uses other test points, so every row below keeps its mark):
+From Snyder 1987 numerical examples (pass 5 on 2026-11-16 downloaded https://pubs.usgs.gov/pp/1395/report.pdf with curl and a browser user agent (WebFetch had got 403) and checked every row against appendix A; printed page = PDF page - 12):
 
 | Case | Input | Expected | Source |
 |---|---|---|---|
-| Mercator sphere, R = 1.0, λ0 = 180° | φ = 35°N, λ = 75°W | x = 1.8325957, y = 0.6528366 | Snyder 1987 appendix A as recalled (unverified); values recomputed from eq. 7-1, 7-2 with λ-λ0 wrapped to +105° |
-| Mercator ellipsoid, Clarke 1866 (a = 6378206.4, e² = 0.00676866), λ0 = -180° | φ = 35°N, λ = 135°E | x = 35 248 948.1 ... | (unverified; re-derive) |
-| Transverse Mercator sphere, R = 1, k0 = 1, λ0 = -75°, φ0 = 0 | φ = 40.5°N, λ = 73.5°W | x = 0.0199077, y = 0.7070276 | Snyder 1987 p.268 (unverified) |
-| UTM, Clarke 1866, k0 = 0.9996, λ0 = -75° | φ = 40.5°N, λ = 73.5°W | x = 127 106.5 m (before false easting), y = 4 484 124.4 m | Snyder 1987 p.269 (unverified) |
-| LCC ellipsoid, Clarke 1866, φ1 = 33°, φ2 = 45°, φ0 = 23°, λ0 = -96° | φ = 35°N, λ = 75°W | x = 1 894 410.9 m, y = 1 564 649.5 m | Snyder 1987 p.296 (unverified) |
-| Albers ellipsoid, Clarke 1866, φ1 = 29.5°, φ2 = 45.5°, φ0 = 23°, λ0 = -96° | φ = 35°N, λ = 75°W | x = 1 885 472.7 m, y = 1 535 925.0 m | Snyder 1987 p.292 (unverified) |
+| Mercator sphere, R = 1.0, λ0 = 180° | φ = 35°N, λ = 75°W | x = 1.8325957, y = 0.6528366 | Snyder 1987 p.266 (checked 2026-11-16; Snyder gives λ0 = 180° W, so λ-λ0 = +105° directly) |
+| Mercator ellipsoid, Clarke 1866 (a = 6378206.4, e² = 0.00676866), λ0 = -180° | φ = 35°N, λ = 75°W | x = 11 688 673.7 m, y = 4 139 145.6 m | Snyder 1987 p.267 (corrected 2026-11-16: the old row had λ = 135°E and a made-up x) |
+| Transverse Mercator sphere, R = 1, k0 = 1, λ0 = -75°, φ0 = 0 | φ = 40.5°N, λ = 73.5°W | x = 0.0199077, y = 0.7070276 | Snyder 1987 p.268 (checked 2026-11-16) |
+| UTM, Clarke 1866, k0 = 0.9996, λ0 = -75° | φ = 40.5°N, λ = 73.5°W | x = 127 106.5 m (before false easting), y = 4 484 124.4 m | Snyder 1987 p.269-270 (checked 2026-11-16) |
+| LCC ellipsoid, Clarke 1866, φ1 = 33°, φ2 = 45°, φ0 = 23°, λ0 = -96° | φ = 35°N, λ = 75°W | x = 1 894 410.9 m, y = 1 564 649.5 m | Snyder 1987 p.296-297 (checked 2026-11-16) |
+| Albers ellipsoid, Clarke 1866, φ1 = 29.5°, φ2 = 45.5°, φ0 = 23°, λ0 = -96° | φ = 35°N, λ = 75°W | x = 1 885 472.7 m, y = 1 535 925.0 m | Snyder 1987 p.292-293 (checked 2026-11-16) |
 | Web Mercator | lon 180, lat 0 | x = 20 037 508.342789 m | OSM wiki; exact = π·6378137 |
 | Web Mercator tile | lon 0, lat 0, zoom 1 | tile (1, 1) | OSM tile formula (lat 0 sits on a tile edge; floor gives 1) |
 | Equirectangular, R = 1, φ1 = 0 | lon 90, lat 45 | x = π/2, y = π/4 | definition |
