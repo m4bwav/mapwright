@@ -4,6 +4,16 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261115-7 · 2026-11-15 · 0.10.0: pathfinding commands (path, path --field, travel, check --chokepoints and --fair)
+- because: user request (references/pathfinding.md section 11), T-20261115-7, L-036, L-037, L-038
+- files: scripts/mpw_path.py (new), scripts/mpw.py, tests/test_path.py (new), skills/mapwright/SKILL.md, README.md, TESTS.md, LEARNINGS.md, references/pathfinding.md, plugin.json, .claude-plugin/plugin.json
+- `path DIR --from --to` finds the cheapest route on dungeon, battle (square and hex), deck, world and region recipes and writes path.json, path.geojson and path.svg. `path --field` writes a Dijkstra field with a flow step per cell. `travel` gives walking, off-path or riding hours by Tobler's hiking function on worlds and regions. `check --chokepoints` lists cut cells, what each cuts off and the minimum entrance-to-goal cut; `check --fair` gives per-start distances to resources and first-reach areas.
+- Rulings:
+  - Square grids move 8 ways by default (diagonal sqrt 2), never past a wall corner and never diagonally into or out of a door; `--moves 4` for plain 4-way.
+  - Cyclic dungeons keep their one-way doors (L-034) and treat locks as open; path.json says how many locks it opened.
+  - World and region paths reuse the road router's step cost unchanged, which charges terrain and bridges on the cell entered, so world costs are directed and A to B can differ from B to A.
+  - A deck lift step costs 3 m; deck squares are 1.5 m.
+  - `path --jps` and `export --nav` are not built in this release.
 ### C-20261115-6 · 2026-11-15 · 0.9.0: dungeons (goal, cave flags, cyclic, expressive range) and geoBoundaries licences
 - because: user request (book build backlog rows 1, 2, 5, 8, 9, 10), T-20261115-6, L-033, L-034, L-035
 - files: scripts/mpw_places.py, scripts/mpw.py, scripts/mpw_find.py, tests/test_places.py, tests/test_find.py, tests/fixtures/dungeon-070-bsp (new), tests/fixtures/dungeon-070-cave (new), skills/mapwright/SKILL.md, README.md, references/sources-and-terms.md, ai-docs/notes/book-build-backlog.md, plugin.json, .claude-plugin/plugin.json

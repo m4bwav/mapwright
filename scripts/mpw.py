@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.9.0"
+VERSION = "0.10.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -1406,9 +1406,124 @@ def cmd_check_range(a):
                  " DOMINANT" if p["dominant"] else "", rep["stability"], p["stability_tv"]))
 
 
+def _pathmod():
+    _places()
+    import mpw_path
+    return mpw_path
+
+
+def _xy(s):
+    try:
+        return tuple(float(t) for t in s.split(","))
+    except (ValueError, AttributeError):
+        die("bad coordinate %r: want X,Y" % s)
+
+
+def cmd_path(a):
+    M = _pathmod()
+    out = a.out or a.dir
+    try:
+        G, rc = M.build(a.dir, a.moves)
+        if not a.to:
+            die("path needs --to")
+        goals = [G.node(_xy(t)) for t in a.to]
+        if a.field:
+            dist, flow = M.field(G, goals)
+            rep = M.field_files(a.dir, out, G, goals, dist, flow)
+            rep = {k: v for k, v in rep.items() if k != "cells"}
+            msg = "field: %d goal(s), %d cells reached, %d unreachable, max %.3f %s -> %s" % (
+                len(goals), rep["reachable"], rep["unreachable"], rep["max"], G.units, out)
+        else:
+            if not a.src or len(goals) != 1:
+                die("path needs --from and one --to (or --field)")
+            s = G.node(_xy(a.src))
+            cost, path, exp = M.search(G, s, goals)
+            if cost is None:
+                die("no route: the goal cannot be reached from the start", 1)
+            extra = {"locks_open": G.locks} if getattr(G, "locks", 0) else None
+            rep = M.path_files(a.dir, out, G, s, goals[0], cost, path, exp, extra)
+            rep = {k: v for k, v in rep.items() if k != "path"}
+            msg = "path: cost %.4f %s, %d steps, %d cells expanded -> %s" % (rep["cost"], G.units, rep["steps"],
+                                                                             exp, out)
+    except (ValueError, OSError) as e:
+        die(str(e))
+    print(json.dumps(rep, indent=1) if a.json else msg)
+
+
+def cmd_travel(a):
+    M = _pathmod()
+    out = a.out or a.dir
+    if _kind(a.dir) not in ("world", "region"):
+        die("travel works on world and region recipes")
+    G, rc = M.build(a.dir, cost=a.mode)
+    s = G.node(_xy(a.src))
+    rep = M.travel(a.dir, out, G, s, a.band, G.node(_xy(a.to)) if a.to else None)
+    if a.json:
+        print(json.dumps({k: v for k, v in rep.items() if k != "cells"}, indent=1))
+    else:
+        print("travel (%s): %d cells reached, farthest %.2f h, bands of %.1f h: %s -> %s" % (
+            a.mode, rep["reachable"], rep["max_hours"], a.band, rep["bands"], out)
+            + ("; to goal %s h" % rep["to"]["hours"] if rep.get("to") else ""))
+
+
+def _pts(G, s):
+    return [G.node(_xy(t)) for t in s.split(";") if t.strip()]
+
+
+def cmd_check_grid(a):
+    M = _pathmod()
+    if _kind(a.dir) not in ("dungeon", "battle", "deck"):
+        die("--chokepoints and --fair work on dungeon, battle and deck recipes")
+    G, rc = M.build(a.dir)
+    gj = M._load(a.dir, "grid.json") if rc["kind"] != "deck" else {}
+    ent = tuple(gj["entrance"]) if gj.get("entrance") else G.nodes[0]
+    out = {}
+    try:
+        if a.chokepoints:
+            goal = tuple(gj["goal"]) if gj.get("goal") else None
+            rep = M.chokepoints(G, gj.get("rooms", []), ent, goal)
+            M.write(a.dir, "chokepoints.json", rep)
+            out["chokepoints"] = rep
+            if not a.json:
+                print("chokepoints: %d cells, %d bridges, %d passable%s%s" % (
+                    len(rep["chokepoints"]), rep["bridges"], rep["passable"],
+                    ", min cut entrance to goal %s" % rep["min_cut"]["size"] if "min_cut" in rep else "",
+                    ", equals brute force: %s" % rep["brute_force_equal"] if "brute_force_equal" in rep else ""))
+                for r in sorted(rep["chokepoints"], key=lambda r: -r["cut_off"])[:8]:
+                    print("  %s cuts off %d cells%s" % (r["cell"], r["cut_off"],
+                                                        ", rooms %s" % r["rooms_cut_off"] if r["rooms_cut_off"] else ""))
+        if a.fair:
+            if a.starts:
+                starts = _pts(G, a.starts)
+            else:
+                d0, _ = M.dijkstra(G.out, [ent])
+                starts = [ent, max(d0, key=lambda n: (d0[n], n))]
+            if a.resources:
+                res = _pts(G, a.resources)
+            else:
+                cand = [(int(L["x"]), int(L["y"])) for L in gj.get("lights", [])]
+                cand = cand or [(r["x"] + r["w"] // 2, r["y"] + r["h"] // 2) for r in gj.get("rooms", [])]
+                res = [c for c in cand if c in G.ok]
+            if not res:
+                die("--fair needs resources: none found, pass --resources X,Y;X,Y")
+            rep = M.fair(G, starts, res)
+            M.write(a.dir, "fair.json", rep)
+            out["fair"] = rep
+            if not a.json:
+                print("fair: areas %s (ratio %s), tied %d, unreached %d of %d; resources reached first %s" % (
+                    rep["areas"], rep["area_ratio"], rep["tied"], rep["unreached"], rep["passable"],
+                    rep["resources_first"]))
+    except ValueError as e:
+        die(str(e))
+    if a.json:
+        print(json.dumps(out, indent=1))
+
+
 def cmd_check(a):
     if a.range:
         return cmd_check_range(a)
+    if (a.chokepoints or a.fair) and a.dir:
+        return cmd_check_grid(a)
     if not a.dir:
         die("check needs a recipe folder (or --range METHOD)")
     g = _gen()
@@ -1944,8 +2059,36 @@ def build_parser():
     s.add_argument("--no-labels", action="store_true", help="skip the label bars (overlap, edge, OCR)")
     s.add_argument("--style", default="topographic", help="style the label bars render with")
     s.add_argument("--no-aistyle", action="store_true", help="skip the bars on styled pictures (*.aistyle.json) in the folder")
+    s.add_argument("--chokepoints", action="store_true", help="grid recipes: cells whose loss cuts the map, what each "
+                   "cuts off, the minimum cut entrance to goal; writes chokepoints.json")
+    s.add_argument("--fair", action="store_true", help="grid recipes: per-start distances to resources and "
+                   "first-reach areas; writes fair.json")
+    s.add_argument("--starts", help="--fair: starts as X,Y;X,Y (default: entrance and the cell farthest from it)")
+    s.add_argument("--resources", help="--fair: resources as X,Y;X,Y (default: lights, else room centres)")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_check)
+
+    s = sub.add_parser("path", help="cheapest route (A*) or a Dijkstra field on a dungeon, battle, deck, world or "
+                       "region recipe; writes path.json, path.geojson and path.svg (or field.json and field.svg)")
+    s.add_argument("dir")
+    s.add_argument("--from", dest="src", help="start: X,Y squares or hexes, DECK,X,Y on decks, map km on worlds")
+    s.add_argument("--to", action="append", help="goal (repeat for several goals with --field)")
+    s.add_argument("--field", action="store_true", help="cost to the nearest goal from every cell, with a flow step")
+    s.add_argument("--moves", type=int, choices=(4, 8), default=8, help="square grids: 4- or 8-way moves")
+    s.add_argument("--out", help="folder for the output files (default: the recipe folder)")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_path)
+
+    s = sub.add_parser("travel", help="travel-time map on a world or region with Tobler's hiking function; "
+                       "writes travel.json and travel.svg")
+    s.add_argument("dir")
+    s.add_argument("--from", dest="src", required=True, help="start in map km X,Y")
+    s.add_argument("--to", help="also report the fastest route to X,Y")
+    s.add_argument("--mode", choices=("walk", "offpath", "horse"), default="walk")
+    s.add_argument("--band", type=float, default=6.0, help="isochrone band width in hours (default 6)")
+    s.add_argument("--out", help="folder for the output files (default: the recipe folder)")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_travel)
 
     s = sub.add_parser("find", help="maps and data for a place, time or subject, each with licence and credit")
     s.add_argument("query", nargs="*")

@@ -6,7 +6,7 @@ An agent plugin for maps of real places, fantasy worlds and science fiction sett
 
 mapwright is a skill for AI coding agents plus one small script, `mpw.py`, that needs nothing but Python's standard library.
 
-## What works in 0.9.0
+## What works in 0.10.0
 
 - **Inspect** a map file: GeoJSON, GPX, KML and KMZ, shapefiles, dBASE, PNG heightmaps with world files, GeoPackage and MBTiles. Feature counts, extent, properties and the CRS when the file states one.
 - **Convert** between GeoJSON, GPX and KML, and read shapefiles into GeoJSON. Ring order is fixed on the way (shapefiles clockwise, GeoJSON counter-clockwise).
@@ -37,6 +37,8 @@ mapwright is a skill for AI coding agents plus one small script, `mpw.py`, that 
 
 - **AI style pass** (0.8.0, optional): `aistyle` repaints a world or region map on your own ComfyUI server in four looks (painted atlas, ink and parchment, satellite, watercolour) and keeps the geography. The model gets the map without text; lakes, rivers, roads, symbols, labels, the legend, the scale bar and the north arrow are set in code on top. Each picture is measured against the map's own coast and gets a sidecar with the model, its licence class, the prompt, the seed and the numbers. Measured on 72 pictures: every one kept the coast at denoise 0.45 or below, none at 0.65. `--dry-run` works with no server.
 
+- **Pathfinding** (0.10.0): `path` finds the cheapest route on dungeons, battle maps (square and hex), deck plans, worlds and regions and draws it on the map; `path --field` gives every cell its cost to the nearest goal and its next step, a flow field for many units; `travel` turns a world or region into walking hours by Tobler's hiking function; `check --chokepoints` lists the cells whose loss splits a map and the smallest cut from entrance to goal; `check --fair` compares starting points by their distance to resources and the ground each reaches first. Every A* cost equals plain Dijkstra on the test maps.
+
 Labels on curves come next.
 
 ## Use
@@ -65,6 +67,9 @@ python scripts/mpw.py export crypt.map -o crypt.tmj --csv
 python scripts/mpw.py export ship.map -o ship.dd2vtt
 python scripts/mpw.py export isles.map --to print -o poster --paper A3 --bleed 3
 python scripts/mpw.py aistyle isles.map --look watercolour --dry-run
+python scripts/mpw.py gen dungeon --seed 4 --out crypt
+python scripts/mpw.py path crypt --from 42,29 --to 24,34
+python scripts/mpw.py check crypt --chokepoints --fair
 python scripts/mpw.py aistyle isles.map --look painted-atlas --host http://127.0.0.1:8188
 ```
 

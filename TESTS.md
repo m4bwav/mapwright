@@ -6,6 +6,16 @@ Entry shape: `### T-YYYYMMDD-n · date · harness · env · passed/total`, then 
 
 ## Runs
 
+### T-20261115-7 · 2026-11-15 · unittest (tests/) + path sweeps · Windows, Python 3.14 · 221/221 passed, 2 skipped (live) in 57 s
+- New (18, tests/test_path.py): fixtures are generated in the test (bsp 30x24, cyclic 48x36, cave 30x24, square battle 20x16, hex battle 16x14, deck 30x15, world 500 cells); the file runs in about 2.5 s.
+- `path`: A* cost equals no-heuristic Dijkstra to 1e-9 on 60 random pairs per fixture (over 300 reachable pairs); re-summed step costs equal the reported cost; every step is an edge, enters a floor square, and a diagonal has both orthogonal squares open and touches no door; symmetric fixtures give A to B = B to A; one-way doors of the cyclic fixture are entered only from their source side over 200 pairs; CLI output byte-identical on rerun; a city is refused. Hand grids: two diagonal floors between walls give no route; a 3x3 room costs 2 sqrt 2 corner to corner, 4 with `--moves 4`.
+- Sweep, 300 random pairs per map (A* expanded over Dijkstra expanded, largest cost difference): dungeon bsp 48x36 0.52, 0; cave 0.39, 7e-15; square battle 0.21, 0; hex battle 0.19, 0; deck 0.30, 0; world 2,000 cells 0.59, 0. 600 searches take 0.07 to 0.15 s per map. A 16k-cell world (3,703 land cells) answers one cross-continent A* and a full travel map in under 0.05 s each.
+- `path --field`: every cell equals single-pair Dijkstra to the goal (all cells of bsp and hex, every third on the world), every reachable non-goal cell's flow step is lower, following the flow re-sums to the value, unreachable cells are null with no next step.
+- `travel`: Tobler speeds match the section 8.3 table to 0.005 km/h; flat speed 6 exp(-0.175) = 5.036742 km/h (L-037); a flat 6 km leg takes 6 / 5.036742 h within 1e-6 both ways; 150 m up over 1 km is slower than down; time never decreases along the shortest-path tree; random world pairs differ by direction.
+- `check --chokepoints`: articulation points equal brute force (remove each cell, recount) on all six grid fixtures; removing a cell splits the map exactly when it is reported; a ring has none; a 1-wide corridor between two 2x3 rooms gives five cut cells, cut-offs 1 to 5, minimum cut 1. Dungeon bsp 48x36: 40 cut cells, minimum cut entrance to goal 1; the cyclic 48x36: none, minimum cut 2 (its two paths).
+- `check --fair`: distances equal Dijkstra, areas + ties + unreached = floor, fair.json byte-identical on rerun. Dungeon bsp 48x36: areas 509 and 325 (ratio 1.57).
+- led to: C-20261115-7, L-036, L-037, L-038
+
 ### T-20261115-6 · 2026-11-15 · unittest (tests/) + dungeon sweeps · Windows, Python 3.14 · 203/203 passed, 2 skipped (live) in 54 s (after rebase on 0.8.0)
 - New (15, tests/test_places.py; 1, tests/test_find.py).
 - Backward compatibility: two recipes written by 0.7.0 (tests/fixtures/dungeon-070-bsp, dungeon-070-cave) pass `check` with byte-identical regeneration and get no goal bars. New behaviour is keyed on `params.goal`, which 0.7.0 recipes lack. The cave defaults redraw the 0.7.0 cave cell for cell.
