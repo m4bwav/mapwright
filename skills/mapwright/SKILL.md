@@ -61,7 +61,7 @@ Read [references/cli-generate.md](../../references/cli-generate.md) before runni
 
 - `MPW render DIR -o out.svg|png|pdf [--style S]` draws the map from the recipe folder alone (PNG and PDF need Chrome or Edge). `MPW style --list` names the styles.
 
-Read [references/cli-render.md](../../references/cli-render.md) for `label`, `legend`, `serve` (127.0.0.1 only), `sheet` and the AI style pass (`aistyle`, denoise 0.45 or below, the model never draws text). AI image models: [references/ai-image-models.md](../../references/ai-image-models.md).
+Read [references/cli-render.md](../../references/cli-render.md) for `label`, `legend`, `serve` (127.0.0.1 only), `sheet` and the AI style pass (`aistyle`, denoise 0.45 or below; with `--control canny` up to 0.75; the model never draws text). AI image models: [references/ai-image-models.md](../../references/ai-image-models.md).
 
 ## Export: games, tabletop, 3D and print
 
