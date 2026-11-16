@@ -28,8 +28,8 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 ### L-042 · 2026-11-16 · `find-osm-undertriggers`: "find OpenStreetMap data ... tell me the licence" fires mapwright 1 of 3
 - Trigger: T-20261116-2: trigger-find-place missed in one run and a rerun pair (1 hit of 3); it was 3/3 in T-20261116-1 after the Step F fix.
 - Hypothesis: the prompt reads as a licence question sonnet can answer from memory, and the description says "find" maps of places but does not name OpenStreetMap, Overpass or data licences.
-- Rule: open. Before editing, try adding "OpenStreetMap or Overpass data and its licence" to the description's find phrase and rerun the trigger case 3 times plus the four decoys; leave it if the decoys start firing.
-- Evidence: T-20261116-2
+- Rule: closed 2026-11-16. Name the data source and the licence in the description ("finds OpenStreetMap or Overpass data for a place with its licence" plus the example 'find OpenStreetMap data for this area and its licence'). A licence question about a named source reads as answerable from memory unless the description names that source.
+- Evidence: T-20261116-2 (1/3 before), T-20261116-4 (3/3 after, decoys 0/4 fired)
 - Scope: skill
 
 ### L-009 · 2026-11-14 · `landlocked-window-no-drain`: Open: grandchild of a landlocked window fails bar 1; arid windows sit on bar 7's sample limit
