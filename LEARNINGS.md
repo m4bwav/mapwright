@@ -71,6 +71,28 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 - Hypothesis: hex maps write no map.png, so the square map's PNG stays behind and the regenerated folder has none.
 - Rule: one folder per grid kind in sweeps and tests (or clear the folder first).
 - Evidence: T-20261116-3
+
+### L-052 · 2026-11-16 · `block-exit-match-by-growth`: grow the block grid from open exits and every exit inside the map is matched
+- Trigger: row 7, `gen dungeon --method blocks`: an exit flag per side must meet an exit on the neighbour.
+- Hypothesis: placing blocks in scan order needs back-tracking; growing from a start slot through open exits needs none, because a new block copies its placed neighbours' flags, closes the map edge and only rolls sides toward empty slots.
+- Rule: growth stops only when no exit points at an empty slot. One race is left: two queued exits toward one slot. The second one opens the matching side on the placed block. The check bar reads the flags and the squares, so a break shows either way.
+- Evidence: T-20261116-10; tests/test_places.py TestBlocks
+- Scope: skill
+
+### L-053 · 2026-11-16 · `block-exit-chance-sets-restarts`: exit chance 0.55 needed up to 24 restarts, 0.65 needs 5
+- Trigger: first sweep at exit chance 0.55: 200 seeds at 48x36 averaged 2.7 restarts to reach the 25-block bar, worst 24 of the 32 allowed.
+- Hypothesis: the growth dies out early when too few sides open (a branching process near its critical point).
+- Rule: exit chance 0.65 (ours). 1,000 seeds: worst 5 restarts, 66 percent need none. Restart cap 32 (ours), stream 6000 + k so bsp, cave and cyclic stay byte-identical.
+- Evidence: T-20261116-10
+- Scope: skill
+
+### L-054 · 2026-11-16 · `blocks-path-bar-needs-restart`: a full block grid can still miss the map-width path bar
+- Trigger: the first `check --range blocks` (500 seeds) gave path over diagonal 0.767 at the minimum, 46 steps on a 48-wide map, under the min_path bar.
+- Hypothesis: a well-filled grid can still put the goal near the entrance when loops are many.
+- Rule: `build_dungeon` restarts a blocks map on a short path too, continuing the same restart counter, so the recipe's `rerolls` counts both causes. After the fix the minimum is 0.833 (50 steps).
+- Evidence: T-20261116-11
+- Scope: skill
+
 ### L-043 · 2026-11-16 · `jps-doors-and-python-speed`: JPS pruning breaks next to doors, and saves expansions but not time in Python
 - Trigger: s17 `path --jps` build: dungeon doors forbid diagonals and carry one-way entry, which the JPS paper's uniform grid does not have; the 48-map sweep then showed 3.4 times fewer expansions but 0.39 s against A*'s 0.30 s.
 - Hypothesis: pruning at a square is safe only when its 3x3 neighbourhood has uniform moves; the jump loop runs square by square in the interpreter, so pure-Python JPS pays for the scans it saves on the queue.
