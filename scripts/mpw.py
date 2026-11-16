@@ -1844,7 +1844,8 @@ def cmd_aistyle(a):
     try:
         res = ai.run(a.dir, a.look, out=a.out, host=a.host, denoise=a.denoise, seed=a.seed, dry_run=a.dry_run,
                      template=a.workflow, model=a.model, clip=a.clip, vae=a.vae, size=a.size, style=a.style,
-                     font=a.font, title=a.title, timeout=a.timeout, do_measure=not a.no_measure)
+                     font=a.font, title=a.title, timeout=a.timeout, do_measure=not a.no_measure,
+                     control=a.control, strength=a.strength)
     except (ValueError, RuntimeError, OSError) as e:
         die(str(e))
     if a.json:
@@ -2288,6 +2289,10 @@ def build_parser():
     s.add_argument("--dry-run", action="store_true", help="write the control PNG and the workflow JSON; contact no server")
     s.add_argument("--measure", metavar="PNG", help="only measure an unlabelled picture of this map against the recipe")
     s.add_argument("--workflow", help="workflow template JSON (default: scripts/data/aistyle-zimage-turbo.json)")
+    s.add_argument("--control", choices=("none", "canny", "depth"), default="none",
+                   help="ControlNet hint drawn from the geometry: canny (coast lines) or depth (heights); "
+                        "uses scripts/data/aistyle-zimage-cnet.json unless --workflow is given (default none)")
+    s.add_argument("--strength", type=float, help="ControlNet strength with --control (default 0.9)")
     s.add_argument("--model", help="diffusion model file name on the server (overrides the template)")
     s.add_argument("--clip", help="text encoder file name on the server")
     s.add_argument("--vae", help="VAE file name on the server")

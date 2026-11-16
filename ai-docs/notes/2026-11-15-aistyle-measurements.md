@@ -21,7 +21,7 @@ Handoff note for `mpw.py aistyle`. Numbers and the full table are in [../../TEST
 
 ## Open
 
-- A stronger look inside the bar: canny or depth control images drawn from the geometry (Z-Image Fun ControlNet union) at higher denoise. This is the real next step if the light repaint is not enough.
+- Done 2026-11-16: `--control canny|depth [--strength S]` adds a Z-Image Fun ControlNet union hint drawn from the recipe (workflow `scripts/data/aistyle-zimage-cnet.json`). Canny at 0.9 holds the bar to denoise 0.75 on every measured picture (8/8), against 0.45 without control; depth holds less; 0.90 slips. T-20261116-24, L-061 `canny-from-geometry-doubles-the-denoise`. Still open: whether a look at 0.75 reads as clearly stronger to Mark (no review yet), canny plus depth together, and region recipes.
 - A river-survival bar on the model's own picture was dropped: the line test has a noise floor of up to 0.26 on textured looks, and the model fails it anyway.
 - Non-square maps are sent slightly stretched (up to 0.8 percent) to reach a multiple of 16 and stretched back in the composite; measured only on square worlds.
 - OCR text-leak check on the styled picture (tesseract) is not built; tesseract is not installed on the build machine.

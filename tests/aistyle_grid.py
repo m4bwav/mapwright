@@ -4,6 +4,7 @@ Runs looks x seeds x denoise values on one world or region recipe and tables how
 picture holds the recipe's coast. The numbers in TESTS.md (T-20261115-5) came from this file.
 
   python tests/aistyle_grid.py WORLD OUTDIR [--looks a,b] [--seeds 1,2,3] [--denoise 0.35,0.45,0.55,0.65]
+  python tests/aistyle_grid.py WORLD OUTDIR --control none,canny --strength 0.6,0.9   (ControlNet cells)
   python tests/aistyle_grid.py WORLD OUTDIR --measure-only     (re-measure pictures already in OUTDIR)
 
 The server comes from --host or MAPWRIGHT_COMFYUI. Finished pictures are skipped, so a run can resume.
@@ -54,6 +55,8 @@ def main(argv=None):
     ap.add_argument("--looks", default=",".join(sorted(A.LOOKS)))
     ap.add_argument("--seeds", default="1,2,3")
     ap.add_argument("--denoise", default="0.35,0.45,0.55,0.65")
+    ap.add_argument("--control", default="none", help="comma list of none, canny, depth")
+    ap.add_argument("--strength", default="0.9", help="comma list of ControlNet strengths (ignored for none)")
     ap.add_argument("--host")
     ap.add_argument("--measure-only", action="store_true")
     ap.add_argument("--json", help="also write every row to this file")
@@ -62,12 +65,17 @@ def main(argv=None):
     if not a.measure_only:
         for lk in a.looks.split(","):
             for d in [float(v) for v in a.denoise.split(",")]:
-                for s in [int(v) for v in a.seeds.split(",")]:
-                    out = os.path.join(a.outdir, "%s-s%d-d%03d.svg" % (lk, s, round(d * 100)))
-                    if os.path.isfile(out[:-4] + A.SIDECAR):
-                        continue
-                    r = A.run(a.world, lk, out=out, host=a.host, denoise=d, seed=s, do_measure=False)
-                    print("%s %.0f s" % (os.path.basename(out), r["seconds"]), flush=True)
+                for ctl in a.control.split(","):
+                    sts = [None] if ctl == "none" else [float(v) for v in a.strength.split(",")]
+                    for st in sts:
+                        tag = "" if ctl == "none" else "-%s%03d" % (ctl, round(st * 100))
+                        for s in [int(v) for v in a.seeds.split(",")]:
+                            out = os.path.join(a.outdir, "%s%s-s%d-d%03d.svg" % (lk, tag, s, round(d * 100)))
+                            if os.path.isfile(out[:-4] + A.SIDECAR):
+                                continue
+                            r = A.run(a.world, lk, out=out, host=a.host, denoise=d, seed=s, do_measure=False,
+                                      control=ctl, strength=st)
+                            print("%s %.0f s" % (os.path.basename(out), r["seconds"]), flush=True)
     tr, rows, controls, cimgs = None, [], {}, {}
     for sc_path in sorted(glob.glob(os.path.join(a.outdir, "*" + A.SIDECAR))):
         with open(sc_path, encoding="utf-8") as f:
@@ -83,7 +91,9 @@ def main(argv=None):
         m = A.measure(a.world, img, tr, cimgs[lk])
         m["rule_iou"] = rule_iou(img, tr)
         m["ok"] = A.judge(m)[0]
-        m.update(look=lk, seed=sc["seed"], denoise=sc["denoise"], runs_as=sc["denoise_effective"])
+        cn = sc.get("controlnet") or {}
+        m.update(look=lk, seed=sc["seed"], denoise=sc["denoise"], runs_as=sc["denoise_effective"],
+                 control="%s %.2f" % (cn["kind"], cn["strength"]) if cn else "none")
         rows.append(m)
 
     def mean(v):
@@ -93,19 +103,19 @@ def main(argv=None):
     for lk, c in sorted(controls.items()):
         print("  %-18s %.4f %.4f %.2f %.3f" % (lk, c["land_iou"], c["rule_iou"], c["lakes_kept"] or 0,
                                                c["river_line_noise"] or 0))
-    print("look, denoise typed (as run), pictures passing, land IoU min/mean/max, coast within 3 px, settlements "
+    print("look, control and strength, denoise typed (as run), pictures passing, land IoU min/mean/max, coast within 3 px, settlements "
           "on painted land min, rivers on painted land min, lakes kept, river lines kept, line noise floor")
-    for lk, d in sorted(set((m["look"], m["denoise"]) for m in rows)):
-        g = [m for m in rows if m["look"] == lk and m["denoise"] == d]
+    for lk, ctl, d in sorted(set((m["look"], m["control"], m["denoise"]) for m in rows)):
+        g = [m for m in rows if m["look"] == lk and m["denoise"] == d and m["control"] == ctl]
         io = [m["land_iou"] for m in g]
-        print("  %-18s %.2f (%.3f) %d/%d  %.4f/%.4f/%.4f  %.2f  %.4f  %.4f  %.2f  %.2f  %.3f"
-              % (lk, d, g[0]["runs_as"], sum(1 for m in g if m["ok"]), len(g), min(io), mean(io), max(io),
+        print("  %-18s %-11s %.2f (%.3f) %d/%d  %.4f/%.4f/%.4f  %.2f  %.4f  %.4f  %.2f  %.2f  %.3f"
+              % (lk, ctl, d, g[0]["runs_as"], sum(1 for m in g if m["ok"]), len(g), min(io), mean(io), max(io),
                  mean([m["coast_within_3px"] for m in g]), min(m["towns_on_land"] for m in g),
                  min(m["river_on_land"] for m in g), mean([m["lakes_kept"] or 0 for m in g]),
                  mean([m["river_line"] or 0 for m in g]), mean([m["river_line_noise"] or 0 for m in g])))
-    for d in sorted(set(m["denoise"] for m in rows)):
-        g = [m for m in rows if m["denoise"] == d]
-        print("denoise %.2f: %d of %d pictures pass the bar" % (d, sum(1 for m in g if m["ok"]), len(g)))
+    for ctl, d in sorted(set((m["control"], m["denoise"]) for m in rows)):
+        g = [m for m in rows if m["denoise"] == d and m["control"] == ctl]
+        print("%s, denoise %.2f: %d of %d pictures pass the bar" % (ctl, d, sum(1 for m in g if m["ok"]), len(g)))
     if a.json:
         with open(a.json, "w", encoding="utf-8", newline="\n") as f:
             json.dump(dict(controls=controls, rows=rows), f, indent=1)
