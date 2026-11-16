@@ -24,13 +24,13 @@ The family: place rectangular rooms, join them with corridors, then decorate. Co
 - Room width and height are random from 4 up to the cell size, and the room is offset inside its cell. A gutter column and row stay clear, so rooms never touch [ROGUE].
 - Passages: start from a random cell, link a connected cell to an unconnected neighbour until all nine are linked (a spanning tree over the cell grid), then add 0 to 4 extra links between neighbours for loops. A gone cell gets a corridor junction in place of a door [ROGUE].
 - Each corridor has at most two bends [ROGUE].
-- Guarantee: connected by construction. Failure: every level is the same tic-tac-toe board, so levels feel alike. Source read: a walkthrough of the Rogue 3.6 `rooms.c`; its passage code is the article's own pseudo-code [ROGUE]. Dark rooms and maze rooms exist in later versions (unverified).
+- Guarantee: connected by construction. Failure: every level is the same tic-tac-toe board, so levels feel alike. Source read: a walkthrough of the Rogue 3.6 `rooms.c`; its passage code is the article's own pseudo-code [ROGUE]. Dark rooms and maze rooms exist in Rogue 5.4: `rooms.c` makes a room dark when `rnd(10) < level - 1`, and a dark room becomes a maze one time in 15; `left_out = rnd(4)` drops up to three of the nine rooms (https://github.com/RoguelikeRestorationProject/rogue5.4/blob/master/rooms.c, checked 2026-11-16).
 
 ### 1.2 NetHack: rectangles, sorted rooms, ordered joins
 
 From `mklev.c` of NetHack 3.6.1 [NH]:
 
-- `makerooms()` keeps asking `rnd_rect()` for a free rectangle and puts a room in it until no rectangle is left or `MAXNROFROOMS` is reached (its value is 40, unverified).
+- `makerooms()` keeps asking `rnd_rect()` for a free rectangle and puts a room in it until no rectangle is left or `MAXNROFROOMS` is reached (40, "max number of rooms per level", NetHack 3.6 `include/global.h`; the loop is in `src/mklev.c`, https://github.com/NetHack/NetHack/blob/NetHack-3.6/include/global.h, checked 2026-11-16).
 - `sort_rooms()` orders rooms by left edge, so room index runs left to right.
 - `makecorridors()` joins in three passes: `join(a, a+1)` for neighbours in the sorted order (with a 1 in 50 chance to stop early after each join), then `join(a, a+2)` where the two are not yet connected, then any pair still not connected. Connection sets are tracked in `smeq`.
 - Then `rn2(nroom) + 4` extra corridors are dug with the `nxcor` flag. These may dead-end.
@@ -44,7 +44,7 @@ From `mklev.c` of NetHack 3.6.1 [NH]:
 - The `classic_gen`, `modified_gen` and `moria_gen` builders "divide the level into a grid of rectangular blocks where, in general, each block can only contain one room" [ANG].
 - Rooms come from room types in `list-rooms.h`, built by `build_*` functions in `gen-room.c`. Other profiles are built from cavern and labyrinth chunks [ANG].
 - Corridors: `do_traditional_tunneling()` joins the rooms, then `ensure_connectedness()` repairs what vault areas cut off [ANG].
-- Vaults are hand-drawn dangerous treasure rooms stored as text in `vault.txt`, picked by depth range and type (lesser, medium, greater) (unverified: seen only in search snippets of the 4.2 source and FAangband docs).
+- Vaults are hand-drawn dangerous treasure rooms stored as text in `vault.txt`, picked by depth range and type (lesser, medium, greater) (checked 2026-11-16 in Angband's `lib/gamedata/vault.txt`: types Lesser, Medium and Greater vault, each also in a "(new)" set, plus "Interesting room"; each entry carries `min-depth` and `max-depth`, https://github.com/angband/angband/blob/master/lib/gamedata/vault.txt).
 - Guarantee: a repair pass after the fact. Failure: tunnels that wander and cross.
 
 ### 1.4 Brogue: room accretion, loops, lakes, machines
