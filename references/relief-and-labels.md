@@ -73,7 +73,7 @@ The default light is from the north-west (azimuth 315 degrees, clockwise from no
 
 ### 1.7 Multidirectional hillshade
 
-One light leaves ridges parallel to it flat. Multidirectional shading blends several azimuths. Mark (1992) weighted the illumination from 225, 270, 315 and 360 degrees by aspect so each slope gets lit from the most revealing direction [Mark1992]; GDAL's `-multidirectional` implements that method [GDAL]. Esri's multidirectional option combines light from six directions (unverified count and weights) [EsriHS]. Simple stdlib version: compute shades at several azimuths and take a weighted mean with weights `w_k = sin(aspect - az_k + pi/2)**2` or similar (this weighting is a guess, unverified; prefer copying GDAL's documented formula after checking it).
+One light leaves ridges parallel to it flat. Multidirectional shading blends several azimuths. Mark (1992) weighted the illumination from 225, 270, 315 and 360 degrees by aspect so each slope gets lit from the most revealing direction [Mark1992]; GDAL's `-multidirectional` implements that method [GDAL]. Esri's multidirectional option combines light from six directions (count checked 2026-11-16 in the ArcGIS Pro Hillshade function help, https://pro.arcgis.com/en/pro-app/3.3/help/analysis/raster-functions/hillshade-function.htm; the weights are not published there, unverified) [EsriHS]. Simple stdlib version: compute shades at several azimuths and take a weighted mean with weights `w_k = sin(aspect - az_k + pi/2)**2` or similar (this weighting is a guess, unverified). Corrected 2026-11-16: the gdaldem page gives no formula, it only says it "applies the formula of" Mark's report (https://gdal.org/programs/gdaldem.html), so copy the weights from [Mark1992] or GDAL's source; the USGS PDF answered 403 to scripts.
 
 ### 1.8 Z-factor and lat/lon grids
 
@@ -105,7 +105,7 @@ t = (L - z0) / (z1 - z0)      # position along an edge from corner 0 to 1
 p = p0 + t * (p1 - p0)
 ```
 
-Cases 5 and 10 (diagonal corners above) are saddles and ambiguous. Resolve with the mean of the four corners: if the centre is above `L`, connect around the high corners' side, else the other way. Do this consistently or contours will cross (well known; unverified source). Then join segments into polylines by matching endpoints (hash rounded coordinates), close rings, and simplify (Douglas-Peucker) at roughly the output pixel tolerance [DP1973].
+Cases 5 and 10 (diagonal corners above) are saddles and ambiguous. Resolve with the mean of the four corners: if the centre is above `L`, connect around the high corners' side, else the other way. Do this consistently or contours will cross (checked 2026-11-16: Wikipedia "Marching squares" gives the centre-average rule for the ambiguous cases, https://en.wikipedia.org/wiki/Marching_squares; secondary source). Then join segments into polylines by matching endpoints (hash rounded coordinates), close rings, and simplify (Douglas-Peucker) at roughly the output pixel tolerance [DP1973].
 
 Checkable rules:
 - Contours at different levels never cross or touch (test by segment intersection).
@@ -275,8 +275,8 @@ For each feature generate candidates with a cost: position rank penalty (7.2), o
 
 - Greedy: sort features by priority (importance, then number of free candidates ascending), place the cheapest non-conflicting candidate, drop the label if none. Fast, decent [Christensen1995].
 - Gradient descent / local search: start from a placement, repeatedly move one label to the position that most lowers total cost [Hirsch1982][Christensen1995].
-- Simulated annealing: random moves, accept worse moves with probability `exp(-delta/T)`, cool `T` geometrically. Christensen, Marks and Shieber (1995, ACM TOG 14(3):203-232) compared methods and found annealing gave the best quality for reasonable time, beating greedy, gradient descent, Hirsch's method and Zoraster's integer programming approach [Christensen1995]. Their schedule (initial T so that a cost increase of 1/3 is accepted with probability 2/3; T lowered 10 percent after a fixed number of moves) is as I recall it (unverified details).
-- Rule-based expert systems (Ahn and Freeman's AUTONAP, Doerschler and Freeman) and the commercial Maplex/Esri label engine use rule sets plus optimisation [Freeman1995 (unverified)][EsriMaplex].
+- Simulated annealing: random moves, accept worse moves with probability `exp(-delta/T)`, cool `T` geometrically. Christensen, Marks and Shieber (1995, ACM TOG 14(3):203-232) compared methods and found annealing gave the best quality for reasonable time, beating greedy, gradient descent, Hirsch's method and Zoraster's integer programming approach [Christensen1995]. Their schedule (initial T so that a cost increase of 1/3 is accepted with probability 2/3; T lowered 10 percent after a fixed number of moves) is as I recall it (unverified details; 2026-11-16 the Harvard copy answered 429 and the MERL TR94-12 PDF had no readable text layer).
+- Rule-based expert systems (Ahn and Freeman's AUTONAP, Doerschler and Freeman) and the commercial Maplex/Esri label engine use rule sets plus optimisation [Freeman2005][EsriMaplex].
 - Wagner, Wolff and others give approximation algorithms for maximum independent sets of labels (sliding models, unverified detail) [Wagner-Wolff1997].
 
 Annealing in stdlib Python is fine for hundreds to a few thousand labels; cost function is the hot loop, so keep conflicts precomputed as candidate-pair lists.
@@ -336,16 +336,16 @@ Each is a pure function over the rendered geometry:
 
 All accessed 2026-11-14 unless marked unverified (cited from memory, not opened this session).
 
-- [Barrault2001] Barrault, M. "An automated system for linear feature name placement which complies with cartographic quality criteria." AutoCarto, 2001. (unverified: Crossref finds only Barrault, "An automated system for name placement which complies with cartographic quality criteria: The hydrographic network", COSIT 1997, LNCS, pp. 499-500, https://doi.org/10.1007/3-540-63623-4_71; cite that if the 2001 paper cannot be found)
+- [Barrault2001] Barrault, M. "An automated system for linear feature name placement which complies with cartographic quality criteria." AutoCarto, 2001. (unverified: Crossref finds only Barrault, "An automated system for name placement which complies with cartographic quality criteria: The hydrographic network", COSIT 1997, LNCS, pp. 499-500, https://doi.org/10.1007/3-540-63623-4_71; cite that if the 2001 paper cannot be found; re-searched on Crossref 2026-11-16, still no 2001 paper, left unverified)
 - [Christensen1995] Christensen, J., Marks, J., Shieber, S. "An empirical study of algorithms for point-feature label placement." ACM Transactions on Graphics 14(3):203-232, 1995.
 - [DP1973] Douglas, D., Peucker, T. "Algorithms for the reduction of the number of points required to represent a digitized line or its caricature." The Canadian Cartographer 10(2):112-122, 1973.
 - [Edmondson1996] Edmondson, S., Christensen, J., Marks, J., Shieber, S. "A general cartographic labelling algorithm." Cartographica 33(4):13-24, 1996.
 - [EsriHS] Esri, "How Hillshade works", ArcGIS Pro documentation. https://pro.arcgis.com/en/pro-app/latest/tool-reference/3d-analyst/how-hillshade-works.htm
 - [EsriSlope] Esri, "How Slope works", ArcGIS Pro documentation. https://pro.arcgis.com/en/pro-app/latest/tool-reference/3d-analyst/how-slope-works.htm
 - [EsriZ] Esri, "Setting the z-factor parameter correctly" (ArcGIS blog and help table of z-factors by latitude). Table checked 2026-11-16 at https://desktop.arcgis.com/en/arcmap/latest/tools/spatial-analyst-toolbox/applying-a-z-factor.htm (0.00000898 at 0°, 0.00001792 at 60°, metres); the blog itself answered 403.
-- [EsriMaplex] Esri, Maplex Label Engine documentation, ArcGIS Pro. (unverified)
+- [EsriMaplex] Esri, Maplex Label Engine documentation, ArcGIS Pro. (unverified; not reached in pass 5, 2026-11-16)
 - [Formann-Wagner1991] Formann, M., Wagner, F. "A packing problem with applications to lettering of maps." Proc. 7th ACM Symposium on Computational Geometry, 281-288, 1991.
-- [Freeman1995] Freeman, H. "On the automated labeling of maps." In Shape, Structure and Pattern Recognition, 1995. (unverified)
+- [Freeman2005] Freeman, H. "Automated cartographic text placement." Pattern Recognition Letters, 2005, https://doi.org/10.1016/j.patrec.2004.10.023 (citation checked via Crossref 2026-11-16; corrected from a 1995 "On the automated labeling of maps" in Shape, Structure and Pattern Recognition, which neither Crossref nor a web search could find).
 - [GDAL] GDAL, "gdaldem" documentation. https://gdal.org/programs/gdaldem.html
 - [Hirsch1982] Hirsch, S. "An algorithm for automatic name placement around point data." The American Cartographer 9(1):5-17, 1982.
 - [Horn1981] Horn, B.K.P. "Hill shading and the reflectance map." Proceedings of the IEEE 69(1):14-47, 1981.
@@ -359,7 +359,7 @@ All accessed 2026-11-14 unless marked unverified (cited from memory, not opened 
 - [Kennelly-Kimerling2001] Kennelly, P., Kimerling, A.J. "Modifications of Tanaka's illuminated contour method." Cartography and Geographic Information Science 28(2):111-123, 2001.
 - [Leonowicz2010] Leonowicz, A., Jenny, B., Hurni, L. "Terrain Sculptor: generalizing terrain models for relief shading." Cartographic Perspectives 67, 2010.
 - [Lorensen1987] Lorensen, W., Cline, H. "Marching cubes: a high resolution 3D surface construction algorithm." SIGGRAPH 1987.
-- [Maple-MS] Secondary tutorials on marching squares (e.g. Wikipedia "Marching squares"). (unverified)
+- [Maple-MS] Wikipedia, "Marching squares", https://en.wikipedia.org/wiki/Marching_squares (checked 2026-11-16; secondary).
 - [Mark1992] Mark, R.K. "A multidirectional, oblique-weighted, shaded-relief image of the Island of Hawaii." USGS Open-File Report 92-422, 1992.
 - [Marks-Shieber1991] Marks, J., Shieber, S. "The computational complexity of cartographic label placement." Harvard TR-05-91, 1991.
 - [OpenType] Microsoft, OpenType specification, "hmtx — Horizontal Metrics Table". https://learn.microsoft.com/en-us/typography/opentype/spec/hmtx
