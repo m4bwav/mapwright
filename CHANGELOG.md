@@ -4,6 +4,16 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261116-5 · 2026-11-16 · 0.12.0: landlocked drainage, rain-shadow margin, battle layout, treasure placement, battle legend
+- because: L-009 closed (L-047, L-048); battle render defects from session 17 (L-044..L-046); wiki run found `legend` crashing on battle maps
+- files: scripts/mpw.py, scripts/mpw_gen.py, scripts/mpw_places.py, tests/, evals/evals.json, LEARNINGS.md, TESTS.md
+- Zoom windows with no sea seed Priority-Flood from border cells where the parent's flow leaves; bar 1 accepts rivers ending there. Worlds and windows with sea are byte-identical on seeds 1-8; all-land grandchildren change (they now have rivers).
+- Bar 7 skips the rain-shadow judgement when windward rain is under 50 cm/yr (24-seed sweep, T-20261116-8).
+- Battle maps: title in a band above the grid, legend in a band below; no square hidden. Note: since 0.11.0 old battle seeds need `--density sparse` to match.
+- Cyclic `--branches` treasure always on a floor cell inside its room (old code: 49 of 120 outside).
+- `legend` lists battle-map legends; city and dungeon recipes get a clean "no legend" message.
+- Eval case trigger-projection added, 3/3. Tests: 241 pass, 2 skip.
+
 ### C-20261116-4 · 2026-11-16 · 0.11.0: lock-aware paths, jump point search, nav export, battle density and legend, dungeon branches
 - because: backlog items from Step D and the Step E review; L-041; source pass 4
 - files: scripts/mpw.py, scripts/mpw_path.py, scripts/mpw_export.py, scripts/mpw_places.py, scripts/mpw_space.py, scripts/mpw_render.py, tests/, references/, LEARNINGS.md
