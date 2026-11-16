@@ -24,7 +24,7 @@ The family: place rectangular rooms, join them with corridors, then decorate. Co
 - Room width and height are random from 4 up to the cell size, and the room is offset inside its cell. A gutter column and row stay clear, so rooms never touch [ROGUE].
 - Passages: start from a random cell, link a connected cell to an unconnected neighbour until all nine are linked (a spanning tree over the cell grid), then add 0 to 4 extra links between neighbours for loops. A gone cell gets a corridor junction in place of a door [ROGUE].
 - Each corridor has at most two bends [ROGUE].
-- Guarantee: connected by construction. Failure: every level is the same tic-tac-toe board, so levels feel alike. Source read: a walkthrough of the Rogue 3.6 `rooms.c`; its passage code is the article's own pseudo-code [ROGUE]. Dark rooms and maze rooms exist in later versions (unverified).
+- Guarantee: connected by construction. Failure: every level is the same tic-tac-toe board, so levels feel alike. Source read: a walkthrough of the Rogue 3.6 `rooms.c`; its passage code is the article's own pseudo-code [ROGUE]. Dark rooms and maze rooms exist in Rogue 5.4: `rooms.c` makes a room dark when `rnd(10) < level - 1`, and a dark room becomes a maze one time in 15; `left_out = rnd(4)` drops up to three of the nine rooms (https://github.com/RoguelikeRestorationProject/rogue5.4/blob/master/rooms.c, checked 2026-11-16).
 
 ### 1.2 NetHack: rectangles, sorted rooms, ordered joins
 
