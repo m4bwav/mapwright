@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261116-12 · 2026-11-16 · 0.19.0: nav export agent-size erosion
+- because: HANDOFF backlog item "nav export agent-size erosion", T-20261116-19
+- files: scripts/mpw_export.py, scripts/mpw.py, tests/test_export.py, references/cli-export.md, README.md
+- `export --nav --agent N` keeps only squares where an N x N body fits with its top-left square there, then merges rectangles and portals as before; the nav bars run on the eroded grid; JSON gains `agent`. `--agent 1` (default) is byte-identical; 0 is refused. Tests: 261 pass, 2 skip.
+
 ### C-20261116-11 · 2026-11-16 · 0.18.0: per-place seeds for region chunks
 - because: book-build backlog row 4 (rest), T-20261116-18
 - files: scripts/mpw_gen.py, scripts/mpw.py, tests/test_mpw.py, README.md

@@ -154,3 +154,6 @@ New TestPlaceSeeds: `place_seed` pinned and stable; `gen system --sector-seed 7 
 - led to: L-033, L-034, L-035
 
 Older runs (T-20261114-1 to T-20261115-5): [TESTS-ARCHIVE.md](TESTS-ARCHIVE.md).
+
+### T-20261116-19 · 2026-11-16 · nav --agent erosion
+- pytest tests: 261 pass, 2 skip (71 s). TestNav.test_agent_erosion: 6x4 hand grid against the fit rule; 20 recipes (block, cave, cyclic, battle x 5 seeds) at agent 2 and 3 pass every nav bar and every rect square's N x N body is walkable; agent 1 byte-identical to no flag; agent 0 refused.

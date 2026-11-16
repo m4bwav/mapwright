@@ -930,6 +930,36 @@ class TestNav(Base):
         self.assertTrue(any("enter_from" in r for r in nav["rects"]))
         self.assertEqual(nav["format"], "mapwright-nav")
 
+    def test_agent_erosion(self):
+        g = ["......", "......", "..#...", "......"]
+        e = X.nav_erode(g, 6, 4, 2)
+        for y in range(4):
+            for x in range(6):
+                fits = x <= 4 and y <= 2 and all(g[yy][xx] == "." for yy in (y, y + 1) for xx in (x, x + 1))
+                self.assertEqual(e[y][x] == ".", fits, (x, y))
+        for d in self.recipes():
+            gj = json.load(open(os.path.join(d, "grid.json"), encoding="utf-8"))
+            one = X.export(d, os.path.join(self.tmp, "a1.json"), None, "t", nav=True)
+            again = X.export(d, os.path.join(self.tmp, "a1b.json"), None, "t", nav=True, agent=1)
+            self.assertEqual(open(os.path.join(self.tmp, "a1.json"), "rb").read(),
+                             open(os.path.join(self.tmp, "a1b.json"), "rb").read())
+            for n in (2, 3):
+                out = os.path.join(self.tmp, "a%d.json" % n)
+                bars, _ = X.export(d, out, None, "t", nav=True, agent=n)
+                self.assertTrue(all(ok for _, ok, _ in bars), (d, n, bars))
+                nav = json.load(open(out, encoding="utf-8"))
+                self.assertEqual(nav["agent"]["squares"], n)
+                c = gj["cells"]
+                for r in nav["rects"]:
+                    for y in range(r["y"], r["y"] + r["h"]):
+                        for x in range(r["x"], r["x"] + r["w"]):
+                            for yy in range(y, y + n):
+                                for xx in range(x, x + n):
+                                    self.assertIn(c[yy][xx], ".+", (d, n, x, y))
+        code, err = cli_fails("export", self.recipes()[0], "--nav", "--agent", "0", "-o",
+                              os.path.join(self.tmp, "z.json"))
+        self.assertNotEqual(code, 0)
+
     def test_forced_failure_and_refusals(self):
         g = ["....", ".##.", "...."]
         nav = dict(rects=[dict(id=0, x=0, y=0, w=4, h=2)], portals=[])
