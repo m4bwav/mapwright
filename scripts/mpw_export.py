@@ -1267,17 +1267,9 @@ def nav_bars(g, w, h, nav):
 
 
 def nav_erode(g, w, h, agent):
-    """Squares an agent `agent` squares wide can stand on, anchored at its top-left square: the whole
-    agent x agent block from (x, y) must be walkable. The anchor keeps its own character (floor or door).
-    agent 1 returns the grid unchanged."""
-    if agent <= 1:
-        return [list(r) for r in g]
-    out = [["#"] * w for _ in range(h)]
-    for y in range(h - agent + 1):
-        for x in range(w - agent + 1):
-            if all(g[yy][xx] in P.PASS for yy in range(y, y + agent) for xx in range(x, x + agent)):
-                out[y][x] = g[y][x]
-    return out
+    """Top-left anchored erosion; shared with `path --agent` (mpw_path.erode)."""
+    import mpw_path
+    return mpw_path.erode(g, w, h, agent)
 
 
 def export_nav(d, out, version, agent=1):

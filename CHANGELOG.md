@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261116-13 · 2026-11-16 · 0.20.0: agent-aware path
+- because: HANDOFF backlog item "an agent-aware `path`", T-20261116-20
+- files: scripts/mpw_path.py, scripts/mpw_export.py, scripts/mpw.py, tests/test_path.py, references/cli-generate.md, README.md
+- `path --agent N` searches the same top-left anchored N x N erosion as `export --nav --agent N` (one shared function, mpw_path.erode); `--from`/`--to` name the body's top-left square; the JSON carries `agent`. Square dungeon and battle grids only; hex, decks and worlds are refused. `--agent 1` (default) is unchanged. Tests: 264 pass, 2 skip.
+
 ### C-20261116-12 · 2026-11-16 · 0.19.0: nav export agent-size erosion
 - because: HANDOFF backlog item "nav export agent-size erosion", T-20261116-19
 - files: scripts/mpw_export.py, scripts/mpw.py, tests/test_export.py, references/cli-export.md, README.md

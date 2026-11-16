@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.19.0"
+VERSION = "0.20.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -1443,7 +1443,7 @@ def cmd_path(a):
     M = _pathmod()
     out = a.out or a.dir
     try:
-        G, rc = M.build(a.dir, a.moves)
+        G, rc = M.build(a.dir, a.moves, agent=a.agent)
         if a.jps and M.jps_refusal(G):
             die(M.jps_refusal(G))
         if not a.to:
@@ -1479,6 +1479,8 @@ def cmd_path(a):
                     extra = {"locks_open": G.locks}
             if a.jps:
                 extra = dict(extra or {}, search="jps")
+            if a.agent > 1:
+                extra = dict(extra or {}, agent=dict(squares=a.agent, anchor="top-left"))
             rep = M.path_files(a.dir, out, G, s, goals[0], cost, path, exp, extra)
             rep = {k: v for k, v in rep.items() if k != "path"}
             msg = "path: cost %.4f %s, %d steps, %d cells expanded -> %s" % (rep["cost"], G.units, rep["steps"],
@@ -2177,6 +2179,8 @@ def build_parser():
     s.add_argument("--ignore-locks", action="store_true",
                    help="cyclic dungeons: treat every locked door as open (default: fetch each key before its lock)")
     s.add_argument("--jps", action="store_true", help="jump point search on 8-way square grids (same cost as A*)")
+    s.add_argument("--agent", type=int, default=1, help="square grids: body width in squares (default 1); "
+                   "--from and --to name the body's top-left square, which must have room for the whole body")
     s.add_argument("--out", help="folder for the output files (default: the recipe folder)")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_path)

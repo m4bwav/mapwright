@@ -35,6 +35,7 @@ mapwright is a skill for AI coding agents plus one small script, `mpw.py`, that 
 - **Per-place seeds** (0.17.0): `gen sector --systems` writes every world's system; `gen system --sector-seed S --hex 0118` regenerates one alone, byte-identical, from a stable hash of seed and hex.
 - **Region chunks** (0.18.0): `gen region --chunk COL,ROW [--chunk-km 250]` makes one chunk of the parent world with its own stable seed; reruns are byte-identical.
 - **Agent-size navigation** (0.19.0): `export --nav --agent N` erodes the walkable squares for a body N squares wide before merging rectangles and portals.
+- **Agent-size paths** (0.20.0): `path --agent N` routes a body N squares wide on square dungeon and battle grids, with the same erosion.
 
 - **Export** (0.7.0) to the tools that take a map further, each file read back and checked before it is reported:
   - engine heightmaps from a world or region: Unity RAW (16 bit, 2^n + 1), Unreal 16-bit PNG at landscape sizes, R16 or 16-bit PNG for Godot, a Roblox heightmap with a colormap of material colours, and a sidecar with metres per pixel, the height range and the import settings;
