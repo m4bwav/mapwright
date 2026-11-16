@@ -1,6 +1,6 @@
 # Sci-fi maps: reference for mapwright
 
-Reference for the planned `gen sector`, `gen system`, `gen planet`, `gen deck` commands and the star charts built from real catalogues. Every claim cites a source in brackets; numbers refer to the Sources list at the end. Claims I could not check against a primary source on 2026-11-14 are marked (unverified). Published settings are described only in general terms. Do not copy their maps or data into the plugin.
+Reference for the planned `gen sector`, `gen system`, `gen planet`, `gen deck` commands and the star charts built from real catalogues. Every claim cites a source in brackets; numbers refer to the Sources list at the end. Claims I could not check against a primary source on 2026-11-14 are marked (unverified); source pass 2026-11-16 resolved each as verified, corrected, blocked or practice figure. Published settings are described only in general terms. Do not copy their maps or data into the plugin.
 
 ## 1. Real star positions in 3D
 
@@ -9,7 +9,7 @@ Reference for the planned `gen sector`, `gen system`, `gen planet`, `gen deck` c
 - Distance in parsecs is the inverse of parallax in arcseconds: d = 1 / p. With parallax in milliarcseconds (Hipparcos, Gaia), d = 1000 / p_mas [1][2].
 - Inverting parallax is only honest when the relative error is small. Gaia's documentation warns that 1/p is a biased estimator once sigma_p / p goes past about 0.1-0.2, and recommends Bayesian distance estimates (such as Bailer-Jones et al.) for faint or distant stars [2][3].
 - Negative or zero parallaxes happen in Gaia data. They mean "far or noisy", never a negative distance. Drop them or use a catalogue distance estimate [2].
-- Rule for mapwright: within about 100 pc, bright stars from Hipparcos/HYG have small parallax errors and 1/p is fine (unverified as a blanket figure; check sigma_p/p per star).
+- Rule for mapwright: within about 100 pc, bright stars from Hipparcos/HYG have small parallax errors and 1/p is fine (practice figure, no single source; tunable default; check sigma_p/p per star).
 
 ### 1.2 Equatorial cartesian
 
@@ -60,8 +60,8 @@ Colour from B-V: a common approximation maps `ci` to temperature with Ballestero
 
 A 2D chart of 3D stars lies in some way. The goal is to say which way.
 
-- Project onto the galactic plane (X, Y) and print Z next to each star, in parsecs or light years, signed. This is the convention of most "stars within N light years" charts, including the Atlas of the Universe's plots of nearby stars (unverified source-wide; the site plots galactic-plane views) [7].
-- Stalks (drop lines): draw each star at (X, Y, Z) in an oblique or perspective view, with a vertical line down to its foot on the plane. The foot gives position, the stalk length gives Z. Above-plane stalks solid, below-plane dashed is a common readability choice (unverified as a standard).
+- Project onto the galactic plane (X, Y) and print Z next to each star, in parsecs or light years, signed. This is the convention of most "stars within N light years" charts, including the Atlas of the Universe's plots of nearby stars (blocked 2026-11-16: atlasoftheuniverse.com refused the TLS handshake, so the site-wide claim is not rechecked) [7].
+- Stalks (drop lines): draw each star at (X, Y, Z) in an oblique or perspective view, with a vertical line down to its foot on the plane. The foot gives position, the stalk length gives Z. Above-plane stalks solid, below-plane dashed is a common readability choice (practice figure, no single source; tunable default).
 - Two-view charts: a plan (X, Y) plus an elevation (X, Z), like an engineering drawing. Nothing is hidden, at the cost of cross-referencing.
 - Distance-preserving lie checks: nearest-neighbour pairs in 2D can be far apart in 3D. Print 3D distances on route lines, never the 2D lengths.
 - Sky maps (what you see from a point) are a different thing: use RA/Dec with a projection (stereographic for constellations, Hammer-Aitoff or Mollweide for the whole sky) [8].
@@ -122,9 +122,9 @@ EMST  subset of  RNG  subset of  Gabriel graph  subset of  Delaunay triangulatio
 - Relative neighbourhood graph (RNG): edge (p, q) if no r is closer to both p and q than they are to each other, i.e. no r with max(d(p,r), d(q,r)) < d(p,q) [14]. Sparse, connected, looks like hand-drawn lanes.
 - Euclidean minimum spanning tree (EMST): the sparsest connected one; a tree, so no loops [13].
 
-Because EMST is contained in each, RNG, Gabriel and Delaunay are all connected [13][14]. Games with hyperlanes (Stellaris-style) look like a pruned Delaunay or RNG plus a few extra loops (unverified; no primary source on any specific game's algorithm). One shipped map links each node to the start or an already linked neighbour and then adds links up to a designer-set mean connections per node (Korn and Lee, Game Dynamics, ch. 9, sec. 6). Space games drop grids for node networks, since space is points of interest in a void (Short and Adams, Procedural Generation in Game Design, ch. 10, p. 98).
+Because EMST is contained in each, RNG, Gabriel and Delaunay are all connected [13][14]. Games with hyperlanes (Stellaris-style) look like a pruned Delaunay or RNG plus a few extra loops (blocked 2026-11-16: no primary source publishes any specific game's hyperlane algorithm). One shipped map links each node to the start or an already linked neighbour and then adds links up to a designer-set mean connections per node (Korn and Lee, Game Dynamics, ch. 9, sec. 6). Space games drop grids for node networks, since space is points of interest in a void (Short and Adams, Procedural Generation in Game Design, ch. 10, p. 98).
 
-Stdlib-friendly route: RNG by brute force is O(n^3), fine up to a few thousand stars; or build the EMST with Prim's algorithm in O(n^2) and add back short Gabriel edges for loops. Delaunay in pure Python: Bowyer-Watson, O(n^2) worst case, adequate for sector sizes [13] (unverified complexity claim for typical inputs). In 3D the same definitions hold with spheres instead of discs.
+Stdlib-friendly route: RNG by brute force is O(n^3), fine up to a few thousand stars; or build the EMST with Prim's algorithm in O(n^2) and add back short Gabriel edges for loops. Delaunay in pure Python: Bowyer-Watson, O(n^2) worst case, adequate for sector sizes [13] (corrected 2026-11-16: the naive version is O(n^2); with triangle-connectivity point location it is about O(n log n) typical, O(n^2) in degenerate cases, https://en.wikipedia.org/wiki/Bowyer%E2%80%93Watson_algorithm). In 3D the same definitions hold with spheres instead of discs.
 
 ### 4.3 Proof rule: connected route graph
 
@@ -149,12 +149,12 @@ Stdlib-friendly route: RNG by brute force is O(n^3), fine up to a few thousand s
 - Delta-v maps: a "subway map" where nodes are orbits or surfaces and edges are the delta-v (km/s) between them. Total mission cost is the sum along a path [21]. Values come from the vis-viva equation v^2 = GM(2/r - 1/a) and Hohmann transfers [21]. Generated systems can compute their own delta-v map from masses and radii: low orbit speed sqrt(GM/r), escape speed sqrt(2GM/r).
 - Habitable zone: scale Earth's boundaries by sqrt(L / L_sun); Kopparapu et al. give conservative inner 0.95 and outer about 1.67 AU for the Sun (recent revisions vary) [22].
 
-Proof rule: every orbit in a system is outside the star's radius, inside its Hill sphere if a moon, and adjacent planets are separated by several mutual Hill radii (about 10 is a common stability rule of thumb, unverified as a hard limit) [23].
+Proof rule: every orbit in a system is outside the star's radius, inside its Hill sphere if a moon, and adjacent planets are separated by several mutual Hill radii (about 10 is a common stability rule of thumb; practice figure, no single source; tunable default, not a hard limit) [23].
 
 ## 7. Planet generation for non-Earth worlds
 
 - Tidally locked worlds: one hemisphere faces the star. Climate models show a hot substellar point, a cold night side, and often a habitable "terminator" band or an "eyeball" ocean around the substellar point [24]. Render with the substellar point as the texture's focus, not the equator.
-- Ice worlds: high albedo, cracks and lineae (Europa), cryovolcanic plains (unverified as a generator recipe; describe as reference). Use ridged noise for crack networks.
+- Ice worlds: high albedo, cracks and lineae (Europa), cryovolcanic plains (practice figure, no single source; tunable default; describe as reference). Use ridged noise for crack networks.
 - Ocean worlds: no continents or a few island arcs; vary colour by depth and latitude, add cloud bands.
 - Gas giants: latitude bands (zones and belts) driven by zonal jets; Jupiter has about 5-6 prograde jets per hemisphere [25]. Generate as 1D colour bands in latitude, perturbed by noise advected in longitude, plus ovals (storms).
 - Cratered bodies: crater size-frequency distributions follow a power law, N(>D) proportional to D^-b with b around 2 for many surfaces (cumulative), and saturated surfaces approach an equilibrium distribution [26][27]. Sample diameters by inverse transform from a truncated power law; place uniformly on the sphere (sample z uniform in [-1, 1], longitude uniform), larger first so small ones overprint. Simple craters have depth/diameter about 0.2 on the Moon; complex craters above about 15 km on the Moon are shallower with central peaks [27].
@@ -177,8 +177,8 @@ Numerical proof rules:
 
 ## 9. Deck plans and station layouts
 
-- Square grid, a fixed scale per square. Traveller deck plans traditionally use 1.5 m squares, two squares per displacement ton of volume at 3 m deck height (unverified for current editions) [11].
-- Conventions shared by most published deck plans (unverified as a formal standard): walls as thick lines, doors as gaps with a swing or slide mark, irises as circles, airlocks as two doors with a small room, ladders and lifts with symbols, a legend and a scale bar, one drawing per deck with decks aligned on a common grid so lifts line up.
+- Square grid, a fixed scale per square. Traveller deck plans traditionally use 1.5 m squares, two squares per displacement ton of volume at 3 m deck height; T5 states one ton as two deck squares with 3 m deck separation, and some plans use a 2 m ceiling (3 squares per ton) and TNE a 2 m grid (checked 2026-11-16 against https://wiki.travellerrpg.com/Layout and https://wiki.travellerrpg.com/DTon; community wiki, not the rulebook text) [11].
+- Conventions shared by most published deck plans (practice figure, no single source; tunable default): walls as thick lines, doors as gaps with a swing or slide mark, irises as circles, airlocks as two doors with a small room, ladders and lifts with symbols, a legend and a scale bar, one drawing per deck with decks aligned on a common grid so lifts line up.
 - Orientation: "up" on a ship under thrust is away from the drive, so decks stack along the thrust axis; spinning habitats put "down" outward (see section 10).
 - Stations: rings, hub-and-spoke, or stacked cylinders; label the rotation axis and spin direction.
 - Decks, stations and castles are space-first: generate the plan, abstract it to a room graph, then fit the mission to it. The plan must offer doors and bottlenecks to hang locks on (Shaker, Togelius and Nelson, Procedural Content Generation in Games, ch. 5, p. 88). Check (ours): at least one bridge edge, a door whose removal splits the graph, per requested lock.
@@ -236,7 +236,7 @@ Proof rule: `deck-reachability`. Model each deck as a grid graph (floor cells, d
 8. Snyder, J. P. 1987, Map Projections: A Working Manual, USGS Professional Paper 1395. https://pubs.usgs.gov/pp/1395/report.pdf
 9. Traveller Map, "Sector File Formats". https://travellermap.com/doc/fileformats
 10. Patel, A., Red Blob Games, "Hexagonal Grids". https://www.redblobgames.com/grids/hexagons/
-11. Traveller rules (Mongoose Traveller core rulebook; Traveller5) for UWP, jump and deck-plan scale; general description only (unverified edition specifics). https://www.mongoosepublishing.com/
+11. Traveller rules (Mongoose Traveller core rulebook; Traveller5) for UWP, jump and deck-plan scale; general description only (blocked 2026-11-16: edition rulebooks are paid and not checked; deck scale checked against the Traveller wiki, see deck plans). https://www.mongoosepublishing.com/
 12. Traveller Map, "About". https://travellermap.com/doc/about
 13. de Berg, Cheong, van Kreveld, Overmars 2008, Computational Geometry: Algorithms and Applications, 3rd ed., ch. 9 (Delaunay triangulations, including EMST and RNG containment exercises). https://doi.org/10.1007/978-3-540-77974-2
 14. Toussaint, G. T. 1980, "The relative neighbourhood graph of a finite planar set", Pattern Recognition 12(4), 261-268. https://doi.org/10.1016/0031-3203(80)90066-7
