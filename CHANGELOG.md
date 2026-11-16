@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261116-9 · 2026-11-16 · 0.16.0: ink-and-parchment carries period 1600
+- because: HANDOFF next item 1 (built-in styles with a period year), T-20261116-16
+- files: scripts/mpw_render.py, tests/test_mpw.py, README.md
+- The ink-and-parchment style now has `period=1600` (early-modern look), so `check --style ink-and-parchment` adds the period bar without `--period`; a Mollweide or Robinson recipe in that style now fails it. The modern styles carry no year. Tests: 255 pass, 2 skip.
+
 ### C-20261116-8 · 2026-11-16 · 0.15.0: check --period
 - because: build backlog row 3 (period lint), T-20261116-15
 - files: scripts/mpw_render.py, scripts/mpw.py, tests/, TESTS.md

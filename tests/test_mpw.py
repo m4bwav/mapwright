@@ -767,6 +767,14 @@ class TestRender(unittest.TestCase):
         with self.assertRaises(ValueError):
             R.period_lint(set(), 1800, "globe")
 
+    def test_builtin_style_period(self):
+        R = self.R
+        self.assertEqual(R.STYLES["ink-and-parchment"].get("period"), 1600)
+        self.assertNotIn("period", R.STYLES["topographic"])
+        j = json.loads(run_cli("check", self.world, "--no-regen", "--no-labels", "--style", "ink-and-parchment", "--json"))
+        pb = [b for b in j if b["name"].startswith("period 1600")]
+        self.assertTrue(pb and pb[0]["ok"], pb)
+
     def test_check_period_cli(self):
         j = json.loads(run_cli("check", self.world, "--no-regen", "--no-labels", "--period", "1900", "--json"))
         self.assertTrue([b for b in j if b["name"].startswith("period")][0]["ok"])
