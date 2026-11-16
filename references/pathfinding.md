@@ -69,7 +69,7 @@ Many grid paths have the same cost, so A* can flood a wide band of equal f. Fixe
 ### 1.5 Weighted and bidirectional search
 
 - Weighted A*: multiply an admissible h by a factor above 1. The path costs at most that factor times the optimum [WP-A].
-- Bidirectional search runs from both ends and stops when the two frontiers prove no better meeting point exists. The first meeting is not always the best one. It needs reversible edges or a reversed graph (textbook material, not fetched: unverified).
+- Bidirectional search runs from both ends and stops when the two frontiers prove no better meeting point exists. The first meeting is not always the best one. It does not need reversible edges, only each node's predecessors (a reversed graph) [Bidir]; the first-meeting point is blocked: not stated in the source read.
 
 ---
 
@@ -92,7 +92,7 @@ Harabor and Grastien, AAAI 2011 [JPS]:
 Botea, Müller and Schaeffer 2004 [HPA]:
 
 - Cut the grid into square clusters. Find entrances on cluster borders. Build an abstract graph of entrances with the cost of crossing each cluster. Search the abstract graph, then refine each leg inside its cluster, then smooth.
-- Reported: up to 10 times faster than a highly tuned A*, with paths within 1 percent of optimal (unverified: abstract seen in a search result; the paper's PDF returned 404). Cluster size 10x10 (unverified).
+- Reported: up to 10 times faster than a highly tuned A*, with paths within 1 percent of optimal (blocked: author PDF moved to sites.ualberta.ca and returns 404, papersdb returned 502 on 2026-11-16; figures agree across search summaries). Cluster size 10x10 (blocked: same, paper not readable).
 - Use: very large maps, or many agents, where a slightly long path is fine. Clusters can be rebuilt one at a time when the map changes.
 
 ### 2.3 Precomputed distances
@@ -280,7 +280,7 @@ Values computed from the formula:
 
 - Uphill and downhill differ, so travel time is a directed cost.
 - For A* on time, h = straight-line distance / fastest speed anywhere (6 km/h on foot, more if roads or horses are in play).
-- Naismith's rule is the older rule of thumb: about 5 km/h plus an hour per 600 m climbed (unverified).
+- Naismith's rule is the older rule of thumb: about 5 km/h plus an hour per 600 m climbed [Naismith].
 
 ### 8.4 Route graphs in space
 
@@ -375,7 +375,9 @@ Order suggested: `path` and its field first (everything else reuses them), then 
 - [WP-A] Wikipedia, "A* search algorithm". https://en.wikipedia.org/wiki/A*_search_algorithm. Original paper, not read: Hart, P. E., Nilsson, N. J., Raphael, B. "A Formal Basis for the Heuristic Determination of Minimum Cost Paths." IEEE Transactions on Systems Science and Cybernetics 4(2), 1968. https://doi.org/10.1109/TSSC.1968.300136
 - [JPS] Harabor, D., Grastien, A. "Online Graph Pruning for Pathfinding on Grid Maps." AAAI 2011. https://harabor.net/data/papers/harabor-grastien-aaai11.pdf (PDF text read)
 - [JPS-B] Harabor, D. "Jump Point Search", 2011-09-07. https://harablog.wordpress.com/2011/09/07/jump-point-search/
-- [HPA] Botea, A., Müller, M., Schaeffer, J. "Near Optimal Hierarchical Path-Finding." Journal of Game Development 1(1), 2004 (unverified: PDF at webdocs.cs.ualberta.ca returned 404; page range differs between listings).
+- [HPA] Botea, A., Müller, M., Schaeffer, J. "Near Optimal Hierarchical Path-Finding." Journal of Game Development 1(1), 2004 (blocked: PDF at webdocs.cs.ualberta.ca redirects to sites.ualberta.ca and returns 404, 2026-11-16; page range differs between listings, 1-22 or 7-28).
+- [Bidir] Wikipedia, "Bidirectional search", https://en.wikipedia.org/wiki/Bidirectional_search, accessed 2026-11-16.
+- [Naismith] Wikipedia, "Naismith's rule", https://en.wikipedia.org/wiki/Naismith%27s_rule, accessed 2026-11-16.
 - [GB] Rabin, S., Sturtevant, N. R. "Faster A* with Goal Bounding." Game AI Pro 3, chapter 22. http://www.gameaipro.com/GameAIPro3/GameAIPro3_Chapter22_Faster_A_Star_with_Goal_Bounding.pdf (PDF text read)
 - [TH] Nash, A., Daniel, K., Koenig, S., Felner, A. "Theta*: Any-Angle Path Planning on Grids." AAAI 2007. https://cdn.aaai.org/AAAI/2007/AAAI07-187.pdf (PDF text read)
 - [WP-TH] Wikipedia, "Theta*". https://en.wikipedia.org/wiki/Theta*
