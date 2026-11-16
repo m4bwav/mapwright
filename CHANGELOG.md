@@ -4,6 +4,12 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261116-3 · 2026-11-16 · Evals rerun, learnings consolidated, test runs archived
+- The dd2vtt action case now needs a gen-battle recipe (seed 3, 20x16) that passes `mpw.py check`; a lone .dd2vtt fails it. Rerun: 13/14 (T-20261116-2), find-place undertriggers (L-042).
+- LEARNINGS consolidated (41 to 17 active): merged L-022 into L-021, L-031 into L-010, L-033 into L-020; archived L-001..L-008, L-011, L-013..L-019, L-023, L-025, L-027, L-036, L-037, L-040 to LEARNINGS-ARCHIVE.md as enforced by tests or code; code names added to L-009, L-010, L-012, L-020.
+- TESTS.md runs T-20261114-1 to T-20261115-5 moved to TESTS-ARCHIVE.md.
+- because: T-20261116-2
+
 ### C-20261116-2 · 2026-11-16 · 0.10.3: VERSION constant, README bar count, Hill spacing note
 - because: wiki run for 0.10.2 found mpw.py VERSION stuck at 0.10.0, README "(0.2.0, unreleased)" and 13 bars, CHANGELOG 0.6.0 Hill spacing vs the check bar's 10
 - files: scripts/mpw.py, plugin.json, .claude-plugin/plugin.json, README.md, CHANGELOG.md
