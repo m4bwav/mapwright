@@ -13,6 +13,24 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 - Evidence: T-20261116-8, T-20261116-9
 - Scope: skill
 
+### L-046 · 2026-11-16 · `legend-place-recipes`: `mpw.py legend` crashed on place recipes looking for mesh.json
+- Trigger: the wiki run called `legend` on a battle map.
+- Rule: battle maps list their own legend rows (text, --json, -o svg); city and dungeon refuse with "has no legend" and exit 1.
+- Evidence: T-20261116-6 (test_legend_cli_on_place_recipes)
+- Scope: skill
+
+### L-045 · 2026-11-16 · `treasure-off-room`: branch treasure was drawn at the graph cell centre plus one, which misses rooms 3 squares tall
+- Trigger: s17 sample dungeon-77-branches; seed 77 room 21 spans y 15-17, the marker went to y 18.
+- Rule: `treasure_cell` picks the floor cell inside the room nearest one square below its centre; the SVG marker and the GeoJSON point both use it. Old placement: 49 misplaced across 3 x 40 cyclic seeds; new: 0.
+- Evidence: T-20261116-6
+- Scope: skill
+
+### L-044 · 2026-11-16 · `battle-frame-bands`: battle title and legend hid map squares
+- Trigger: s17 battle-31-normal.png, legend over the bottom-right squares, title over trees.
+- Rule: battle maps (square and hex) draw the grid inside `<g class="map" transform="translate(0,top)">` with a title band above and a legend band below. Export PNGs stay grid only, so the SVG is taller than the Tiled/VTT PNG. Render is still byte-deterministic.
+- Evidence: T-20261116-6
+- Scope: skill
+
 ### L-048 · 2026-11-16 · `bar7-arid-floor`: bar 7 does not judge the rain shadow when the windward side is under 50 cm/yr
 - Trigger: L-009; an arid child at exactly 20 samples failed on 4.9 vs 5.2 cm/yr.
 - Hypothesis: in a desert there is no moisture to shadow; a difference of tenths of a cm/yr is noise.

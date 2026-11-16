@@ -31,6 +31,11 @@ Entry shape: `### T-YYYYMMDD-n · date · harness · env · passed/total`, then 
 - Each run in a fresh temp folder with copies of scripts/ and tests/fixtures/. Trigger runs capped at 3 turns. Unittest: 220 pass, 2 skip.
 - not covered: interactive loop, second OS, repeated action runs, whether the moved detail is read when needed (actions passed, so the pointers held for dungeon and dd2vtt).
 - led to: L-042 closed
+### T-20261116-7 · 2026-11-16 · skill eval trigger-projection, `claude -p --plugin-dir` (sonnet) · Windows · 3/3 passed
+- Prompt: projection choice for Antarctica plus projecting three points. mapwright fired in 3 of 3 runs, so the description change did not undertrigger it.
+### T-20261116-6 · 2026-11-16 · unittest (tests/) · Windows · 241 passed, 2 skipped (after merging origin/main)
+- New: battle title/legend outside the grid (square + hex, 3 seeds), treasure on a floor cell inside its room (cyclic --branches 2/4/8, 40 seeds each), legend CLI on battle and dungeon recipes. Battle render PNG rendered twice: same md5.
+- led to: L-044, L-045, L-046
 ### T-20261116-3 · 2026-11-16 · pytest + scratch sweeps (mapwright-lab/s17/sweep_battle.py, sweep_cyclic.py) · Windows · 225 passed, 2 skipped
 - gen battle 30 seeds x 3 densities x 2 grids, 30x20, check (determinism on seeds 1-3): 0 failing; feature share square sparse 0.098/0.136/0.173 (min/mean/max), normal 0.220/0.222/0.227, dense 0.320/0.322/0.327; hex sparse 0.055/0.075/0.098, normal 0.220/0.222/0.227, dense 0.320/0.322/0.328; legend kinds = kinds present on all 180 maps; 0.8-2.1 s per 30 maps.
 - gen dungeon cyclic --branches 2/4/8, 30 seeds 48x36: 0 failing (rank, adjacency, key before lock, return path, goal sealed); 2.0, 4.0, 7.7 branches per map; 1.6-2.1 s per 30.

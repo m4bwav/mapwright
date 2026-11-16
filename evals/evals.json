@@ -75,6 +75,13 @@
       "runs": 3
     },
     {
+      "id": "trigger-projection",
+      "kind": "trigger",
+      "prompt": "Which map projection should I use for a map of Antarctica? Then project these points into it: (-77.85, 166.67), (-90, 0), (-64.77, -64.05).",
+      "expectations": ["the mapwright skill is invoked"],
+      "runs": 3
+    },
+    {
       "id": "decoy-codemap",
       "kind": "trigger",
       "decoy": true,
