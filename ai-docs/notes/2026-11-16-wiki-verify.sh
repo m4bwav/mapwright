@@ -1,11 +1,11 @@
 #!/bin/sh
 # Runs every example on the mapwright wiki in a scratch copy of the tagged release and prints each output.
-# Usage: sh ai-docs/notes/2026-11-16-wiki-verify.sh [TAG] > out.txt   (from the repository root; TAG defaults to v0.10.2)
+# Usage: sh ai-docs/notes/2026-11-16-wiki-verify.sh [TAG] > out.txt   (from the repository root; TAG defaults to v0.11.0)
 # mapwright is not on a registry: the scripts/ and tests/fixtures/ of the tag are copied out with git archive.
 # Network commands (find --online, fetch) are not run; their page examples carry an outputs: skip marker.
 set -e
 export PYTHONIOENCODING=utf-8
-TAG=${1:-v0.10.2}
+TAG=${1:-v0.11.0}
 REPO=$(pwd)
 W=$(mktemp -d)
 git -C "$REPO" archive "$TAG" scripts tests/fixtures | tar -x -C "$W"
@@ -70,6 +70,12 @@ run $M check crypt.map --fair
 run $M check --range bsp --seeds 20
 run $M gen battle --seed 2 --grid square --out field.map
 run $M gen battle --seed 2 --grid hex --out hexes.map
+# --- 0.11.0
+run $M gen battle --seed 2 --grid square --density sparse --out sparse.map
+run $M gen battle --seed 2 --grid square --density dense --out dense.map
+run python -c "import re;[print(m, re.findall('<text x=.2737[^>]*>([^<]*)', open(m+'/map.svg').read())) for m in ('sparse.map','field.map','dense.map')]"
+run $M gen dungeon --seed 3 --method cyclic --branches 3 --out wings.map
+run $M check wings.map
 run $M render crypt.map -o crypt.svg --style blueprint --title "The Crypt"
 # --- space (0.6.0)
 run $M gen sector --seed 5 --out spin.map
@@ -104,6 +110,13 @@ run $M path crypt.map --from 2,2 --to 30,20 --moves 4
 run $M path crypt.map --field --to 30,20
 run ls crypt.map
 run $M path ship.map --from 1,2,3 --to 2,19,10
+run $M path keep.map --from 10,32 --to 17,17
+run python -c "import json;d=json.load(open('keep.map/path.json'));print('locks', d['locks'], 'keys', d['keys'])"
+run $M path keep.map --from 10,32 --to 17,17 --ignore-locks
+run $M path crypt.map --from 2,2 --to 30,20 --jps
+run $M path hexes.map --from 1,1 --to 10,8 --jps
+run $M export crypt.map --nav -o crypt-nav.json
+run python -c "import json;d=json.load(open('crypt-nav.json'));print(sorted(d)); print({k:len(v) for k,v in d.items() if isinstance(v,list)})"
 run $M path isles.map --from 200,200 --to 400,300
 run $M travel isles.map --from 200,200 --to 400,300 --mode walk
 run $M travel isles.map --from 200,200 --to 400,300 --mode horse
