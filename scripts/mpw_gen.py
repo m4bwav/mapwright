@@ -234,13 +234,18 @@ def land_heights(seed, M, nplates):
     return H, upl, plate, kind, pinfo
 
 
-def priority_flood(H, nb, ocean, eps=EPS_FLOOD):
-    """Barnes et al. Priority-Flood with epsilon; returns filled F and push parents."""
+def priority_flood(H, nb, ocean, eps=EPS_FLOOD, outlets=()):
+    """Barnes et al. Priority-Flood with epsilon; returns filled F and push parents.
+
+    outlets: land cells on a window edge that drain out of the map (seeded like sea)."""
     n = len(H)
     F = H[:]
     closed = [False] * n
     parent = [-1] * n
     pq = []
+    for c in sorted(outlets):
+        closed[c] = True
+        heapq.heappush(pq, (F[c], c))
     for c in range(n):
         if ocean[c]:
             closed[c] = True
@@ -260,11 +265,11 @@ def priority_flood(H, nb, ocean, eps=EPS_FLOOD):
     return F, parent
 
 
-def receivers(F, nb, ocean):
+def receivers(F, nb, ocean, outlets=()):
     n = len(F)
     rcv = [-1] * n
     for c in range(n):
-        if ocean[c]:
+        if ocean[c] or c in outlets:
             continue
         best = F[c]
         b = -1
@@ -316,13 +321,17 @@ def erode(H, upl, M, steps, kdt=0.0045, udt=0.004):
     return H
 
 
-def hydrology(H, nb, thr, inflow=None):
-    """Final water routing: filled heights, receivers, accumulation, lakes, rivers."""
+def hydrology(H, nb, thr, inflow=None, outlets=()):
+    """Final water routing: filled heights, receivers, accumulation, lakes, rivers.
+
+    outlets: window-edge cells that drain out of the map; used only when the map
+    holds no sea, so water has somewhere to go (L-009)."""
     n = len(H)
     ocean = [h < 0 for h in H]
-    F, parent = priority_flood(H, nb, ocean)
+    outlets = set(outlets) if not any(ocean) else set()
+    F, parent = priority_flood(H, nb, ocean, outlets=outlets)
     raised = [(not ocean[c]) and F[c] > H[c] + 1e-12 for c in range(n)]
-    rcv = receivers(F, nb, ocean)
+    rcv = receivers(F, nb, ocean, outlets)
     for c in range(n):
         if raised[c]:
             rcv[c] = parent[c]   # inside a filled flat, follow the flood tree to the spill
@@ -379,7 +388,7 @@ def hydrology(H, nb, thr, inflow=None):
     for c in range(n):
         if rcv[c] >= 0:
             up[rcv[c]].append(c)
-    stack = [c for c in range(n) if ocean[c]]
+    stack = [c for c in range(n) if ocean[c] or c in outlets]
     while stack:
         c = stack.pop()
         for q in up[c]:
@@ -388,7 +397,8 @@ def hydrology(H, nb, thr, inflow=None):
             stack.append(q)
     acc, _ = accumulate(F, rcv, inflow)
     river = [(not ocean[c]) and acc[c] >= thr for c in range(n)]
-    return dict(ocean=ocean, F=F, rcv=rcv, acc=acc, lake=lake, lakes=lakes, river=river, lakes_retreed=fixed)
+    return dict(ocean=ocean, F=F, rcv=rcv, acc=acc, lake=lake, lakes=lakes, river=river, lakes_retreed=fixed,
+                outlets=sorted(outlets))
 
 
 # ------------------------------------------------------------------ climate
@@ -736,6 +746,8 @@ def write_folder(out, recipe, M, H, hyd, temp, prec, biome, window, R, deltas=()
                 river=[1 if v else 0 for v in hyd["river"]], ocean=[1 if v else 0 for v in hyd["ocean"]],
                 lake=hyd["lake"], temp=[rnd(v, 3) for v in temp], prec=[rnd(v, 2) for v in prec],
                 biome=biome, deltas=list(deltas))
+    if hyd.get("outlets"):
+        mesh["outlets"] = hyd["outlets"]
     # human layer and names work on the stored (rounded) mesh, so files alone rebuild them
     thr = recipe["params"]["river_threshold"]
     if parent_ctx:
@@ -961,6 +973,44 @@ def parent_ref(parent, out):
         return os.path.abspath(parent).replace("\\", "/")
 
 
+def _clip_exit(ax, ay, bx, by, x0, y0, x1, y1):
+    """Point where segment a(inside)->b(outside) leaves the rectangle."""
+    t = 1.0
+    for v, d, lo, hi in ((ax, bx - ax, x0, x1), (ay, by - ay, y0, y1)):
+        if d > 0:
+            t = min(t, (hi - v) / d)
+        elif d < 0:
+            t = min(t, (lo - v) / d)
+    return ax + (bx - ax) * t, ay + (by - ay) * t
+
+
+def edge_outlets(M, H, PX, PY, prcv, pacc, pocean, window):
+    """Border cells where the parent's flow leaves the window (L-009).
+
+    Every parent flow edge from a cell inside the window to one outside marks the
+    child border cell nearest its exit point; hydrology drains through them when the
+    window holds no sea. The biggest exit always counts; smaller ones need a tenth of
+    its area, so a few real outlets carry the water instead of every border cell."""
+    x0, y0, x1, y1 = window
+    border = M["border"]
+    X, Y = M["X"], M["Y"]
+    bcells = [c for c in range(len(X)) if border[c]]
+    exits = []
+    for p in range(len(PX)):
+        r = prcv[p]
+        if r < 0 or pocean[p]:
+            continue
+        if not (x0 <= PX[p] <= x1 and y0 <= PY[p] <= y1) or (x0 <= PX[r] <= x1 and y0 <= PY[r] <= y1):
+            continue
+        ex, ey = _clip_exit(PX[p], PY[p], PX[r], PY[r], x0, y0, x1, y1)
+        c = min(bcells, key=lambda q: ((X[q] - ex) ** 2 + (Y[q] - ey) ** 2, q))
+        exits.append((pacc[p], c))
+    if not exits:
+        return [min(bcells, key=lambda q: (H[q], q))] if bcells else []   # lowest edge cell
+    top = max(a for a, _ in exits)
+    return sorted({c for a, c in exits if a >= 0.1 * top})
+
+
 def gen_region(parent, window, cells, out, detail=0.03, raster_px=512, version="0.2.0", ref=None):
     import mpw_names
     _LAT.clear()
@@ -1069,6 +1119,7 @@ def gen_region(parent, window, cells, out, detail=0.03, raster_px=512, version="
             hit = cg.near(PX[r], PY[r], 1)
             if hit:
                 inflow[hit[0][1]] += pacc[p] / ratio
+    outlets = edge_outlets(M, H, PX, PY, prcv, pacc, pocean, (x0, y0, x1, y1))
     pthr = prec_["params"]["river_threshold"]
     thr = max(8.0, pthr / ratio / 4.0)     # smaller rivers than the parent shows
     # the parent's settlements and roads stood on dry land: where the finer child
@@ -1097,15 +1148,15 @@ def gen_region(parent, window, cells, out, detail=0.03, raster_px=512, version="
     for c in sorted(keep):
         if H[c] < 1e-4:
             H[c] = 1e-4
-    hyd = hydrology(H, M["nb"], thr, inflow)
+    hyd = hydrology(H, M["nb"], thr, inflow, outlets)
     for _ in range(3):
         wet = [c for c in sorted(keep) if hyd["lake"][c] >= 0]
         if not wet:
             break
         for c in wet:
             H[c] = hyd["F"][c] + 1e-4
-        hyd = hydrology(H, M["nb"], thr, inflow)
-    # parent river paths are rivers in the child, down to the sea or a lake
+        hyd = hydrology(H, M["nb"], thr, inflow, outlets)
+    # parent river paths are rivers in the child, down to the sea, a lake or an edge outlet
     for c in sorted(forced):
         cur = c
         guard = 0
@@ -1224,6 +1275,9 @@ FILES = ("recipe.json", "features.geojson", "heights.png", "heights.pgw", "mesh.
          "sources.json", "map.svg")
 
 
+SHADOW_MIN_WET = 50   # cm/yr windward mean below which bar 7 does not judge the rain shadow
+
+
 def check(d, determinism=True):
     """Land proof bars. Returns list of (number, name, ok, detail)."""
     rc = load(d, "recipe.json")
@@ -1232,14 +1286,15 @@ def check(d, determinism=True):
     n = len(X)
     nb = _neighbours(m)
     bars = []
-    # 1 downhill
+    # 1 downhill (a landlocked window drains through its edge outlets, L-009)
+    outl = set(m.get("outlets", []))
     bad = 0
     for c in range(n):
         if not river[c]:
             continue
         cur = c
         steps = 0
-        while not ocean[cur]:
+        while not ocean[cur] and cur not in outl:
             r = rcv[cur]
             if r < 0 or r not in nb[cur] or not F[r] < F[cur] or steps > n:
                 bad += 1
@@ -1248,7 +1303,7 @@ def check(d, determinism=True):
             steps += 1
     nriv = sum(river)
     bars.append((1, "every river runs downhill to the sea or through a lake to it", bad == 0,
-                 "%d river cells, %d failures" % (nriv, bad)))
+                 "%d river cells, %d failures%s" % (nriv, bad, ", %d edge outlets" % len(outl) if outl else "")))
     # 2 no split outside a marked delta
     deltas = set(m.get("deltas", []))
     split = 0
@@ -1365,10 +1420,12 @@ def check(d, determinism=True):
     up = sum(wind_up) / len(wind_up) if wind_up else 0.0
     dn = sum(wind_dn) / len(wind_dn) if wind_dn else 0.0
     few = len(wind_up) < 20 or len(wind_dn) < 20
-    shadow = few or up > dn
+    arid = not few and up < SHADOW_MIN_WET   # nothing to shadow: judged on noise (L-009, T-20261116-8)
+    shadow = few or arid or up > dn
     bars.append((7, "climate: temperature falls poleward; lee of mountains drier", mono and shadow,
                  "sea-level temp by 10-deg band %s; windward %.0f vs leeward %.0f cm/yr%s"
-                 % ("/".join("%.1f" % v for v in means), up, dn, " (too few samples, shadow not judged)" if few else "")))
+                 % ("/".join("%.1f" % v for v in means), up, dn, " (too few samples, shadow not judged)" if few else
+                    " (windward under %d cm/yr, too arid to judge)" % SHADOW_MIN_WET if arid else "")))
     bars += human_bars(d, rc, m, nb, feats, diff)
     return bars
 

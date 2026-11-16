@@ -8,6 +8,20 @@ Entry shape: `### T-YYYYMMDD-n · date · harness · env · passed/total`, then 
 
 ## Runs
 
+### T-20261116-9 · 2026-11-16 · unittest (tests/) + grandchild sweep after the edge-outlet fix · Windows, Python 3.14 · 238/238 passed, 2 skipped (live) in 78 s
+- New tests: hydrology drains a no-sea valley to its outlet and ignores outlets when sea exists; a seed 2 all-land grandchild has border outlets, rivers, and passes every bar with determinism; bar 7 says "too arid to judge" when the floor is raised.
+- Sweep seeds 1-8 (20 maps): g2_0 now 93 river cells, 0 failures, 1 edge outlet, bar 6 max 0.149 parent spacings (was 0.158); g1_0 40 rivers / 4 outlets, g1_1 13 rivers / 10 outlets, all bars pass.
+- Byte identity (sha256 of all 8 files) against origin/main: all 8 worlds, 8 children and grandchild g2_1 (which has sea) identical; only the three all-land grandchildren changed.
+- led to: L-047, L-009 closed
+
+### T-20261116-8 · 2026-11-16 · bar 7 rain-shadow sweep before changing the bar (scratch sweep7.py) · Windows, Python 3.14 · measurement only
+- 24 seeds: world 1,600 cells, child (default window) 4,000 cells, 48 maps. Windward/leeward samples counted as bar 7 does.
+- 12 maps had both sides at 20 or more samples (judged); 36 skipped. Judged: windward 136.6-617.8 cm/yr, leeward 4.7-43.2, smallest difference 115.3 (child seed 24: 136.6 vs 21.3). Every judged map had windward above leeward.
+- The L-009 failure was an arid child at exactly 20 samples, 4.9 vs 5.2 cm/yr: a desert with no moisture to shadow, judged on noise.
+- Decision from these numbers: judge the shadow only when the windward mean is at least 50 cm/yr (a third of the smallest judged windward mean, ten times the arid case), keeping the 20-sample floor. None of the 12 judged maps changes verdict.
+- Grandchild sweep (scratch sweep.py, seeds 1-8, world and child 1,600 cells, up to two all-land grandchild windows): before the fix g2_0 failed bar 1 (60 river cells, 60 failures); g1_0 and g1_1 passed only because they had 0 rivers.
+- led to: L-047, L-048
+
 ### T-20261116-5 · 2026-11-16 · skill evals after shortening the description to 1,007 characters · 10/10 runs
 - `python evals/run.py`: trigger-find-place 3/3; trigger-read-gpx, trigger-path, trigger-export 1/1 each; four decoys 0 fired (1 run each). Pytest 233 pass, 2 skip on the merged branch.
 
