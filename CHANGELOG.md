@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261116-11 · 2026-11-16 · 0.18.0: per-place seeds for region chunks
+- because: book-build backlog row 4 (rest), T-20261116-18
+- files: scripts/mpw_gen.py, scripts/mpw.py, tests/test_mpw.py, README.md
+- `gen region --chunk COL,ROW [--chunk-km 250]` windows one chunk of the parent; its detail seed is `place_seed(world_seed, "region", "col,row@km")`, recorded under `place` so `check` regenerates it. Coast and rivers still come from the parent. Default outputs byte-identical. Tests: 260 pass, 2 skip.
+
 ### C-20261116-10 · 2026-11-16 · 0.17.0: per-place seeds for sector systems
 - because: book-build backlog row 4 (SA ch. 26), T-20261116-17
 - files: scripts/mpw_space.py, scripts/mpw.py, tests/test_space.py

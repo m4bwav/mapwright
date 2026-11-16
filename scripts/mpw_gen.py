@@ -1060,13 +1060,41 @@ def edge_outlets(M, H, PX, PY, prcv, pacc, pocean, window):
     return sorted({c for a, c in exits if a >= 0.1 * top})
 
 
-def gen_region(parent, window, cells, out, detail=0.03, raster_px=512, version="0.2.0", ref=None):
+def place_seed(world_seed, kind, ident):
+    """Per-place seed: a stable 63-bit blake2b hash of the world seed and the place's identity (kind plus
+    hex, chunk or name), so one place regenerates alone without being stored. Same as mpw_space.place_seed;
+    never the built-in hash()."""
+    key = ("%d|%s|%s" % (int(world_seed), kind, ident)).encode("utf-8")
+    return int.from_bytes(hashlib.blake2b(key, digest_size=8).digest(), "big") >> 1
+
+
+def chunk_window(col, row, km):
+    """Window of chunk (col, row) on a square grid of km-wide chunks over the parent's 0..WORLD map."""
+    col, row, km = int(col), int(row), float(km)
+    if km <= 0 or col < 0 or row < 0 or (col + 1) * km > WORLD + 1e-9 or (row + 1) * km > WORLD + 1e-9:
+        raise ValueError("chunk %d,%d of %g km lies outside 0..%g" % (col, row, km, WORLD))
+    return (col * km, row * km, (col + 1) * km, (row + 1) * km)
+
+
+def gen_region(parent, window, cells, out, detail=0.03, raster_px=512, version="0.2.0", ref=None, chunk=None):
+    """chunk=(col, row, km): the window is that chunk and the child's detail seed is
+    place_seed(world seed, "region", "col,row@km"), so the chunk regenerates alone; coast and rivers still
+    come from the parent. Without chunk the child uses the world seed (unchanged output)."""
     import mpw_names
     _LAT.clear()
     t0 = time.perf_counter()
     prec_ = load(parent, "recipe.json")
     pm = load(parent, "mesh.json")
     seed = prec_["seed"]
+    place = None
+    if chunk is not None:
+        if window is not None:
+            raise ValueError("--chunk sets the window; give one or the other")
+        col, row, km = int(chunk[0]), int(chunk[1]), float(chunk[2])
+        window = chunk_window(col, row, km)
+        ident = "%d,%d@%s" % (col, row, ("%g" % km))
+        place = dict(world_seed=int(seed), chunk=[col, row], chunk_km=km)
+        seed = place_seed(seed, "region", ident)
     if window is None:
         window = pick_window(pm)
     x0, y0, x1, y1 = window
@@ -1222,7 +1250,9 @@ def gen_region(parent, window, cells, out, detail=0.03, raster_px=512, version="
                   projection=prec_["projection"], heights=prec_["heights"],
                   extent=[x0, y0, x1, y1],
                   parent=dict(path=ref if ref is not None else parent_ref(parent, out), window=[x0, y0, x1, y1]),
-                  deltas=[], language=prec_.get("language") or mpw_names.make_language(seed))
+                  deltas=[], language=prec_.get("language") or mpw_names.make_language(prec_["seed"]))
+    if place is not None:
+        recipe["place"] = place
     pnames = load(parent, "names.json").get("names") or []
     ctx = dict(mesh=pm, features=pfe, names=pnames, sp=psp, open_sea=lambda: open_sea_dir(parent))
     info = write_folder(out, recipe, M, H, hyd, temp, prc, biome, (x0, y0, x1, y1), raster_px, parent_ctx=ctx)
@@ -1366,8 +1396,13 @@ def regenerate(d, tmp):
         gen_world(rc["seed"], p["cells"], tmp, p["plates"], p["erosion_steps"], p["lat_top"], p["lat_bottom"],
                   p["raster_px"], rc["tool_version"], language=rc.get("language"))
     else:
-        gen_region(parent_dir(d, rc), tuple(rc["parent"]["window"]), p["cells"], tmp, p["detail"],
-                   p["raster_px"], rc["tool_version"], ref=rc["parent"]["path"])
+        pl = rc.get("place")
+        if pl:
+            gen_region(parent_dir(d, rc), None, p["cells"], tmp, p["detail"], p["raster_px"], rc["tool_version"],
+                       ref=rc["parent"]["path"], chunk=(pl["chunk"][0], pl["chunk"][1], pl["chunk_km"]))
+        else:
+            gen_region(parent_dir(d, rc), tuple(rc["parent"]["window"]), p["cells"], tmp, p["detail"],
+                       p["raster_px"], rc["tool_version"], ref=rc["parent"]["path"])
 
 
 FILES = ("recipe.json", "features.geojson", "heights.png", "heights.pgw", "mesh.json", "names.json",
