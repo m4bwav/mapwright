@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261116-8 · 2026-11-16 · 0.15.0: check --period
+- because: build backlog row 3 (period lint), T-20261116-15
+- files: scripts/mpw_render.py, scripts/mpw.py, tests/, TESTS.md
+- `check --period YEAR` (with `--period-kind map|chart|mappa` and `--uses`) fails every convention on the map younger than YEAR (bar scale 1275, contours 1791, Mercator 1569, Robinson 1963 and the rest of the book table); a style may carry a `period` year. Tests: 254 pass, 2 skip.
+
 ### C-20261116-7 · 2026-11-16 · 0.14.0: harbour ranking caps ports
 - because: L-058 (port share 0.889 on 24 worlds), T-20261116-14
 - files: scripts/mpw_gen.py, tests/, LEARNINGS.md, TESTS.md

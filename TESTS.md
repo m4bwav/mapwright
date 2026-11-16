@@ -12,6 +12,10 @@ Entry shape: `### T-20261116-14 · 2026-11-16 · pytest (tests/) + port-share sw
 
 ## Runs
 
+### T-20261116-15 · 2026-11-16 · pytest (python -m pytest -q tests) after row 3, `check --period` · Windows · 254 passed, 2 skipped (live) in 81 s
+- New: test_period_lint_rules (every row-3 year one year early fails and on the year passes; chart and mappa rules; Greenwich only warns; unknown convention or kind refused), test_check_period_cli (topographic world passes 1900, fails 1700 on bar scale, compass rose and tints; `--uses robinson` fails 1900; ink-and-parchment chart passes 1500).
+- led to: none
+
 ### T-20261116-11 · 2026-11-16 · pytest (python -m pytest -q) + blocks sweeps after the path restart · Windows, Python 3.14 · 244 passed, 2 skipped (live) in 91 s
 - New tests (TestBlocks, 5): a blocks map passes every bar and regenerates byte for byte; a 49x49 map has a 7x7 grid with bar 40; 200 seeds pass the goal and block bars; the block bars catch a dropped exit and a short count; maps under 21 squares refused; the CLI writes method blocks.
 - Sweep seeds 1 to 1,000 at 48x36: 0 bar failures; restarts 0: 658, 1: 221, 2: 80, 3: 32, 4: 6, 5: 3.

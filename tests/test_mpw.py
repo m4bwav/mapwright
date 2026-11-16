@@ -742,6 +742,44 @@ class TestRender(unittest.TestCase):
         with self.assertRaises(SystemExit):
             run_cli("render", self.world, "-o", self.out("x.bmp"))
 
+    def test_period_lint_rules(self):
+        R = self.R
+        self.assertEqual(R.map_conventions("topographic"), {"bar-scale", "compass-rose", "elevation-tints"})
+        self.assertIn("square-grid", R.map_conventions("blueprint"))
+        self.assertIn("mercator", R.map_conventions("atlas", {"projection": {"name": "Mercator"}}))
+        cases = [("bar-scale", 1274, "map", False), ("bar-scale", 1275, "map", True),
+                 ("ratio-scale", 1805, "map", False), ("land-contours", 1790, "map", False),
+                 ("hachures", 1798, "map", False), ("elevation-tints", 1803, "map", False),
+                 ("mercator", 1568, "map", False), ("mollweide", 1804, "map", False), ("albers", 1804, "map", False),
+                 ("robinson", 1962, "map", False), ("robinson", 1963, "map", True), ("dot-map", 1829, "map", False),
+                 ("shaded-area", 1830, "map", False), ("flow-lines", 1836, "map", False),
+                 ("latitude-scale", 1499, "chart", False), ("graticule", 1499, "chart", False),
+                 ("graticule", 1450, "map", True), ("compass-rose", 1374, "chart", False),
+                 ("graticule", 1399, "mappa", False), ("bar-scale", 1350, "mappa", False),
+                 ("bar-scale", 1350, "chart", True), ("rhumb-lines", 1299, "mappa", False)]
+        for conv, year, kind, ok in cases:
+            self.assertIs(R.period_lint({conv}, year, kind)[0][1], ok, (conv, year, kind))
+        bars = R.period_lint({"greenwich", "bar-scale"}, 1850)
+        self.assertTrue(bars[0][1])
+        self.assertIn("WARN", bars[1][2])
+        with self.assertRaises(ValueError):
+            R.period_lint({"telegraph"}, 1800)
+        with self.assertRaises(ValueError):
+            R.period_lint(set(), 1800, "globe")
+
+    def test_check_period_cli(self):
+        j = json.loads(run_cli("check", self.world, "--no-regen", "--no-labels", "--period", "1900", "--json"))
+        self.assertTrue([b for b in j if b["name"].startswith("period")][0]["ok"])
+        with self.assertRaises(SystemExit):
+            run_cli("check", self.world, "--no-regen", "--no-labels", "--period", "1700")
+        buf = io.StringIO()
+        with redirect_stdout(buf), self.assertRaises(SystemExit):
+            mpw.main(["check", self.world, "--no-regen", "--no-labels", "--period", "1900", "--uses", "robinson"])
+        self.assertIn("Robinson", buf.getvalue())
+        out = run_cli("check", self.world, "--no-regen", "--no-labels", "--style", "ink-and-parchment",
+                      "--period", "1500", "--period-kind", "chart")
+        self.assertIn("PASS: period 1500 (chart)", out)
+
     def test_river_width_by_flow(self):
         svg, _ = self.R.render_svg(self.world)
         g = svg.split('class="rivers"')[1].split("</g>")[0]

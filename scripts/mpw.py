@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.14.0"
+VERSION = "0.15.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -1578,6 +1578,22 @@ def cmd_check(a):
         ab = _aistyle().bars(a.dir)
         nxt = max(b[0] for b in bars) + 1
         bars += [(nxt + i, name, ok, detail) for i, (name, ok, detail) in enumerate(ab)]
+    period = a.period
+    if period is None and a.style in _render().STYLES:
+        period = _render().STYLES[a.style].get("period")  # a style may carry its year
+    if period is not None:
+        r = _render()
+        try:
+            used = set()
+            if _kind(a.dir) not in ("city", "dungeon", "battle") + SPACE:
+                with open(os.path.join(a.dir, "recipe.json"), encoding="utf-8") as f:
+                    used = r.map_conventions(a.style, json.load(f))
+            used |= {u.strip() for u in (a.uses or "").split(",") if u.strip()}
+            pb = r.period_lint(used, period, a.period_kind)
+        except ValueError as e:
+            die(str(e))
+        nxt = max(b[0] for b in bars) + 1
+        bars += [(nxt + i, name, ok, detail) for i, (name, ok, detail) in enumerate(pb)]
     if a.json:
         print(json.dumps([dict(bar=b[0], name=b[1], ok=b[2], detail=b[3]) for b in bars], indent=1))
     else:
@@ -2120,6 +2136,12 @@ def build_parser():
     s.add_argument("--no-labels", action="store_true", help="skip the label bars (overlap, edge, OCR)")
     s.add_argument("--style", default="topographic", help="style the label bars render with")
     s.add_argument("--no-aistyle", action="store_true", help="skip the bars on styled pictures (*.aistyle.json) in the folder")
+    s.add_argument("--period", type=int, help="period lint: fail every convention on the map younger than YEAR "
+                   "(first-use tables, book dates; a style may carry a 'period' year)")
+    s.add_argument("--period-kind", choices=("map", "chart", "mappa"), default="map",
+                   help="--period: land map, sea chart or mappa mundi (their rules differ)")
+    s.add_argument("--uses", help="--period: more conventions the map carries, comma separated (e.g. "
+                   "mercator,land-contours,dot-map,greenwich)")
     s.add_argument("--chokepoints", action="store_true", help="grid recipes: cells whose loss cuts the map, what each "
                    "cuts off, the minimum cut entrance to goal; writes chokepoints.json")
     s.add_argument("--fair", action="store_true", help="grid recipes: per-start distances to resources and "
