@@ -19,7 +19,7 @@ Sources: https://docs.mapbox.com/api/guides/mcp-server/ ,
 https://docs.mapbox.com/location-ai/mcp-servers/mcp-server/ , https://github.com/mapbox/mcp-server/wiki
 
 **Mapbox Developer MCP server.** A second Mapbox server aimed at style and token work for
-developers (style editing, previews) (unverified: only a directory listing was seen).
+developers (style editing, previews) (blocked: glama.ai page rendered no readable listing to curl, 2026-11-16; only a directory listing was ever seen).
 Source: https://glama.ai/mcp/servers/jwhmevnk9z
 
 **Google Maps Grounding Lite.** Google's hosted MCP server at
@@ -126,7 +126,7 @@ fantasy generator.
 |---|---|---|---|---|
 | MapLibre GL JS | WebGL vector-tile renderer, fork of Mapbox GL JS v1 | BSD-3-Clause | ~1.06 MB `dist/maplibre-gl.js` (minified) at v6.18.0; LICENSE.txt is BSD-3-Clause (https://cdn.jsdelivr.net/npm/maplibre-gl/dist/maplibre-gl.js, https://github.com/maplibre/maplibre-gl-js/blob/main/LICENSE.txt, checked 2026-11-16) | https://github.com/maplibre/maplibre-gl-js |
 | MapLibre Style Spec | JSON style language (sources, layers, expressions) | BSD-3-Clause, with bundled third-party notices (an MIT part, d3-color BSD-3) in its LICENSE.txt; no ISC seen (checked 2026-11-14, https://github.com/maplibre/maplibre-style-spec) | small npm pkg | https://maplibre.org/maplibre-style-spec/ |
-| MapLibre Native (`@maplibre/maplibre-gl-native`) | C++ renderer with Node bindings; headless PNG render of a style | BSD-2-Clause | prebuilt binaries tens of MB (unverified) | https://github.com/maplibre/maplibre-native |
+| MapLibre Native (`@maplibre/maplibre-gl-native`) | C++ renderer with Node bindings; headless PNG render of a style | BSD-2-Clause | prebuilt binaries tens of MB (blocked: npm metadata gives only the 17 KB package, binaries download separately; size not stated, 2026-11-16) | https://github.com/maplibre/maplibre-native |
 | Leaflet | Small raster/vector-overlay JS map library | BSD-2-Clause | ~42 KB gz JS | https://leafletjs.com/ |
 | OpenLayers | Full-featured JS GIS client, many projections | BSD-2-Clause | large npm, tree-shakable | https://openlayers.org/ |
 | Mapnik | C++ server-side raster renderer (OSM Carto uses it) | LGPL-2.1 | native build, heavy | https://github.com/mapnik/mapnik |
@@ -153,7 +153,7 @@ Notes:
    PNG buffer without a browser. Needs Node and a prebuilt binary per platform.
    Source: https://github.com/maplibre/maplibre-native/tree/main/platform/node
 2. **Playwright or Puppeteer screenshot** of a MapLibre/Leaflet page: the most faithful,
-   but needs a ~150 MB+ Chromium download (unverified size). Playwright is Apache-2.0.
+   but needs a ~150 MB+ Chromium download (blocked: playwright.dev/docs/browsers states no size, 2026-11-16). Playwright is Apache-2.0.
    Source: https://playwright.dev/docs/screenshots
 3. **Static-map APIs** (Mapbox Static Images, Google Static Maps) need keys and cost money.
    Source: https://docs.mapbox.com/api/maps/static-images/
@@ -165,7 +165,7 @@ Notes:
 | Program | Kind | Licence / price | Source |
 |---|---|---|---|
 | Wonderdraft | Desktop fantasy world/region map painter, `.wonderdraft_map` files | Proprietary, one-time US$29.99; Windows 10 64-bit or Ubuntu (https://wonderdraft.net/, checked 2026-11-16) | https://www.wonderdraft.net/ |
-| Dungeondraft | Desktop battle-map maker by the same team; `.dungeondraft_map` is JSON (unverified); exports Universal VTT | Proprietary, one-time US$19.99; Windows 10 64-bit or Ubuntu, no ARM64 (https://dungeondraft.net/, checked 2026-11-16) | https://dungeondraft.net/ |
+| Dungeondraft | Desktop battle-map maker by the same team; `.dungeondraft_map` is JSON (blocked: dungeondraft.net does not document the format, 2026-11-16); exports Universal VTT | Proprietary, one-time US$19.99; Windows 10 64-bit or Ubuntu, no ARM64 (https://dungeondraft.net/, checked 2026-11-16) | https://dungeondraft.net/ |
 | Inkarnate | Browser fantasy map maker, free tier and Pro subscription | Proprietary SaaS | https://inkarnate.com/ |
 | Azgaar's Fantasy Map Generator | Browser procedural world generator (Voronoi cells, heightmap, rivers, states, cultures); `.map` save, SVG/PNG/GeoJSON export | MIT (checked 2026-11-14, https://raw.githubusercontent.com/Azgaar/Fantasy-Map-Generator/master/LICENSE, "Copyright 2017-2024 Max Haniyeu") | https://github.com/Azgaar/Fantasy-Map-Generator |
 | Watabou generators | Medieval Fantasy City Generator, One Page Dungeon, Village, Perilous Shores etc.; browser | Freeware; the city generator source is public as watabou/TownGeneratorOS under GPL-3.0, an older Haxe version missing later features such as water bodies (checked 2026-11-14, https://watabou.itch.io/medieval-fantasy-city-generator/devlog/6592/source-code). Other generators are closed; terms for outputs (could not verify) | https://watabou.github.io/ , https://watabou.itch.io/ |
@@ -187,8 +187,8 @@ Notes for mapwright:
   SpaceEngine and Universe Sandbox are closed. mapwright can read their exports (PNG,
   heightmaps, Universal VTT JSON) but should not try to reproduce them.
 - Universal VTT (`.dd2vtt`, `.uvtt`) is a documented JSON with a base64 image plus walls,
-  doors and lights; good stdlib read/write target (unverified spec location).
-  Source: https://arkenforge.com/universal-vtt-files/ (unverified)
+  doors and lights; good stdlib read/write target. No formal spec found; the format is Megasploot's (Dungeondraft), and the Arkenforge explainer lists the core JSON tags (image, resolution, line_of_sight, portals, lights, baked_lighting); .dd2vtt, .df2vtt and .uvtt are the same file.
+  Source: https://arkenforge.com/universal-vtt-files/ (verified 2026-11-16)
 
 ### Non-AI generation methods worth porting (checked 2026-11-14)
 - **Wave Function Collapse** (mxgmn/WaveFunctionCollapse): tile and overlap constraint solver for dungeons, towns and tile maps. MIT, copyright 2016 Maxim Gumin; the sample images and tiles are excluded from the licence, so port the algorithm, not the samples. https://raw.githubusercontent.com/mxgmn/WaveFunctionCollapse/master/LICENSE
