@@ -121,6 +121,8 @@ class SquareGraph(Graph):
             raise ValueError("square maps take X,Y (column, row from the top-left, 0-based)")
         n = (int(v[0]), int(v[1]))
         if n not in self.ok:
+            if getattr(self, "agent", 1) > 1:
+                raise ValueError("%d,%d has no room for a %d-square body anchored at its top-left" % (n + (self.agent,)))
             raise ValueError("%d,%d is not a floor square" % n)
         return n
 
@@ -283,14 +285,35 @@ class MeshGraph(Graph):
         return ((self.m["x"][n] - self.x0) * self.s, (self.m["y"][n] - self.y0) * self.s)
 
 
-def build(d, moves=8, cost="road"):
+def erode(g, w, h, agent):
+    """Squares where an agent `agent` squares wide may stand, anchored at its top-left square: the whole
+    agent x agent block from (x, y) must be walkable. The anchor keeps its own character. agent 1 is a copy."""
+    if agent <= 1:
+        return [list(r) for r in g]
+    out = [["#"] * w for _ in range(h)]
+    for y in range(h - agent + 1):
+        for x in range(w - agent + 1):
+            if all(g[yy][xx] in P.PASS for yy in range(y, y + agent) for xx in range(x, x + agent)):
+                out[y][x] = g[y][x]
+    return out
+
+
+def build(d, moves=8, cost="road", agent=1):
     rc = _load(d, "recipe.json")
     k = rc.get("kind")
+    if agent < 1:
+        raise ValueError("--agent is the body width in squares, 1 or more")
+    if agent > 1 and not (k in ("dungeon", "battle") and _load(d, "grid.json")["grid"] == "square"):
+        raise ValueError("--agent works on square dungeon and battle grids")
     if k in ("dungeon", "battle"):
         gj = _load(d, "grid.json")
         if gj["grid"] == "hex":
             return HexGraph(gj, rc["params"]["pps"]), rc
-        return SquareGraph(gj, rc["params"]["pps"], moves), rc
+        if agent > 1:
+            gj = dict(gj, cells=erode(gj["cells"], gj["w"], gj["h"], agent))
+        G = SquareGraph(gj, rc["params"]["pps"], moves)
+        G.agent = agent
+        return G, rc
     if k == "deck":
         return DeckGraph(_load(d, "deck.json"), rc["params"].get("pps", 16)), rc
     if k in ("world", "region"):

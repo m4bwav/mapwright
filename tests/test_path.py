@@ -417,5 +417,51 @@ class JumpPoints(unittest.TestCase):
         self.assertIn("references/games-film-print.md", run_cli("explain", "navmesh"))
 
 
+class AgentBars(Fixtures):
+    def test_hand_corridor(self):
+        rows = ["#######", "#.....#", "#.....#", "###.###", "#.....#", "#.....#", "#######"]
+        g = M.erode(rows, 7, 7, 2)
+        G = M.SquareGraph(dict(w=7, h=7, cells=g), 10)
+        self.assertIsNone(M.search(G, (1, 1), [(1, 4)])[0])  # one-square gap blocks a 2-wide body
+        rows[3] = "###..##"
+        G = M.SquareGraph(dict(w=7, h=7, cells=M.erode(rows, 7, 7, 2)), 10)
+        self.assertIsNotNone(M.search(G, (1, 1), [(1, 4)])[0])
+
+    def test_body_fits_every_step_and_agent1_identical(self):
+        for name in ("bsp", "cave", "battle"):
+            d = self.d[name]
+            G1, _ = M.build(d)
+            self.assertEqual(getattr(G1, "agent", 1), 1)
+            G2, _ = M.build(d, agent=2)
+            gj = json.load(open(os.path.join(d, "grid.json"), encoding="utf-8"))
+            c = gj["cells"]
+            for s, t in pairs(G2, 20):
+                cost, path, _ = M.search(G2, s, [t])
+                if cost is None:
+                    continue
+                c1 = M.search(G1, s, [t])[0]
+                self.assertGreaterEqual(cost + 1e-9, c1)
+                for x, y in path:
+                    for yy in (y, y + 1):
+                        for xx in (x, x + 1):
+                            self.assertIn(c[yy][xx], ".+", (name, x, y))
+
+    def test_cli_and_refusals(self):
+        d = self.d["battle"]
+        G2, _ = M.build(d, agent=2)
+        s = G2.nodes[0]
+        dist = M.dijkstra(G2.out, [s])[0]
+        t = max(dist, key=lambda n: (dist[n], n))
+        o = os.path.join(self.tmp, "ag")
+        out = run_cli("path", d, "--from", "%d,%d" % s, "--to", "%d,%d" % t, "--agent", "2", "--out", o, "--json")
+        self.assertEqual(json.loads(out).get("agent", {}).get("squares", 2), 2)
+        for args in (("--agent", "0"),):
+            with self.assertRaises(SystemExit):
+                run_cli("path", d, "--from", "%d,%d" % s, "--to", "%d,%d" % t, *args)
+        for name in ("hex", "deck", "world"):
+            with self.assertRaises(ValueError):
+                M.build(self.d[name], agent=2)
+
+
 if __name__ == "__main__":
     unittest.main()

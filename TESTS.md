@@ -155,5 +155,8 @@ New TestPlaceSeeds: `place_seed` pinned and stable; `gen system --sector-seed 7 
 
 Older runs (T-20261114-1 to T-20261115-5): [TESTS-ARCHIVE.md](TESTS-ARCHIVE.md).
 
+### T-20261116-20 · 2026-11-16 · path --agent
+- pytest tests: 264 pass, 2 skip (71 s). AgentBars: hand grid (a one-square gap blocks a 2-wide body, a two-square gap passes); bsp, cave and battle at agent 2: 20 random pairs each, every path square's 2 x 2 body is walkable and the cost is never below the agent-1 cost; CLI JSON carries agent; agent 0 refused; hex, deck and world refused.
+
 ### T-20261116-19 · 2026-11-16 · nav --agent erosion
 - pytest tests: 261 pass, 2 skip (71 s). TestNav.test_agent_erosion: 6x4 hand grid against the fit rule; 20 recipes (block, cave, cyclic, battle x 5 seeds) at agent 2 and 3 pass every nav bar and every rect square's N x N body is walkable; agent 1 byte-identical to no flag; agent 0 refused.
