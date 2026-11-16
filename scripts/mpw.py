@@ -1346,7 +1346,8 @@ def cmd_gen_place(a):
             cave = {k: getattr(a, k) for k in ("fill", "passes", "birth", "survival", "radius", "border")
                     if getattr(a, k, None) is not None}
             r = P.gen_grid(a.what, a.seed, a.out, a.w, a.h, getattr(a, "method", "bsp"), getattr(a, "grid", "square"),
-                           a.pps, a.style, VERSION, a.name_style, cave=cave or None)
+                           a.pps, a.style, VERSION, a.name_style, cave=cave or None,
+                           density=getattr(a, "density", None), branches=getattr(a, "branches", None))
     except (ValueError, OSError, KeyError) as e:
         die(str(e))
     if a.json:
@@ -1997,6 +1998,8 @@ def build_parser():
     d.add_argument("--survival", type=int, help="cave: wall stays wall at this many wall neighbours (default 4)")
     d.add_argument("--radius", type=int, choices=(1, 2), help="cave: neighbourhood radius, 1 = 8 cells, 2 = 24")
     d.add_argument("--border", type=int, help="cave: solid border in squares (default 1)")
+    d.add_argument("--branches", type=int, help="cyclic: dead-end side branches, 0 to 8 (treasure, secret doors; "
+                                                "never a key). Default none")
     d.add_argument("--w", type=int, default=48, help="width in squares")
     d.add_argument("--h", type=int, default=36, help="height in squares")
     d.add_argument("--pps", type=int, default=70, help="pixels per square (whole number)")
@@ -2006,6 +2009,9 @@ def build_parser():
     b.add_argument("--w", type=int, default=30, help="width in squares or hexes")
     b.add_argument("--h", type=int, default=20, help="height in squares or hex rows")
     b.add_argument("--pps", type=int, default=100, help="pixels per square (hex: hex width, even)")
+    b.add_argument("--density", choices=("sparse", "normal", "dense"), default="normal",
+                   help="share of squares holding a feature: sparse = the pre-0.11 map (about 0.13 square, 0.07 hex), "
+                        "normal 0.22, dense 0.32")
     sc = gs.add_parser("sector", help="hex subsector or sector: worlds, T5 tab file, connected routes; --real for near stars")
     sc.add_argument("--seed", type=int, default=1)
     sc.add_argument("--size", choices=("subsector", "sector"), default="subsector", help="8x10 or 32x40 hexes")

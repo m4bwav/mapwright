@@ -8,6 +8,14 @@ Entry shape: `### T-YYYYMMDD-n · date · harness · env · passed/total`, then 
 
 ## Runs
 
+### T-20261116-3 · 2026-11-16 · pytest + scratch sweeps (mapwright-lab/s17/sweep_battle.py, sweep_cyclic.py) · Windows · 225 passed, 2 skipped
+- gen battle 30 seeds x 3 densities x 2 grids, 30x20, check (determinism on seeds 1-3): 0 failing; feature share square sparse 0.098/0.136/0.173 (min/mean/max), normal 0.220/0.222/0.227, dense 0.320/0.322/0.327; hex sparse 0.055/0.075/0.098, normal 0.220/0.222/0.227, dense 0.320/0.322/0.328; legend kinds = kinds present on all 180 maps; 0.8-2.1 s per 30 maps.
+- gen dungeon cyclic --branches 2/4/8, 30 seeds 48x36: 0 failing (rank, adjacency, key before lock, return path, goal sealed); 2.0, 4.0, 7.7 branches per map; 1.6-2.1 s per 30.
+- Default byte-identity against origin/main: cyclic and bsp seeds 1, 5, 9, 13, 21, 30 (grid.json, map.svg, map.png, features.geojson) identical; battle --density sparse grid.json and map.png identical for seeds 3, 31.
+- System HZ key: 60 seeds x 2 views, key present iff band drawn (3 schematic maps with no band).
+- Not done: L-009 first half (landlocked window drain), left open.
+- led to: L-041 closed, L-050, L-051
+
 ### T-20261116-2 · 2026-11-16 · skill evals, `claude -p --plugin-dir` (sonnet, other installed plugins present) · Windows · 13/14 passed (one run per case)
 - Triggers 7/8: read-gpx, write-kml, fantasy gen, sci-fi sector, deck plan, path, export fired mapwright. trigger-find-place missed (no skill; answered the OSM licence from memory and offered Overpass); two reruns: 1 hit, 1 miss, so 1 of 3 (L-042).
 - Decoys 4/4: codemap (evergreen-map), choropleth (none), 3D place (polywright-capture), pixel tiles (pixelwright + comfyui-gen).
