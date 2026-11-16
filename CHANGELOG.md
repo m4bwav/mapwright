@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261116-10 · 2026-11-16 · 0.17.0: per-place seeds for sector systems
+- because: book-build backlog row 4 (SA ch. 26), T-20261116-17
+- files: scripts/mpw_space.py, scripts/mpw.py, tests/test_space.py
+- `gen sector --systems` writes systems/<hex>/ for each world, each from `place_seed(seed, "system", hex)` (blake2b, 8 bytes); `gen system --sector-seed S --hex H` makes the same system alone, byte-identical. Tests: 258 pass, 2 skip.
+
 ### C-20261116-9 · 2026-11-16 · 0.16.0: ink-and-parchment carries period 1600
 - because: HANDOFF next item 1 (built-in styles with a period year), T-20261116-16
 - files: scripts/mpw_render.py, tests/test_mpw.py, README.md
