@@ -6,6 +6,49 @@ Entry shape: `### T-YYYYMMDD-n · date · harness · env · passed/total`, then 
 
 ## Runs
 
+### T-20261115-6 · 2026-11-15 · unittest (tests/) + dungeon sweeps · Windows, Python 3.14 · 203/203 passed, 2 skipped (live) in 54 s (after rebase on 0.8.0)
+- New (15, tests/test_places.py; 1, tests/test_find.py).
+- Backward compatibility: two recipes written by 0.7.0 (tests/fixtures/dungeon-070-bsp, dungeon-070-cave) pass `check` with byte-identical regeneration and get no goal bars. New behaviour is keyed on `params.goal`, which 0.7.0 recipes lack. The cave defaults redraw the 0.7.0 cave cell for cell.
+- Goal and path (backlog rows 8, 9, 10). Entrance by two sweeps (the room centre, or square, farthest from a first point), goal at the square farthest from the entrance by BFS. Bar: goal distance equals the map maximum, tolerance 0. Minimum path: map width. Measured over 100 seeds before the bar, path over width: bsp 48x36 min 1.33 (median 1.88), cave 48x36 min 0.92 (1.50), bsp 30x24 min 1.00, cave 30x24 min 0.70. Cave fell under the width on 1 of 100 seeds at 48x36 and 6 of 100 at 30x24, so a short bsp or cave map is re-rolled from stream 3000 + k (at most 16). Over 200 seeds: re-rolls bsp 0, cave 1 (48x36) and 19 (30x24); 0 bar failures. Isolated walls (fewer than two orthogonal wall neighbours) are turned to floor until none is left; doors that lose a wall flank become floor. Forced faults fail their bar: goal moved next to the entrance (farthest and path), a wall square opened on all sides (isolated).
+- Cave sweep (row 5), 48x36, seeds 1 to 100, before pruning and cleanup. Largest-region share = largest floor region over all floor; open-floor share = floor kept over all squares.
+
+| setting | fill | passes | birth/survival | largest-region share (mean, min) | open-floor share (mean, min) |
+|---|---|---|---|---|---|
+| sweep | 0.40 | 2 | 5/4 | 0.993, 0.920 | 0.649, 0.571 |
+| sweep | 0.40 | 3 | 5/4 | 0.994, 0.925 | 0.668, 0.579 |
+| sweep | 0.40 | 4 | 5/4 | 0.996, 0.929 | 0.679, 0.591 |
+| sweep | 0.40 | 5 | 5/4 | 0.996, 0.932 | 0.687, 0.598 |
+| sweep | 0.45 | 2 | 5/4 | 0.912, 0.450 | 0.491, 0.224 |
+| sweep | 0.45 | 3 | 5/4 | 0.925, 0.461 | 0.505, 0.227 |
+| sweep | 0.45 | 4 | 5/4 | 0.931, 0.461 | 0.513, 0.224 |
+| sweep | 0.45 | 5 | 5/4 | 0.933, 0.465 | 0.518, 0.225 |
+| sweep | 0.50 | 2 | 5/4 | 0.606, 0.187 | 0.248, 0.071 |
+| sweep | 0.50 | 3 | 5/4 | 0.640, 0.214 | 0.257, 0.068 |
+| sweep | 0.50 | 4 | 5/4 | 0.651, 0.220 | 0.258, 0.067 |
+| sweep | 0.50 | 5 | 5/4 | 0.660, 0.221 | 0.258, 0.064 |
+| sweep | 0.55 | 2 | 5/4 | 0.332, 0.126 | 0.091, 0.031 |
+| sweep | 0.55 | 3 | 5/4 | 0.365, 0.139 | 0.092, 0.029 |
+| sweep | 0.55 | 4 | 5/4 | 0.387, 0.146 | 0.091, 0.027 |
+| sweep | 0.55 | 5 | 5/4 | 0.406, 0.148 | 0.090, 0.025 |
+| code default (0.7.0) | 0.45 | 5 | 5/4 | 0.933, 0.465 | 0.518, 0.225 |
+| Johnson et al. 2010, r=1 | 0.50 | 4 | 5/4 | 0.651, 0.220 | 0.258, 0.067 |
+| Johnson et al. 2010, r=2, T=13 | 0.50 | 4 | 13/13, radius 2 | 0.920, 0.371 | 0.425, 0.128 |
+| STN (Johnson), 3 passes | 0.50 | 3 | 5/4 | 0.640, 0.214 | 0.257, 0.068 |
+| Caves of Qud | 0.55 | 2 | 6/5, border 2 | 0.976, 0.551 | 0.571, 0.275 |
+
+- Cave ruling: the default stays fill 0.45, 5 passes, 5/4. Fill moves the cave far more than passes do. At 0.40 the cave is two thirds open, an open field more than a cave. At 0.50 and above a third or more of the floor sits in cut-off pockets that pruning throws away, and open floor drops to a quarter. Caves of Qud's rule scores better on both metrics but needs a different rule and a two-square border; it is one flag set away (`--fill 0.55 --passes 2 --birth 6 --survival 5 --border 2`). Johnson's numbers are read as counting the cell itself (T=5 of 9 is 5/4 here); the paper's 50 % fill with our 8-cell rule loses a third of the floor.
+- Cyclic (row 1), 48x36, seeds 1 to 200: 0 failures on cycle rank 2 to 5, edges between bordering cells with an open door, key before lock with the lock a real gate (graph and squares, one-way doors honoured), return path from goal to entrance, completion path (key first) at least the map width, no isolated walls. 10 deterministic graph re-rolls in 200 seeds (stream 2000 + k); 30x24 needs 501 re-rolls in 200 seeds. Forced faults fail their bar: key moved to the goal, the goal valve reversed (lock no longer a gate, on the graph and on the squares), lock and valve turned one-way into the goal (no return path), an edge between cells that do not touch, five duplicate edges (rank 10). Maps under 22x22 refused.
+- Expressive range (row 2), `check --range`, 48x36, seeds 1 to 500. Metrics: loop share (corridor squares, in no 2x2 open block, that lie on a loop, over corridor squares; 0 when there are none), dead-end share (squares in parts joined to the rest by a single bridge, over open squares), completion path over the map diagonal, open-floor share. Normalised min to max across the sample, 10 x 10 bins. Stability is the total variation distance between the first 250 seeds and all 500 on the same bins.
+
+| method | loop share (min, mean, max) | dead-end share | path / diagonal | open-floor share | loop x dead-end: bins used, fullest, TV | path x open: bins used, fullest, TV |
+|---|---|---|---|---|---|---|
+| bsp | 0.000, 0.499, 1.000 | 0.000, 0.380, 0.998 | 1.033, 1.528, 2.300 | 0.369, 0.469, 0.595 | 73, 4.4 %, 0.114 | 72, 6.2 %, 0.142 |
+| cave | 0.000, 0.033, 1.000 | 0.000, 0.312, 1.000 | 0.800, 1.224, 1.983 | 0.225, 0.523, 0.715 | 12, 65.2 % DOMINANT, 0.018 | 58, 9.6 %, 0.128 |
+| cyclic | 1.000, 1.000, 1.000 | 0.000, 0.000, 0.000 | 0.900, 2.044, 3.767 | 0.081, 0.185, 0.299 | 1, 100 % DOMINANT, 0.000 | 57, 4.8 %, 0.138 |
+
+- Range reading: cyclic has every corridor on a loop and no dead ends by construction, so its first heatmap is one bin; that is the flag doing its job, and dead-end branches are the open item. Most caves have no one-square corridor at all, so loop share reads 0 for 65 % of them: the metric does not describe caves. Distances of 0.11 to 0.14 between 250 and 500 seeds on 100 bins say the fine plot is still moving; the book's rule (grow until it stops) wants more seeds or coarser bins, not yet chosen. Time: 500 seeds bsp 3 s, cave 7 s, cyclic 1 s.
+- geoBoundaries (fetch): an API answer whose `boundaryLicense` is "Open Data Commons Open Database License 1.0" (the LIE ADM0 shape, mocked) is recorded with that licence and its source in sources.json and CREDITS.txt; the file named by its `gjDownloadURL` gets the same licence; a geoBoundaries file without an API answer is recorded as licence unknown, never as CC BY 4.0.
+- led to: L-033, L-034, L-035
 ### T-20261115-5 · 2026-11-15 · unittest (tests/) + aistyle grid on a real server · Windows, Python 3.14, Chrome 157, ComfyUI 0.44.2, Z-Image Turbo (bf16) on an RTX 5060 Ti 16 GB · 188/188 passed, 2 skipped (live) in 43 s
 - New (24 and one live test, tests/test_aistyle.py; the HTTP layer and the SVG rasteriser are faked, so no GPU, network or browser): looks and template; slots keep their types; workflow hash stable and seed-sensitive; denoise step grid; model size; a swapped model marks the licence unstated; `render_parts` joins to the byte-identical render in all six styles; the control picture has no text, circles, legend, scale bar or north arrow; dry run writes the control PNG and workflow and makes no HTTP call; a full faked pass calls stats, upload, prompt, history, view in that order and writes picture, raw styled picture and sidecar (model, licence class, look, prompt, seed, denoise, steps, workflow hash, tool version, numbers; no server address); the check bar passes, fails on a swapped picture (sha256) and on a picture shifted 9 px (land IoU), skips when the picture is gone, and is absent with no sidecar; server errors (400 on queue, an execution error, a timeout) and a missing host are plain messages; doctor without a host makes no call; no LAN address in any public file.
 - Label bars on a styled picture: the code-set layer of the composite (labels, rivers, legend, scale bar, north arrow) equals the labelled render's layer line for line in atlas and ink-and-parchment, and `label_bars` gives the same result for both, so bars 14 and 15 (no overlap, none cut by the edge) hold by construction. The OCR read-back bar stays skipped: tesseract is not installed here; the reason is printed, never a pass.

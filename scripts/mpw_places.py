@@ -688,25 +688,247 @@ def bsp_dungeon(w, h, rng, leaf=9, loops=0.12):
     return g, rooms
 
 
-def cave_dungeon(w, h, rng, fill=0.45, passes=5):
-    g = [[WALLC if (x in (0, w - 1) or y in (0, h - 1) or rng.random() < fill) else FLOOR for x in range(w)]
+CAVE_DEFAULTS = dict(fill=0.45, passes=5, birth=5, survival=4, radius=1, border=1)
+
+
+def cave_dungeon(w, h, rng, fill=0.45, passes=5, birth=5, survival=4, radius=1, border=1, stats=None):
+    """Cellular cave. A floor cell turns to wall at `birth` or more wall neighbours, a wall cell stays wall at
+    `survival` or more; neighbours within `radius` (1: 8 cells, 2: 24), outside the grid counts as wall.
+    With the defaults this draws and decides exactly as 0.7.0 did (wall at 5+, floor at 3-)."""
+    b = border
+    g = [[WALLC if (x < b or x >= w - b or y < b or y >= h - b or rng.random() < fill) else FLOOR for x in range(w)]
          for y in range(h)]
+    offs = [(dx, dy) for dy in range(-radius, radius + 1) for dx in range(-radius, radius + 1) if dx or dy]
     for _ in range(passes):
         ng = [row[:] for row in g]
-        for y in range(1, h - 1):
-            for x in range(1, w - 1):
-                n = sum(g[y + dy][x + dx] == WALLC for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dx or dy)
-                ng[y][x] = WALLC if n >= 5 else (FLOOR if n <= 3 else g[y][x])
+        for y in range(b, h - b):
+            for x in range(b, w - b):
+                n = sum(1 for dx, dy in offs if not (0 <= x + dx < w and 0 <= y + dy < h) or g[y + dy][x + dx] == WALLC)
+                ng[y][x] = WALLC if n >= (survival if g[y][x] == WALLC else birth) else FLOOR
         g = ng
     regions = flood_regions(g, w, h)
     if not regions:
         raise ValueError("cave came out solid; try another seed or a lower fill")
-    keep = set(max(regions, key=len))
+    big = max(regions, key=len)
+    if stats is not None:
+        stats["largest_region_share"] = len(big) / float(sum(len(r) for r in regions))
+    keep = set(big)
     for y in range(h):
         for x in range(w):
             if g[y][x] == FLOOR and (x, y) not in keep:
                 g[y][x] = WALLC
     return g, []
+
+
+def isolated_walls(g, w, h):
+    """Interior wall cells with fewer than two orthogonal wall neighbours."""
+    return [(x, y) for y in range(1, h - 1) for x in range(1, w - 1) if g[y][x] == WALLC and
+            sum(g[ny][nx] == WALLC for nx, ny in nbrs4(x, y)) < 2]
+
+
+def clear_isolated_walls(g, w, h):
+    """Turn isolated wall cells to floor until none is left, then demote doors that lost a wall flank."""
+    n = 0
+    while True:
+        iso = isolated_walls(g, w, h)
+        if not iso:
+            break
+        for x, y in iso:
+            g[y][x] = FLOOR
+        n += len(iso)
+    for y in range(1, h - 1):
+        for x in range(1, w - 1):
+            if g[y][x] == DOOR and not ((g[y][x - 1] == WALLC and g[y][x + 1] == WALLC) or
+                                        (g[y - 1][x] == WALLC and g[y + 1][x] == WALLC)):
+                g[y][x] = FLOOR
+    return n
+
+
+def bfs_dist(g, w, h, start, nb=None, blocked=()):
+    nb = nb or nbrs4
+    dist = {tuple(start): 0}
+    q = [tuple(start)]
+    i = 0
+    while i < len(q):
+        x, y = q[i]
+        i += 1
+        for nx, ny in nb(x, y):
+            if 0 <= nx < w and 0 <= ny < h and (nx, ny) not in dist and g[ny][nx] in PASS and (nx, ny) not in blocked:
+                dist[(nx, ny)] = dist[(x, y)] + 1
+                q.append((nx, ny))
+    return dist
+
+
+def farthest(dist):
+    """Cell with the largest path distance; ties go to the lowest (y, x)."""
+    return min(dist, key=lambda p: (-dist[p], p[1], p[0]))
+
+
+# ------------------------------------------------------------------ cyclic (graph first, on a grid of cells)
+CELL = 7            # squares per graph cell: a room of 3 to 5 squares and a wall band two squares thick
+CYCLIC_TRIES = 64   # deterministic re-rolls before giving up
+
+
+def cyclic_graph(cw, ch, rng):
+    """One attempt at a cyclic mission graph on a cw x ch grid of cells (Dormans, in Short and Adams ch. 9).
+    Main cycle: a rectangle of cells, start at a corner, goal on the far side; path a (short) ends in a lock,
+    path b (long) holds the key next to the goal and a one-way valve from the goal back to the key.
+    Then 1 to 4 nested cycles, each a two-cell bump on a plain edge, kept beside that edge.
+    Returns None when this attempt cannot place what it drew (the caller re-rolls)."""
+    rw, rh = rng.randint(2, cw), rng.randint(2, ch)
+    x0, y0 = rng.randint(0, cw - rw), rng.randint(0, ch - rh)
+    corner = rng.randint(0, 3)
+    rank = rng.randint(2, 5)
+    if rw + rh < 5:
+        return None
+    ring = [(x0 + i, y0) for i in range(rw)]
+    ring += [(x0 + rw - 1, y0 + j) for j in range(1, rh)]
+    ring += [(x0 + rw - 1 - i, y0 + rh - 1) for i in range(1, rw)]
+    ring += [(x0, y0 + rh - 1 - j) for j in range(1, rh - 1)]
+    corners = [0, rw - 1, rw + rh - 2, 2 * rw + rh - 3]
+    ring = ring[corners[corner]:] + ring[:corners[corner]]
+    P = len(ring)
+    gi = rng.randint(2, (P - 1) // 2)
+    cells = list(ring)
+    edges = [dict(a=i, b=(i + 1) % P) for i in range(P)]
+    keyn = (gi + 1) % P
+    for e in edges:
+        pair = {e["a"], e["b"]}
+        if pair == {gi - 1, gi}:
+            e["lock"] = "k1"
+        elif pair == {gi, keyn}:
+            e["oneway"] = [gi, keyn]          # from the goal down to the key, never up
+    cycles = [dict(pattern="lock and key", a=list(range(gi + 1)), b=[0] + list(range(P - 1, gi - 1, -1)))]
+    used = set(cells)
+    for _ in range(rank - 1):
+        cand = []
+        for ei, e in enumerate(edges):
+            if "lock" in e or "oneway" in e:
+                continue
+            (ux, uy), (vx, vy) = cells[e["a"]], cells[e["b"]]
+            dirs = ((0, -1), (0, 1)) if uy == vy else ((-1, 0), (1, 0))
+            for dx, dy in dirs:
+                u2, v2 = (ux + dx, uy + dy), (vx + dx, vy + dy)
+                if all(0 <= c[0] < cw and 0 <= c[1] < ch and c not in used for c in (u2, v2)):
+                    cand.append((ei, u2, v2))
+        if not cand:
+            return None
+        ei, u2, v2 = rng.choice(cand)
+        shortcut = rng.random() < 0.5
+        e = edges[ei]
+        iu, iv = len(cells), len(cells) + 1
+        cells += [u2, v2]
+        used |= {u2, v2}
+        mid = dict(a=iu, b=iv)
+        if shortcut:
+            mid["oneway"] = [iu, iv]
+        edges += [dict(a=e["a"], b=iu), mid, dict(a=iv, b=e["b"])]
+        cycles.append(dict(pattern="hidden shortcut" if shortcut else "two alternative paths",
+                           a=[e["a"], e["b"]], b=[e["a"], iu, iv, e["b"]]))
+    return dict(cells=[list(c) for c in cells], edges=edges, start=0, goal=gi, keys=[dict(id="k1", node=keyn)],
+                cycles=cycles)
+
+
+def cyclic_dungeon(w, h, seed, rng):
+    """Graph first on a grid of CELL x CELL squares, then raised to squares: a room per node, a one-square
+    corridor with a door per edge. Returns (grid, rooms, graph); graph carries the re-roll count."""
+    cw, ch = (w - 1) // CELL, (h - 1) // CELL
+    if cw < 3 or ch < 3:
+        raise ValueError("a cyclic dungeon needs at least %dx%d squares (3x3 cells of %d)"
+                         % (3 * CELL + 1, 3 * CELL + 1, CELL))
+    graph = None
+    for k in range(CYCLIC_TRIES):
+        graph = cyclic_graph(cw, ch, Rng(seed, 2000 + k))
+        if graph:
+            graph["rerolls"] = k
+            break
+    if graph is None:
+        raise ValueError("no cyclic graph after %d tries; try a larger map" % CYCLIC_TRIES)
+    g = [[WALLC] * w for _ in range(h)]
+    rooms = []
+    for i, (cx, cy) in enumerate(graph["cells"]):
+        r = [0, 0, rng.randint(3, CELL - 2), rng.randint(3, CELL - 2)]
+        for k, s0 in ((0, cx * CELL), (1, cy * CELL)):
+            m, size = s0 + CELL // 2, r[k + 2]
+            r[k] = rng.randint(max(s0 + 1, m - size + 1), min(m, s0 + CELL - 1 - size))
+        rooms.append(r)
+        for yy in range(r[1], r[1] + r[3]):
+            for xx in range(r[0], r[0] + r[2]):
+                g[yy][xx] = FLOOR
+    for e in graph["edges"]:
+        a, b = sorted((e["a"], e["b"]), key=lambda n: graph["cells"][n])
+        (ax, ay), (bx, by) = graph["cells"][a], graph["cells"][b]
+        ra, rb = rooms[a], rooms[b]
+        if ay == by:
+            y = ay * CELL + CELL // 2
+            run = [(x, y) for x in range(ra[0] + ra[2], rb[0])]
+            door = (bx * CELL - 1, y)
+        else:
+            x = ax * CELL + CELL // 2
+            run = [(x, y) for y in range(ra[1] + ra[3], rb[1])]
+            door = (x, by * CELL - 1)
+        for x, y in run:
+            g[y][x] = FLOOR
+        g[door[1]][door[0]] = DOOR
+        e["door"] = list(door)
+    return g, rooms, graph
+
+
+def graph_reach(gr, src, keys, reverse=False):
+    """Nodes reached from src: locked edges need their key, one-way edges only in their direction
+    (reversed for a walk that runs backwards)."""
+    E = gr["edges"]
+    seen, st = {src}, [src]
+    while st:
+        u = st.pop()
+        for e in E:
+            if u not in (e["a"], e["b"]):
+                continue
+            v = e["b"] if u == e["a"] else e["a"]
+            if "lock" in e and e["lock"] not in keys:
+                continue
+            ow = e.get("oneway")
+            if ow and ([v, u] if reverse else [u, v]) != ow:
+                continue
+            if v not in seen:
+                seen.add(v)
+                st.append(v)
+    return seen
+
+
+def graph_bars(gr, g):
+    """Bars on a cyclic graph: cycle rank, adjacency, key before lock, gate, return path."""
+    n, E = len(gr["cells"]), gr["edges"]
+    cells = [tuple(c) for c in gr["cells"]]
+    rank = len(E) - n + 1
+    bars = [("cyclic: cycle rank 2 to 5 (edges - nodes + 1)", 2 <= rank <= 5,
+             "%d edges, %d nodes, rank %d, %d cycles listed, %d re-rolls"
+             % (len(E), n, rank, len(gr["cycles"]), gr.get("rerolls", 0)))]
+    bad = [e for e in E if abs(cells[e["a"]][0] - cells[e["b"]][0]) + abs(cells[e["a"]][1] - cells[e["b"]][1]) != 1
+           or g[e["door"][1]][e["door"][0]] not in PASS]
+    bars.append(("cyclic: every edge joins cells that share a border, one node per cell",
+                 not bad and len(set(cells)) == n, "%d edges, %d not adjacent or without an open door, %d cells reused"
+                 % (len(E), len(bad), n - len(set(cells)))))
+    keys, order, first_goal = set(), [], None
+    while True:
+        seen = graph_reach(gr, gr["start"], keys)
+        if first_goal is None:
+            first_goal = gr["goal"] in seen
+        got = {k["id"] for k in gr["keys"] if k["node"] in seen} - keys
+        if not got:
+            break
+        order += sorted(got)
+        keys |= got
+    locks = {e["lock"] for e in E if "lock" in e}
+    bars.append(("cyclic: every key reached before its lock, every room reached, the lock is a real gate",
+                 bool(locks) and locks <= keys and len(seen) == n and not first_goal,
+                 "%d locks, keys taken in order %s, %d of %d rooms reached, goal %s without the key"
+                 % (len(locks), ",".join(order) or "-", len(seen), n, "reached" if first_goal else "not reached")))
+    back = gr["start"] in graph_reach(gr, gr["goal"], keys | locks)
+    bars.append(("cyclic: a return path from goal to entrance honours one-way edges", back,
+                 "%d one-way edges; entrance %s from the goal"
+                 % (sum(1 for e in E if "oneway" in e), "reached" if back else "not reached")))
+    return bars
 
 
 def nbrs4(x, y):
@@ -910,6 +1132,42 @@ def hex_geometry(w, h, pps):
     return centre, verts, W, H
 
 
+def markers_svg(gj, pps):
+    """Entrance (green ring), goal (red disc), keys (gold diamond), locked doors (red bar), one-way doors
+    (triangle pointing the way it opens)."""
+    def c(p):
+        return (p[0] + 0.5) * pps, (p[1] + 0.5) * pps
+    r = pps * 0.32
+    o = ['<g class="markers">']
+    ex, ey = c(gj["entrance"])
+    o.append('<circle class="entrance" cx="%.1f" cy="%.1f" r="%.1f" fill="none" stroke="#2e9d4f" stroke-width="%.1f"/>'
+             % (ex, ey, r, max(2.0, pps * 0.08)))
+    gx, gy = c(gj["goal"])
+    o.append('<circle class="goal" cx="%.1f" cy="%.1f" r="%.1f" fill="#c8332b"/>' % (gx, gy, r))
+    gr = gj.get("graph")
+    if gr:
+        for k in gr["keys"]:
+            cx, cy = gr["cells"][k["node"]]
+            kx, ky = c((cx * CELL + CELL // 2, cy * CELL + CELL // 2))
+            o.append('<polygon class="key" points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="#e0b020"/>'
+                     % (kx, ky - r, kx + r, ky, kx, ky + r, kx - r, ky))
+        for e in gr["edges"]:
+            dx, dy = c(e["door"])
+            if "lock" in e:
+                o.append('<rect class="lock" x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="#c8332b"/>'
+                         % (dx - r, dy - r, 2 * r, 2 * r))
+            elif "oneway" in e:
+                (ax, ay), (bx, by) = gr["cells"][e["oneway"][0]], gr["cells"][e["oneway"][1]]
+                ux, uy = bx - ax, by - ay
+                tip = (dx + ux * r, dy + uy * r)
+                b1 = (dx - ux * r - uy * r, dy - uy * r - ux * r)
+                b2 = (dx - ux * r + uy * r, dy - uy * r + ux * r)
+                o.append('<polygon class="one-way" points="%.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="#e07020"/>'
+                         % (tip + b1 + b2))
+    o.append("</g>")
+    return "\n".join(o)
+
+
 def render_grid_svg(rc, gj, st):
     w, h, pps = gj["w"], gj["h"], rc["params"]["pps"]
     g = gj["cells"]
@@ -950,6 +1208,8 @@ def render_grid_svg(rc, gj, st):
         for (a, b) in gj["walls"]:
             o.append('<line x1="%d" y1="%d" x2="%d" y2="%d"/>' % (a[0] * pps, a[1] * pps, b[0] * pps, b[1] * pps))
         o.append("</g>")
+        if gj.get("goal"):
+            o.append(markers_svg(gj, pps))
         cands = []
         for r in gj.get("rooms", []):
             cands.append((str(r["id"] + 1), (r["x"] + r["w"] / 2) * pps, (r["y"] + r["h"] / 2) * pps + pps * 0.3,
@@ -961,8 +1221,69 @@ def render_grid_svg(rc, gj, st):
     return "\n".join(o) + "\n"
 
 
+PATH_TRIES = 16     # bsp and cave re-rolls when the entrance-to-goal path is under min_path
+
+
+def build_dungeon(seed, w, h, method="bsp", cave=None, legacy=False):
+    """The dungeon itself, without names or files: grid rows, rooms, lights, entrance, goal, graph.
+    legacy=True rebuilds a recipe written before 0.9.0 exactly: no wall cleanup, no goal, the old entrance.
+    A bsp or cave map whose path is under min_path is drawn again from stream 3000 + k (k = re-roll)."""
+    if legacy or method == "cyclic":
+        return _build_once(seed, w, h, method, cave, legacy, Rng(seed, 2))
+    for k in range(PATH_TRIES):
+        D = _build_once(seed, w, h, method, cave, legacy, Rng(seed, 2) if k == 0 else Rng(seed, 3000 + k))
+        D["stats"]["rerolls"] = k
+        d = bfs_dist(D["g"], w, h, D["entrance"])
+        if d[tuple(D["goal"])] >= min_path(w, h):
+            break
+    return D
+
+
+def _build_once(seed, w, h, method, cave, legacy, rng):
+    rooms, lights, graph, goal, stats = [], [], None, None, {}
+    if method == "bsp":
+        g, rr = bsp_dungeon(w, h, rng)
+        rooms = [dict(id=i, x=r[0], y=r[1], w=r[2], h=r[3]) for i, r in enumerate(rr)]
+    elif method == "cave":
+        g, _ = cave_dungeon(w, h, rng, stats=stats, **dict(CAVE_DEFAULTS, **(cave or {})))
+    elif method == "cyclic" and not legacy:
+        g, rr, graph = cyclic_dungeon(w, h, seed, rng)
+        rooms = [dict(id=i, x=r[0], y=r[1], w=r[2], h=r[3]) for i, r in enumerate(rr)]
+    else:
+        raise ValueError("unknown dungeon method %r (bsp, cave, cyclic)" % method)
+    if not legacy and method != "cyclic":
+        stats["isolated_walls_cleared"] = clear_isolated_walls(g, w, h)
+    for r in rooms:
+        lights.append(dict(x=r["x"] + r["w"] / 2, y=r["y"] + r["h"] / 2, range=max(r["w"], r["h"]),
+                           color="ffeccd8b"))
+    if not rooms:
+        fl = [(x, y) for y in range(h) for x in range(w) if g[y][x] == FLOOR]
+        for i in range(max(1, len(fl) // 120)):
+            x, y = fl[G.h64(seed, 55, i) % len(fl)]
+            lights.append(dict(x=x + 0.5, y=y + 0.5, range=5, color="ff9fd3ff"))
+    fl = [(x, y) for y in range(h) for x in range(w) if g[y][x] in PASS]
+
+    def centre(r):
+        return (r["x"] + r["w"] // 2, r["y"] + r["h"] // 2)
+    e0 = centre(rooms[0]) if rooms else min(fl)
+    if legacy:
+        entrance = e0
+    elif graph:
+        entrance, goal = centre(rooms[graph["start"]]), centre(rooms[graph["goal"]])
+    else:
+        # two sweeps: the entrance at the far end from a first point, the goal farthest from the entrance
+        d0 = bfs_dist(g, w, h, e0)
+        if rooms:
+            entrance = min((centre(r) for r in rooms), key=lambda c: (-d0.get(c, -1), c[1], c[0]))
+        else:
+            entrance = farthest(d0)
+        goal = farthest(bfs_dist(g, w, h, entrance))
+    return dict(g=g, rooms=rooms, lights=lights, entrance=list(entrance), goal=goal and list(goal), graph=graph,
+                stats=stats)
+
+
 def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style=None, version="0.5.0",
-             name_style=None):
+             name_style=None, cave=None, legacy=False):
     t0 = time.perf_counter()
     rng = Rng(seed, 2 if kind == "dungeon" else 3)
     lang = mpw_names.make_language(seed, name_style)
@@ -976,28 +1297,12 @@ def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style
         raise ValueError("a %s needs at least 12x10 squares" % kind)
     rooms = []
     lights = []
+    goal = graph = None
     if kind == "dungeon":
-        if method == "bsp":
-            g, rr = bsp_dungeon(w, h, rng)
-            rooms = [dict(id=i, x=r[0], y=r[1], w=r[2], h=r[3]) for i, r in enumerate(rr)]
-        elif method == "cave":
-            g, _ = cave_dungeon(w, h, rng)
-        else:
-            raise ValueError("unknown dungeon method %r (bsp, cave)" % method)
-        for r in rooms:
-            lights.append(dict(x=r["x"] + r["w"] / 2, y=r["y"] + r["h"] / 2, range=max(r["w"], r["h"]),
-                               color="ffeccd8b"))
-        if not rooms:
-            fl = [(x, y) for y in range(h) for x in range(w) if g[y][x] == FLOOR]
-            for i in range(max(1, len(fl) // 120)):
-                x, y = fl[G.h64(seed, 55, i) % len(fl)]
-                lights.append(dict(x=x + 0.5, y=y + 0.5, range=5, color="ff9fd3ff"))
-        fl = [(x, y) for y in range(h) for x in range(w) if g[y][x] in PASS]
-        if rooms:
-            r0 = rooms[0]
-            entrance = [r0["x"] + r0["w"] // 2, r0["y"] + r0["h"] // 2]
-        else:
-            entrance = list(min(fl))
+        if cave and method != "cave":
+            raise ValueError("--fill, --passes, --birth, --survival, --radius and --border are cave flags")
+        D = build_dungeon(seed, w, h, method, cave, legacy)
+        g, rooms, lights, entrance, goal, graph = D["g"], D["rooms"], D["lights"], D["entrance"], D["goal"], D["graph"]
         nb = nbrs4
     else:
         method = None
@@ -1017,6 +1322,11 @@ def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style
     name = namer.name(kind, (seed,))
     gj = dict(w=w, h=h, grid=grid, cells=cells, rooms=rooms, entrance=entrance,
               walls=[[list(a), list(b)] for a, b in walls], portals=portals, lights=lights, trees=trees)
+    if goal:
+        gj["goal"] = goal
+        gj["rerolls"] = graph["rerolls"] if graph else D["stats"].get("rerolls", 0)
+    if graph:
+        gj["graph"] = graph
     feats = []
     for r in rooms:
         x, y, rw, rh = r["x"], r["y"], r["w"], r["h"]
@@ -1034,10 +1344,26 @@ def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style
                       "geometry": {"type": "Point", "coordinates": [L["x"], L["y"]]}})
     feats.append({"type": "Feature", "properties": dict(kind="entrance"),
                   "geometry": {"type": "Point", "coordinates": [entrance[0] + 0.5, entrance[1] + 0.5]}})
+    if goal:
+        feats.append({"type": "Feature", "properties": dict(kind="goal"),
+                      "geometry": {"type": "Point", "coordinates": [goal[0] + 0.5, goal[1] + 0.5]}})
+    for k in (graph or {}).get("keys", []):
+        r = rooms[k["node"]]
+        feats.append({"type": "Feature", "properties": dict(kind="key", id=k["id"], room=k["node"]),
+                      "geometry": {"type": "Point", "coordinates": [r["x"] + r["w"] / 2, r["y"] + r["h"] / 2]}})
+    for e in (graph or {}).get("edges", []):
+        if "lock" in e or "oneway" in e:
+            feats.append({"type": "Feature", "properties": dict(kind="lock" if "lock" in e else "one-way",
+                                                                key=e.get("lock"), rooms=e.get("oneway")),
+                          "geometry": {"type": "Point", "coordinates": [e["door"][0] + 0.5, e["door"][1] + 0.5]}})
     recipe = dict(kind=kind, seed=seed, generator=PLACES_VERSION, tool="mapwright", tool_version=version, name=name,
                   params=dict(w=w, h=h, method=method, grid=grid, pps=pps, style=style, name_style=name_style),
                   projection=dict(kind="grid", units="square", axes="x east, y south, origin top-left"),
                   extent=[0, 0, w, h], parent=None, language=lang)
+    if kind == "dungeon" and not legacy:
+        recipe["params"]["goal"] = "graph" if graph else "farthest"
+        if method == "cave":
+            recipe["params"]["cave"] = dict(CAVE_DEFAULTS, **(cave or {}))
     t1 = time.perf_counter()
     write_place(out, recipe, feats, [dict(kind=kind, id=0, name=name)], gj, None)
     t = dict(generate=round(t1 - t0, 3), write_render=round(time.perf_counter() - t1, 3),
@@ -1166,7 +1492,8 @@ def regenerate(d, tmp):
                  ref=par and par["path"])
     else:
         gen_grid(rc["kind"], rc["seed"], tmp, p["w"], p["h"], p["method"] or "bsp", p["grid"], p["pps"], p["style"],
-                 rc["tool_version"], p["name_style"])
+                 rc["tool_version"], p["name_style"], cave=p.get("cave"),
+                 legacy=rc["kind"] == "dungeon" and "goal" not in p)
 
 
 def _city_bars(d):
@@ -1269,6 +1596,92 @@ def _outward_without_gate(by, wsegs, gk, key):
     return bad
 
 
+def min_path(w, h):
+    """Shortest entrance-to-goal path a dungeon must reach, in steps: the map width (the notes' figure,
+    STN ch. 8, p. 144), measured in TESTS.md to hold on every seed of the default sweeps."""
+    return w
+
+
+def goal_bars(gj, params):
+    """Bars for a dungeon with a goal (0.9.0 on): goal at the far end, path long enough, no isolated walls,
+    and for a cyclic graph its own bars plus the gate checked on the squares."""
+    w, h, g = gj["w"], gj["h"], gj["cells"]
+    ent, goal = tuple(gj["entrance"]), tuple(gj["goal"])
+    dist = bfs_dist(g, w, h, ent)
+    far = max(dist.values())
+    dg = dist.get(goal, -1)
+    bars = []
+    if "graph" not in gj:
+        bars.append(("dungeon: goal at the floor square farthest from the entrance", dg == far,
+                     "goal %d steps, map maximum %d" % (dg, far)))
+    need, cp = min_path(w, h), completion_path(gj)
+    bars.append(("dungeon: entrance-to-goal path at least %d steps (map width)" % need, cp >= need,
+                 "shortest path %d steps%s" % (cp, ", fetching the key first" if "graph" in gj else "")))
+    iso = isolated_walls(g, w, h)
+    bars.append(("dungeon: no isolated wall squares (every wall has two wall neighbours)", not iso,
+                 "%d isolated, %.0f%% of squares wall" % (len(iso), 100.0 * sum(r.count(WALLC) for r in g) / (w * h))))
+    gr = gj.get("graph")
+    if gr:
+        bars += graph_bars(gr, g)
+        nlock = sum(1 for e in gr["edges"] if "lock" in e)
+        leak = goal in door_dist(gj, ent, set())
+        bars.append(("cyclic: with the lock shut no square route reaches the goal (one-way doors honoured)", not leak,
+                     "%d locked doors; goal %s" % (nlock, "reached around the lock" if leak else "sealed")))
+    return bars
+
+
+def door_dist(gj, start, keys):
+    """Square BFS that honours a cyclic graph's doors: a locked door needs its key, a one-way door can only be
+    entered from its source room's side."""
+    w, h, g, gr = gj["w"], gj["h"], gj["cells"], gj["graph"]
+    rule = {}
+    for e in gr["edges"]:
+        dx, dy = e["door"]
+        if "lock" in e:
+            rule[(dx, dy)] = ("lock", e["lock"])
+        elif "oneway" in e:
+            sx, sy = gr["cells"][e["oneway"][0]]
+            cx, cy = sx * CELL + CELL // 2, sy * CELL + CELL // 2
+            rule[(dx, dy)] = ("from", ((cx > dx) - (cx < dx), (cy > dy) - (cy < dy)))
+    dist = {tuple(start): 0}
+    q = [tuple(start)]
+    i = 0
+    while i < len(q):
+        x, y = q[i]
+        i += 1
+        for nx, ny in nbrs4(x, y):
+            if not (0 <= nx < w and 0 <= ny < h) or (nx, ny) in dist or g[ny][nx] not in PASS:
+                continue
+            r = rule.get((nx, ny))
+            if r and r[0] == "lock" and r[1] not in keys:
+                continue
+            if r and r[0] == "from" and (x - nx, y - ny) != r[1]:
+                continue
+            dist[(nx, ny)] = dist[(x, y)] + 1
+            q.append((nx, ny))
+    return dist
+
+
+def completion_path(gj):
+    """Steps from the entrance to the goal for a player who must fetch each key first (cyclic), else the
+    plain shortest path. -1 when the goal cannot be reached."""
+    ent, goal = tuple(gj["entrance"]), tuple(gj["goal"])
+    gr = gj.get("graph")
+    if not gr:
+        return bfs_dist(gj["cells"], gj["w"], gj["h"], ent).get(goal, -1)
+    steps, at, keys = 0, ent, set()
+    for k in gr["keys"]:
+        r = gr["cells"][k["node"]]
+        kc = (r[0] * CELL + CELL // 2, r[1] * CELL + CELL // 2)
+        d = door_dist(gj, at, keys).get(kc, -1)
+        if d < 0:
+            return -1
+        steps, at = steps + d, kc
+        keys.add(k["id"])
+    d = door_dist(gj, at, keys).get(goal, -1)
+    return -1 if d < 0 else steps + d
+
+
 def _grid_bars(d):
     rc = load(d, "recipe.json")
     gj = load(d, "grid.json")
@@ -1299,6 +1712,8 @@ def _grid_bars(d):
                     ov += 1
         bars.append(("dungeon: every room reached, none overlap", not unr and ov == 0,
                      "%d rooms, %d unreached, %d overlapping pairs" % (len(rooms), len(unr), ov)))
+    if gj.get("goal"):
+        bars += goal_bars(gj, rc["params"])
     doors = [(x, y) for y in range(h) for x in range(w) if g[y][x] == DOOR]
     if doors or rooms:
         bad = 0
@@ -1334,6 +1749,155 @@ def _grid_bars(d):
                      "pps %d (even: centres on whole px across), vertices rounded to whole px, max drift %.2f px"
                      % (pps, drift)))
     return bars
+
+
+# ------------------------------------------------------------------ expressive range (check --range)
+RANGE_METRICS = ("loop_share", "dead_end_share", "path_over_diagonal", "open_floor_share")
+RANGE_PAIRS = (("loop_share", "dead_end_share"), ("path_over_diagonal", "open_floor_share"))
+RANGE_BINS = 10
+
+
+def _bridges(cells):
+    """Bridge edges of the 4-neighbour graph on a set of cells (iterative Tarjan)."""
+    disc, low, out, t = {}, {}, set(), 0
+    for root in sorted(cells):
+        if root in disc:
+            continue
+        disc[root] = low[root] = t
+        t += 1
+        stack = [(root, None, iter(nbrs4(*root)))]
+        while stack:
+            u, parent, it = stack[-1]
+            for v in it:
+                if v not in cells or v == parent:
+                    continue
+                if v in disc:
+                    low[u] = min(low[u], disc[v])
+                else:
+                    disc[v] = low[v] = t
+                    t += 1
+                    stack.append((v, u, iter(nbrs4(*v))))
+                    break
+            else:
+                stack.pop()
+                if parent is not None:
+                    low[parent] = min(low[parent], low[u])
+                    if low[u] > disc[parent]:
+                        out.add(frozenset((u, parent)))
+    return out
+
+
+def range_metrics(gj):
+    """Four dungeon metrics, none of them an input flag (cities-and-dungeons.md section 7):
+    loop share: narrow squares (corridor squares: in no 2x2 open block) that lie on a loop, over all narrow squares;
+    dead-end share: squares in dead-end regions (parts joined to the rest by one bridge only), over open squares;
+    path over diagonal: completion path (key first on cyclic maps) over the map diagonal;
+    open-floor share: open squares over all squares."""
+    w, h, g = gj["w"], gj["h"], gj["cells"]
+    cells = {(x, y) for y in range(h) for x in range(w) if g[y][x] in PASS}
+    deg = {c: sum(n in cells for n in nbrs4(*c)) for c in cells}
+    def in_block(x, y):
+        return any(all(p in cells for p in ((x + a, y + b), (x + a + 1, y + b), (x + a, y + b + 1),
+                                            (x + a + 1, y + b + 1))) for a in (-1, 0) for b in (-1, 0))
+    narrow = [c for c in cells if not in_block(*c)]
+    br = _bridges(cells)
+    looped = sum(1 for c in narrow if deg[c] and not any(frozenset((c, n)) in br for n in nbrs4(*c) if n in cells))
+    comp = {}
+    for c0 in sorted(cells):
+        if c0 in comp:
+            continue
+        comp[c0], st = c0, [c0]
+        while st:
+            c = st.pop()
+            for n in nbrs4(*c):
+                if n in cells and n not in comp and frozenset((c, n)) not in br:
+                    comp[n] = c0
+                    st.append(n)
+    cdeg, size = {}, {}
+    for c in cells:
+        size[comp[c]] = size.get(comp[c], 0) + 1
+    for e in br:
+        for c in e:
+            cdeg[comp[c]] = cdeg.get(comp[c], 0) + 1
+    gone = sum(size[k] for k, v in cdeg.items() if v == 1)
+    return dict(loop_share=looped / float(len(narrow)) if narrow else 0.0,
+                dead_end_share=gone / float(len(cells)),
+                path_over_diagonal=completion_path(gj) / math.hypot(w, h),
+                open_floor_share=len(cells) / float(w * h))
+
+
+def _hist(rows, mx, my, lo, hi):
+    hgrid = [[0] * RANGE_BINS for _ in range(RANGE_BINS)]
+    for r in rows:
+        ij = []
+        for m in (mx, my):
+            span = hi[m] - lo[m]
+            v = (r[m] - lo[m]) / span if span > 0 else 0.0
+            ij.append(min(RANGE_BINS - 1, max(0, int(v * RANGE_BINS))))
+        hgrid[ij[1]][ij[0]] += 1
+    return hgrid
+
+
+def _tv(a, b):
+    na, nb = float(sum(map(sum, a))), float(sum(map(sum, b)))
+    return 0.5 * sum(abs(a[i][j] / na - b[i][j] / nb) for i in range(RANGE_BINS) for j in range(RANGE_BINS))
+
+
+def dungeon_range(method, seeds=500, w=48, h=36, cave=None, first=1):
+    """Expressive range of `gen dungeon --method METHOD` over seeds first .. first+seeds-1. Each metric is
+    rescaled to 0..1 across the sample (min to max), binned 10 x 10 per metric pair. A bin holding more than
+    half the sample is flagged as dominant. Stability: the first half of the seeds against all of them,
+    as total variation distance (0 same, 1 disjoint) on the same bins."""
+    rows = []
+    for s in range(first, first + seeds):
+        D = build_dungeon(s, w, h, method, cave)
+        gj = dict(w=w, h=h, cells=["".join(r) for r in D["g"]], entrance=D["entrance"], goal=D["goal"])
+        if D["graph"]:
+            gj["graph"] = D["graph"]
+        m = range_metrics(gj)
+        m["seed"] = s
+        rows.append(m)
+    lo = {k: min(r[k] for r in rows) for k in RANGE_METRICS}
+    hi = {k: max(r[k] for r in rows) for k in RANGE_METRICS}
+    half = rows[:seeds // 2]
+    pairs = []
+    for mx, my in RANGE_PAIRS:
+        full = _hist(rows, mx, my, lo, hi)
+        top = max(max(r) for r in full)
+        pairs.append(dict(x=mx, y=my, bins=full, occupied=sum(1 for r in full for c in r if c),
+                          fullest_share=round(top / float(seeds), 4), dominant=top > seeds / 2.0,
+                          stability_tv=round(_tv(_hist(half, mx, my, lo, hi), full), 4)))
+    summ = {k: dict(min=round(lo[k], 4), mean=round(sum(r[k] for r in rows) / seeds, 4), max=round(hi[k], 4))
+            for k in RANGE_METRICS}
+    return dict(method=method, seeds=seeds, first_seed=first, w=w, h=h, cave=cave, bins=RANGE_BINS,
+                metrics=summ, pairs=pairs, stability="first %d seeds against all %d" % (len(half), seeds),
+                rows=[{k: (round(v, 5) if isinstance(v, float) else v) for k, v in r.items()} for r in rows])
+
+
+def range_svg(rep):
+    """Heatmap per metric pair, darker = more maps; a dominant bin gets a red outline."""
+    cs, pad = 24, 40
+    W = len(rep["pairs"]) * (RANGE_BINS * cs + 2 * pad)
+    H = RANGE_BINS * cs + 2 * pad + 20
+    o = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" font-family="sans-serif" '
+         'font-size="11">' % (W, H, W, H), '<rect width="100%" height="100%" fill="#ffffff"/>',
+         '<text x="8" y="14">%s, %d seeds, %dx%d</text>' % (rep["method"], rep["seeds"], rep["w"], rep["h"])]
+    for k, p in enumerate(rep["pairs"]):
+        x0, y0 = k * (RANGE_BINS * cs + 2 * pad) + pad, pad
+        top = max(max(r) for r in p["bins"]) or 1
+        for j in range(RANGE_BINS):
+            for i in range(RANGE_BINS):
+                c = p["bins"][j][i]
+                t = c / float(top)
+                shade = int(round(255 - 215 * t)) if c else 255
+                stroke = ' stroke="#c8332b" stroke-width="2"' if p["dominant"] and c == top else ' stroke="#dddddd"'
+                o.append('<rect x="%d" y="%d" width="%d" height="%d" fill="rgb(%d,%d,255)"%s><title>%d</title></rect>'
+                         % (x0 + i * cs, y0 + (RANGE_BINS - 1 - j) * cs, cs, cs, shade, shade, stroke, c))
+        o.append('<text x="%d" y="%d">%s (0 to 1 across the sample)</text>' % (x0, y0 + RANGE_BINS * cs + 16, p["x"]))
+        o.append('<text x="%d" y="%d" transform="rotate(-90 %d %d)">%s</text>'
+                 % (x0 - 8, y0 + RANGE_BINS * cs, x0 - 8, y0 + RANGE_BINS * cs, p["y"]))
+    o.append("</svg>")
+    return "\n".join(o) + "\n"
 
 
 def _bytes(path):
