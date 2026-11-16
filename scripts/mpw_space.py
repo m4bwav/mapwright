@@ -624,7 +624,7 @@ def render_system_svg(sysd, view="schematic", st=SST):
         o.append('<text x="16" y="26" font-family="%s" font-size="15" fill="%s">%s: orbits to scale (1 AU = %.1f px); '
                  'body markers not to scale</text>' % (st["font"], st["ink"], escape(star["name"]), s))
         hz = sysd["habitable_zone_au"]
-        o.append('<circle cx="%.1f" cy="%.1f" r="%.2f" fill="none" stroke="%s" stroke-width="%.2f" opacity="0.6"/>'
+        o.append('<circle class="hz" cx="%.1f" cy="%.1f" r="%.2f" fill="none" stroke="%s" stroke-width="%.2f" opacity="0.6"/>'
                  % (cx, cy, (hz[0] + hz[1]) / 2 * s, st["hz"], max(0.5, (hz[1] - hz[0]) * s)))
         o.append('<circle cx="%.1f" cy="%.1f" r="%.2f" fill="none" stroke="%s" stroke-dasharray="2 4" stroke-width="0.8"/>'
                  % (cx, cy, sysd["snow_line_au"] * s, st["grid"]))
@@ -637,7 +637,7 @@ def render_system_svg(sysd, view="schematic", st=SST):
                      % (cx, cy, b["a_au"] * s, st["orbit"]))
             o.append('<circle cx="%.1f" cy="%.1f" r="%.1f" fill="%s"/>' % (x, y, max(2.5, _body_px(b) / 3), BODY_COL[b["kind"]]))
             cands.append(("%s %.2f AU" % (b["name"].split()[-1], b["a_au"]), x, y - 8, 9.0))
-        o.append('<text x="16" y="%d" font-family="%s" font-size="10" fill="%s">green band: habitable zone %.2f-%.2f AU;'
+        o.append('<text class="legend-hz" x="16" y="%d" font-family="%s" font-size="10" fill="%s">green band: habitable zone %.2f-%.2f AU;'
                  ' dashed: snow line %.2f AU</text>' % (h - 14, st["font"], st["grid"], hz[0], hz[1], sysd["snow_line_au"]))
     else:
         step = 110
@@ -652,7 +652,7 @@ def render_system_svg(sysd, view="schematic", st=SST):
         xs = [110 + step * i for i in range(len(B))]
         inz = [x for x, b in zip(xs, B) if b["zone"] == "habitable"]
         if inz:
-            o.append('<rect x="%d" y="50" width="%d" height="200" fill="%s" opacity="0.6"/>'
+            o.append('<rect class="hz" x="%d" y="50" width="%d" height="200" fill="%s" opacity="0.6"/>'
                      % (min(inz) - step // 2, max(inz) - min(inz) + step, st["hz"]))
         o.append('<line x1="70" y1="%d" x2="%d" y2="%d" stroke="%s" stroke-width="1"/>' % (y0, w - 20, y0, st["orbit"]))
         cands = []
@@ -662,8 +662,12 @@ def render_system_svg(sysd, view="schematic", st=SST):
                 o.append('<circle cx="%d" cy="%d" r="2.5" fill="%s"/>' % (x, y0 + 30 + 12 * k, BODY_COL["moon"]))
             cands.append((b["name"].split()[-1] + " " + b["kind"], x, y0 - 30, 10.0))
             cands.append(("%.2f AU" % b["a_au"], x, y0 + 105, 9.0))
-        o.append('<text x="16" y="%d" font-family="%s" font-size="10" fill="%s">green: habitable zone %.2f-%.2f AU; '
-                 'dots below a planet: moons</text>' % (h - 14, st["font"], st["grid"], hz[0], hz[1]))
+        if inz:     # L-041: the band exists only around planets inside the zone, so the key does too
+            key = '<tspan class="legend-hz">green band: habitable zone %.2f-%.2f AU</tspan>' % (hz[0], hz[1])
+        else:
+            key = 'habitable zone %.2f-%.2f AU (no planet in it)' % (hz[0], hz[1])
+        o.append('<text x="16" y="%d" font-family="%s" font-size="10" fill="%s">%s; dots below a planet: moons</text>'
+                 % (h - 14, st["font"], st["grid"], key))
     labs, _ = P.place_labels(cands, w, h, False)
     o.append(P.labels_svg(labs, st))
     o.append("</svg>")

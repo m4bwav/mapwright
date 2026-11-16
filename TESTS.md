@@ -8,12 +8,19 @@ Entry shape: `### T-YYYYMMDD-n · date · harness · env · passed/total`, then 
 
 ## Runs
 
-### T-20261116-3 · 2026-11-16 · skill evals, `python evals/run.py` (`claude -p --plugin-dir`, sonnet, other installed plugins present) · Windows · 38/38 runs passed
+### T-20261116-4 · 2026-11-16 · skill evals, `python evals/run.py` (`claude -p --plugin-dir`, sonnet, other installed plugins present) · Windows · 38/38 runs passed
 - L-042 description edit (find phrase names OpenStreetMap or Overpass data with its licence; example 'which projection for a world map' swapped for 'find OpenStreetMap data for this area and its licence'; 'projects points' dropped from the list): trigger-find-place 3/3, then decoys 4/4 not fired (one run each).
 - Body trim (SKILL.md 24,508 -> 8,748 bytes; per-verb detail moved verbatim to references/cli-read-write.md, cli-find.md, cli-generate.md, cli-render.md, cli-export.md), then the whole suite with each case's run count: triggers 8/8 at 3 of 3 (find-place 3/3 again, so 6/6 after the edit); decoys 4/4 at 0 of 3 (evergreen-map, chartwright, polywright-capture, pixelwright fired or nothing); action-gen-dungeon evidence exit 0; action-export-vtt evidence exit 0.
 - Each run in a fresh temp folder with copies of scripts/ and tests/fixtures/. Trigger runs capped at 3 turns. Unittest: 220 pass, 2 skip.
 - not covered: interactive loop, second OS, repeated action runs, whether the moved detail is read when needed (actions passed, so the pointers held for dungeon and dd2vtt).
 - led to: L-042 closed
+### T-20261116-3 · 2026-11-16 · pytest + scratch sweeps (mapwright-lab/s17/sweep_battle.py, sweep_cyclic.py) · Windows · 225 passed, 2 skipped
+- gen battle 30 seeds x 3 densities x 2 grids, 30x20, check (determinism on seeds 1-3): 0 failing; feature share square sparse 0.098/0.136/0.173 (min/mean/max), normal 0.220/0.222/0.227, dense 0.320/0.322/0.327; hex sparse 0.055/0.075/0.098, normal 0.220/0.222/0.227, dense 0.320/0.322/0.328; legend kinds = kinds present on all 180 maps; 0.8-2.1 s per 30 maps.
+- gen dungeon cyclic --branches 2/4/8, 30 seeds 48x36: 0 failing (rank, adjacency, key before lock, return path, goal sealed); 2.0, 4.0, 7.7 branches per map; 1.6-2.1 s per 30.
+- Default byte-identity against origin/main: cyclic and bsp seeds 1, 5, 9, 13, 21, 30 (grid.json, map.svg, map.png, features.geojson) identical; battle --density sparse grid.json and map.png identical for seeds 3, 31.
+- System HZ key: 60 seeds x 2 views, key present iff band drawn (3 schematic maps with no band).
+- Not done: L-009 first half (landlocked window drain), left open.
+- led to: L-041 closed, L-050, L-051
 
 ### T-20261116-2 · 2026-11-16 · skill evals, `claude -p --plugin-dir` (sonnet, other installed plugins present) · Windows · 13/14 passed (one run per case)
 - Triggers 7/8: read-gpx, write-kml, fantasy gen, sci-fi sector, deck plan, path, export fired mapwright. trigger-find-place missed (no skill; answered the OSM licence from memory and offered Overpass); two reruns: 1 hit, 1 miss, so 1 of 3 (L-042).

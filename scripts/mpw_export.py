@@ -19,7 +19,7 @@ from html import escape as html_escape
 import mpw_gen as G
 import mpw_places as P
 
-TARGETS = ("uvtt", "png", "sphere", "t5", "unity", "unreal", "godot", "roblox", "tiled", "mesh", "print")
+TARGETS = ("uvtt", "png", "sphere", "t5", "unity", "unreal", "godot", "roblox", "tiled", "mesh", "print", "nav")
 LAND = ("world", "region")
 GRIDS = ("dungeon", "battle", "deck")
 EXT_TARGET = {".dd2vtt": "uvtt", ".uvtt": "uvtt", ".tmj": "tiled", ".raw": "unity", ".r16": "godot", ".obj": "mesh",
@@ -1176,6 +1176,134 @@ def export_print(d, out, version, paper="A4", landscape=False, dpi=300, bleed=0.
 
 
 # ------------------------------------------------------------------ dispatch
+# ------------------------------------------------------------------ navigation rectangles
+NAV_AREA = {P.FLOOR: "floor", P.DOOR: "door"}
+
+
+def nav_rects(g, w, h):
+    """Greedy rectangle merge of walkable squares, row-major: grow right over uncovered squares of the same
+    character, then down while the whole run matches. Rectangles never mix floor and door squares."""
+    owner = [[-1] * w for _ in range(h)]
+    rects = []
+    for y in range(h):
+        for x in range(w):
+            ch = g[y][x]
+            if ch not in P.PASS or owner[y][x] >= 0:
+                continue
+            x1 = x
+            while x1 + 1 < w and g[y][x1 + 1] == ch and owner[y][x1 + 1] < 0:
+                x1 += 1
+            y1 = y
+            while y1 + 1 < h and all(g[y1 + 1][i] == ch and owner[y1 + 1][i] < 0 for i in range(x, x1 + 1)):
+                y1 += 1
+            rid = len(rects)
+            for yy in range(y, y1 + 1):
+                for xx in range(x, x1 + 1):
+                    owner[yy][xx] = rid
+            rects.append(dict(id=rid, x=x, y=y, w=x1 - x + 1, h=y1 - y + 1, area=NAV_AREA[ch]))
+    return rects, owner
+
+
+def nav_portals(rects):
+    """Shared edges between rectangles that touch side to side: a segment in square units."""
+    out = []
+    for i, a in enumerate(rects):
+        for b in rects[i + 1:]:
+            if a["x"] + a["w"] == b["x"] or b["x"] + b["w"] == a["x"]:
+                y0, y1 = max(a["y"], b["y"]), min(a["y"] + a["h"], b["y"] + b["h"])
+                if y1 > y0:
+                    x = max(a["x"], b["x"])
+                    out.append(dict(a=a["id"], b=b["id"], seg=[[x, y0], [x, y1]]))
+            elif a["y"] + a["h"] == b["y"] or b["y"] + b["h"] == a["y"]:
+                x0, x1 = max(a["x"], b["x"]), min(a["x"] + a["w"], b["x"] + b["w"])
+                if x1 > x0:
+                    y = max(a["y"], b["y"])
+                    out.append(dict(a=a["id"], b=b["id"], seg=[[x0, y], [x1, y]]))
+    return out
+
+
+def nav_components(n, edges):
+    par = list(range(n))
+
+    def f(i):
+        while par[i] != i:
+            par[i] = par[par[i]]
+            i = par[i]
+        return i
+    for a, b in edges:
+        par[f(a)] = f(b)
+    return [f(i) for i in range(n)]
+
+
+def nav_bars(g, w, h, nav):
+    """Cover every walkable square exactly once, no wall covered, rectangle graph components equal to the
+    4-way square grid's (8-way moves without corner cutting join the same squares)."""
+    cnt = [[0] * w for _ in range(h)]
+    for r in nav["rects"]:
+        for yy in range(r["y"], r["y"] + r["h"]):
+            for xx in range(r["x"], r["x"] + r["w"]):
+                cnt[yy][xx] += 1
+    walk = [(x, y) for y in range(h) for x in range(w) if g[y][x] in P.PASS]
+    miss = sum(1 for x, y in walk if cnt[y][x] != 1)
+    wall = sum(1 for y in range(h) for x in range(w) if g[y][x] not in P.PASS and cnt[y][x])
+    bars = [("nav: rectangles cover every walkable square exactly once", miss == 0,
+             "%d rectangles over %d squares, %d covered 0 or 2+ times" % (len(nav["rects"]), len(walk), miss)),
+            ("nav: no rectangle covers a wall", wall == 0, "%d wall squares covered" % wall)]
+    idx = {c: i for i, c in enumerate(walk)}
+    ce = [(idx[(x, y)], idx[(x + dx, y + dy)]) for x, y in walk for dx, dy in ((1, 0), (0, 1))
+          if (x + dx, y + dy) in idx]
+    cc = nav_components(len(walk), ce)
+    owner = {}
+    for r in nav["rects"]:
+        for yy in range(r["y"], r["y"] + r["h"]):
+            for xx in range(r["x"], r["x"] + r["w"]):
+                owner[(xx, yy)] = r["id"]
+    rc = nav_components(len(nav["rects"]), [(p["a"], p["b"]) for p in nav["portals"]])
+    pairs = {(cc[idx[c]], rc[owner[c]]) for c in walk if c in owner}
+    same = (len({a for a, _ in pairs}) == len(pairs) == len({b for _, b in pairs}))
+    bars.append(("nav: portal graph has the same connected components as the square grid", same and miss == 0,
+                 "%d square components, %d rectangle components" % (len(set(cc)), len(set(rc)))))
+    return bars
+
+
+def export_nav(d, out, version):
+    """Walkable squares as convex rectangles plus a portal list, JSON for a game engine."""
+    rc = P.load(d, "recipe.json")
+    kind = rc.get("kind")
+    if kind not in ("dungeon", "battle"):
+        raise ValueError("--to nav is for square dungeon and battle maps, not a %s recipe" % kind)
+    gj = P.load(d, "grid.json")
+    if gj.get("grid") == "hex":
+        raise ValueError("--to nav is square-grid only; hexes do not merge into rectangles")
+    w, h, g = gj["w"], gj["h"], gj["cells"]
+    rects, owner = nav_rects(g, w, h)
+    gr = gj.get("graph")
+    for e in (gr or {}).get("edges", []):
+        r = rects[owner[e["door"][1]][e["door"][0]]]
+        if "lock" in e:
+            r["lock"] = e["lock"]
+        elif "oneway" in e:
+            dx, dy = e["door"]
+            sx, sy = gr["cells"][e["oneway"][0]]
+            cx, cy = sx * P.CELL + P.CELL // 2, sy * P.CELL + P.CELL // 2
+            r["enter_from"] = [(cx > dx) - (cx < dx), (cy > dy) - (cy < dy)]
+    nav = dict(format="mapwright-nav", format_version=1, generator="mapwright " + version, kind=kind,
+               seed=rc.get("seed"), w=w, h=h, units="squares", origin="top-left, y down",
+               moves=dict(neighbours=8, diagonal_cost=1.414213562, corner_cutting=False, diagonal_through_door=False),
+               rects=rects, portals=nav_portals(rects))
+    for k in ("entrance", "goal"):
+        if k in gj:
+            nav[k] = gj[k]
+    if gr:
+        nav["keys"] = [dict(id=k["id"], cell=[gr["cells"][k["node"]][0] * P.CELL + P.CELL // 2,
+                                              gr["cells"][k["node"]][1] * P.CELL + P.CELL // 2])
+                       for k in gr.get("keys", [])]
+    with open(out, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(nav, f, indent=1, sort_keys=True)
+        f.write("\n")
+    return nav_bars(g, w, h, nav), [out]
+
+
 def pick_target(kind, out, to, grid=None):
     if to:
         if to not in TARGETS:
@@ -1201,6 +1329,8 @@ def export(d, out, to=None, version="0.7.0", **o):
     grid = None
     if kind == "battle":
         grid = P.load(d, "grid.json").get("grid")
+    if o.get("nav"):
+        to = "nav"
     to = pick_target(kind, out, to, grid)
     if to in ("sphere", "t5"):
         import mpw_space as S
@@ -1216,6 +1346,8 @@ def export(d, out, to=None, version="0.7.0", **o):
         P.write_uvtt(d, out)
         with open(out, encoding="utf-8") as f:
             return P.uvtt_bars(f.read()), [out]
+    if to == "nav":
+        return export_nav(d, out, version)
     if to == "png":
         return export_grid_png(d, out, o.get("style"))
     if to in ("unity", "unreal", "godot", "roblox"):

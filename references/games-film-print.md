@@ -57,7 +57,7 @@ Fields beginning with `__` are read-only helpers that LDtk writes for loaders [S
 
 ### 1.3 Godot TileMap
 
-Godot 4.3 deprecated the single `TileMap` node in favour of one `TileMapLayer` node per layer [S5]. Tiles reference a `TileSet` resource by source id, atlas coordinates and alternative id [S5]. Tile data is stored in the scene (`.tscn`) as a packed byte array (`tile_map_data`), whose layout is internal (unverified as stable). mapwright should not write that array directly; instead export TMJ or LDtk and let an importer plugin (for example YATI for Tiled, or the LDtk importer) build the scene, or emit a GDScript that calls `set_cell(coords, source_id, atlas_coords)` [S5].
+Godot 4.3 deprecated the single `TileMap` node in favour of one `TileMapLayer` node per layer [S5]. Tiles reference a `TileSet` resource by source id, atlas coordinates and alternative id [S5]. Tile data is stored in the scene (`.tscn`) as a packed byte array (`tile_map_data`), whose layout is internal: the class reference says only "The raw tile map data as a byte array", and the source versions it with a `TileMapLayerDataFormat` enum that has only `TILE_MAP_LAYER_DATA_FORMAT_0` today (https://github.com/godotengine/godot/blob/master/modules/tilemap/doc_classes/TileMapLayer.xml and `tile_map_layer.h`, checked 2026-11-16), so no stability promise. mapwright should not write that array directly; instead export TMJ or LDtk and let an importer plugin (for example YATI for Tiled, or the LDtk importer) build the scene, or emit a GDScript that calls `set_cell(coords, source_id, atlas_coords)` [S5].
 
 ## 2. Terrain heightmap imports
 
@@ -152,6 +152,14 @@ Most engines build navmeshes with Recast-style voxelisation [S18]. Parameters th
 | Cell size | about radius / 2 to / 3 | Recast guidance |
 
 mapwright does not need to bake navmeshes; engines bake from geometry. What helps is exporting clean collision geometry and walkability/area masks (water, road with lower cost) that the engine can turn into navmesh areas or modifiers [S19]. A tile export carries a blocking layer for anything that stops movement, apart from the ordered draw layers (Watkins, Procedural Content Generation for Unity Game Development, ch. 3).
+
+### 4.1 mapwright nav export
+
+`mpw.py export DIR --nav -o map.nav.json` (or `--to nav`) works on dungeon and square battle recipes; hex maps, decks and worlds are refused. It merges walkable squares into axis-aligned rectangles (greedy: grow right, then down, row by row) and lists the shared edges between them as portals. Rectangles never mix floor and door squares, so a door is its own rectangle.
+
+Fields: `w`, `h`, `units` (squares, origin top-left, y down), `moves` (8 neighbours, diagonal cost 1.414213562, no corner cutting, no diagonal through a door), `rects` (`id`, `x`, `y`, `w`, `h`, `area` floor or door; a locked door carries `lock` with the key id, a one-way door `enter_from` as the [dx, dy] side it is entered from), `portals` (`a`, `b`, `seg` as two square-corner points), and `entrance`, `goal` and `keys` when the recipe has them. Keys are sorted and the file is byte-identical for the same recipe.
+
+Bars printed on every export: every walkable square covered exactly once, no wall covered, and the portal graph has the same connected components as the 4-way square grid (8-way without corner cutting joins the same squares). An engine can load the rectangles as convex navmesh polygons and the portals as their links, or run A* over rectangle centres and the funnel algorithm through the portal segments.
 
 ## 5. Film: animated routes and zoom shots
 
@@ -257,7 +265,7 @@ Avoid placing small labels or thin features on a fold line; mapwright can output
 - Total area coverage (ink limit) 300% to 340% for coated stock, lower (about 260%) for uncoated or newsprint [S29].
 - Small black text and thin lines should be 100% K only, not rich black, to avoid misregistration [S29]. Rich black for large fills e.g. C60 M40 Y40 K100 (unverified recipe; printers vary).
 - Use a perceptual or relative colorimetric intent with black point compensation; relative keeps in-gamut colours exact [S29].
-- Python note: Pillow's `ImageCms` can do ICC conversion; a plain `.convert("CMYK")` ignores profiles and gives poor results (unverified exact behaviour, but naive conversion is widely reported).
+- Python note: Pillow's `ImageCms` can do ICC conversion; a plain `.convert("CMYK")` ignores profiles: Pillow's `rgb2cmyk` sets C, M, Y to 255 minus R, G, B and K to 0, "no undercolour removal" (https://github.com/python-pillow/Pillow/blob/main/src/libImaging/Convert.c, checked 2026-11-16), so blacks come out as C255 M255 Y255 K0.
 
 ### 6.5 PDF/X
 
@@ -277,7 +285,7 @@ mapwright should export a heightmap or a mesh and hand it to a print tool (polyw
 |---|---|---|
 | Vertical exaggeration, mountains | 1.0 to 1.5x | [S31] (unverified range) |
 | Vertical exaggeration, rolling or flat regions, city scale | 2x to 5x | [S31] (unverified range) |
-| TouchTerrain default z-scale | 1.0 (user sets), tile width default 100 mm (unverified) | [S31] |
+| TouchTerrain default z-scale | z-scale 1.0, tile width 80 mm, base 1 mm, print resolution 0.5 mm (defaults in `TouchTerrain_standalone.py`, https://github.com/ChHarding/TouchTerrain_for_CAGEO, checked 2026-11-16) | [S31] |
 | Base thickness under lowest point | 1 to 2 mm minimum | [S31] |
 | FDM nozzle | 0.4 mm, so features under about 0.8 mm horizontally vanish | [S32] |
 | FDM layer height | 0.1 to 0.2 mm, so relief steps finer than that vanish | [S32] |

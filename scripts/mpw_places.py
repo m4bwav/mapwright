@@ -829,7 +829,7 @@ def cyclic_graph(cw, ch, rng):
                 cycles=cycles)
 
 
-def cyclic_dungeon(w, h, seed, rng):
+def cyclic_dungeon(w, h, seed, rng, branches=0):
     """Graph first on a grid of CELL x CELL squares, then raised to squares: a room per node, a one-square
     corridor with a door per edge. Returns (grid, rooms, graph); graph carries the re-roll count."""
     cw, ch = (w - 1) // CELL, (h - 1) // CELL
@@ -846,32 +846,89 @@ def cyclic_dungeon(w, h, seed, rng):
         raise ValueError("no cyclic graph after %d tries; try a larger map" % CYCLIC_TRIES)
     g = [[WALLC] * w for _ in range(h)]
     rooms = []
-    for i, (cx, cy) in enumerate(graph["cells"]):
-        r = [0, 0, rng.randint(3, CELL - 2), rng.randint(3, CELL - 2)]
-        for k, s0 in ((0, cx * CELL), (1, cy * CELL)):
-            m, size = s0 + CELL // 2, r[k + 2]
-            r[k] = rng.randint(max(s0 + 1, m - size + 1), min(m, s0 + CELL - 1 - size))
-        rooms.append(r)
-        for yy in range(r[1], r[1] + r[3]):
-            for xx in range(r[0], r[0] + r[2]):
-                g[yy][xx] = FLOOR
+    for cx, cy in graph["cells"]:
+        rooms.append(_carve_room(g, cx, cy, rng))
     for e in graph["edges"]:
-        a, b = sorted((e["a"], e["b"]), key=lambda n: graph["cells"][n])
-        (ax, ay), (bx, by) = graph["cells"][a], graph["cells"][b]
-        ra, rb = rooms[a], rooms[b]
-        if ay == by:
-            y = ay * CELL + CELL // 2
-            run = [(x, y) for x in range(ra[0] + ra[2], rb[0])]
-            door = (bx * CELL - 1, y)
-        else:
-            x = ax * CELL + CELL // 2
-            run = [(x, y) for y in range(ra[1] + ra[3], rb[1])]
-            door = (x, by * CELL - 1)
-        for x, y in run:
-            g[y][x] = FLOOR
-        g[door[1]][door[0]] = DOOR
-        e["door"] = list(door)
+        _carve_edge(g, graph, rooms, e)
+    if branches:
+        add_branches(g, graph, rooms, cw, ch, branches, Rng(seed, BRANCH_STREAM))
     return g, rooms, graph
+
+
+BRANCH_STREAM = 5000
+
+
+def _carve_room(g, cx, cy, rng):
+    r = [0, 0, rng.randint(3, CELL - 2), rng.randint(3, CELL - 2)]
+    for k, s0 in ((0, cx * CELL), (1, cy * CELL)):
+        m, size = s0 + CELL // 2, r[k + 2]
+        r[k] = rng.randint(max(s0 + 1, m - size + 1), min(m, s0 + CELL - 1 - size))
+    for yy in range(r[1], r[1] + r[3]):
+        for xx in range(r[0], r[0] + r[2]):
+            g[yy][xx] = FLOOR
+    return r
+
+
+def _carve_edge(g, graph, rooms, e):
+    a, b = sorted((e["a"], e["b"]), key=lambda n: graph["cells"][n])
+    (ax, ay), (bx, by) = graph["cells"][a], graph["cells"][b]
+    ra, rb = rooms[a], rooms[b]
+    if ay == by:
+        y = ay * CELL + CELL // 2
+        run = [(x, y) for x in range(ra[0] + ra[2], rb[0])]
+        door = (bx * CELL - 1, y)
+    else:
+        x = ax * CELL + CELL // 2
+        run = [(x, y) for y in range(ra[1] + ra[3], rb[1])]
+        door = (x, by * CELL - 1)
+    for x, y in run:
+        g[y][x] = FLOOR
+    g[door[1]][door[0]] = DOOR
+    e["door"] = list(door)
+
+
+def add_branches(g, graph, rooms, cw, ch, count, rng):
+    """Dead-end side branches on a cyclic graph: up to `count` chains of 1 or 2 new cells, each hanging off one
+    existing node by a plain edge (no lock, no one-way), so the cycle rank stays the same and no key moves.
+    A branch's first door is secret 40% of the time; its last room holds treasure (always behind a secret door,
+    else 60%).
+    Uses its own stream so the default map (no branches) keeps today's draws (L-020)."""
+    used = {tuple(c) for c in graph["cells"]}
+    goal = graph["goal"]
+    out = []
+    for _ in range(count * 8):
+        if len(out) >= count:
+            break
+        base = rng.randint(0, len(graph["cells"]) - 1)
+        if base == goal:
+            continue
+        chain, cur = [], tuple(graph["cells"][base])
+        for _ in range(rng.randint(1, 2)):
+            free = [(cur[0] + dx, cur[1] + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))]
+            free = [c for c in free if 0 <= c[0] < cw and 0 <= c[1] < ch and c not in used and c not in chain]
+            if not free:
+                break
+            cur = rng.choice(free)
+            chain.append(cur)
+        if not chain:
+            continue
+        secret = rng.random() < 0.4
+        treasure = rng.random() < 0.6 or secret
+        prev, nodes = base, []
+        for k, c in enumerate(chain):
+            n = len(graph["cells"])
+            graph["cells"].append(list(c))
+            used.add(c)
+            rooms.append(_carve_room(g, c[0], c[1], rng))
+            e = dict(a=prev, b=n)
+            if k == 0 and secret:
+                e["secret"] = True
+            graph["edges"].append(e)
+            _carve_edge(g, graph, rooms, e)
+            nodes.append(n)
+            prev = n
+        out.append(dict(nodes=nodes, base=base, secret=secret, treasure=treasure))
+    graph["branches"] = out
 
 
 def graph_reach(gr, src, keys, reverse=False):
@@ -1032,6 +1089,84 @@ def battle_hex(w, h, rng):
     return g, []
 
 
+BATTLE_DENSITY = {"sparse": None, "normal": 0.22, "dense": 0.32}   # target share of squares holding a feature
+DENSITY_STREAM = 4000
+
+
+def feature_share(g):
+    return sum(c != FLOOR for r in g for c in r) / float(sum(len(r) for r in g))
+
+
+def add_cover(g, w, h, nb, target, rng):
+    """Battle density: scatter tree clumps and lone boulders (both block movement) until `target` share of
+    cells holds a feature. A boulder goes only where its whole neighbour ring is open floor or tree, so it can never
+    cut a route (the ring around one cell is itself connected) and never sits beside a door. Draws only from `rng`
+    (its own stream), so the base map's draw order is untouched (L-020)."""
+    n = w * h
+    have = sum(c != FLOOR for r in g for c in r)
+    regions = len(flood_regions(g, w, h, PASS, nb))
+    tries = 0
+    while have < target * n and tries < n * 4:
+        tries += 1
+        x, y = rng.randint(1, w - 2), rng.randint(1, h - 2)
+        if g[y][x] != FLOOR:
+            continue
+        if rng.random() < 0.3:
+            ring = nb(x, y) if nb is nbrs_hex else [(x + a, y + b) for a in (-1, 0, 1) for b in (-1, 0, 1) if a or b]
+            if all(0 <= px < w and 0 <= py < h and g[py][px] == FLOOR for px, py in ring):
+                g[y][x] = WALLC
+                have += 1
+            continue
+        clump = [(x, y)]
+        for _ in range(rng.randint(1, 5)):
+            px, py = rng.choice(clump)
+            qx, qy = rng.choice(nb(px, py))
+            if 0 <= qx < w and 0 <= qy < h and g[qy][qx] == FLOOR and (qx, qy) not in clump:
+                clump.append((qx, qy))
+        if any(0 <= qx < w and 0 <= qy < h and g[qy][qx] == DOOR for px, py in clump for qx, qy in nb(px, py)):
+            continue
+        for px, py in clump:
+            g[py][px] = TREE
+        nreg = len(flood_regions(g, w, h, PASS, nb))
+        if nreg != regions:        # the clump cut a route or sealed a pocket: take it back
+            for px, py in clump:
+                g[py][px] = FLOOR
+            continue
+        have += len(clump)
+
+
+def battle_legend(gj):
+    """Legend rows for a battle map: only the cell kinds actually on it (cartography-design rule 3)."""
+    present = {c for r in gj["cells"] for c in r}
+    rows = []
+    for ch, key, text in ((WALLC, "rock", "rock or ruined wall (blocks)"), (TREE, "tree", "trees (block movement, cover)"),
+                          (DOOR, "door", "doorway or gap")):
+        if ch in present:
+            rows.append((key, text))
+    return rows
+
+
+def legend_box_svg(rows, W, H, st, pps):
+    """Legend box in the bottom-right corner, swatches in the map's own colours, untitled."""
+    if not rows:
+        return "", None
+    fs = max(11.0, min(16.0, pps * 0.3))
+    lh = fs * 1.6
+    bw = fs * 17.5
+    bh = lh * len(rows) + fs * 0.8
+    x0, y0 = W - bw - fs, H - bh - fs
+    o = ['<g class="legend" font-family="%s" font-size="%.1f" fill="%s">' % (st["font"], fs, st["ink"]),
+         '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s" fill-opacity="0.92" stroke="%s"/>'
+         % (x0, y0, bw, bh, st["bg"], st["ink"])]
+    for i, (key, text) in enumerate(rows):
+        yy = y0 + fs * 0.5 + i * lh
+        o.append('<rect class="legend-%s" x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s" stroke="%s"/>'
+                 % (key, x0 + fs * 0.5, yy, fs * 1.1, fs * 1.1, st[key], st["grid"]))
+        o.append('<text x="%.1f" y="%.1f">%s</text>' % (x0 + fs * 2.1, yy + fs * 0.95, escape(text)))
+    o.append("</g>")
+    return "\n".join(o), (x0, y0, x0 + bw, y0 + bh)
+
+
 def fill_pockets(g, w, h, nb, edge):
     """Battle maps: keep the largest open region that touches the map edge; every other pocket becomes rock
     (a rock line can cut the map in two, so touching the edge is not enough). Returns the kept region."""
@@ -1151,8 +1286,17 @@ def markers_svg(gj, pps):
             kx, ky = c((cx * CELL + CELL // 2, cy * CELL + CELL // 2))
             o.append('<polygon class="key" points="%.1f,%.1f %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="#e0b020"/>'
                      % (kx, ky - r, kx + r, ky, kx, ky + r, kx - r, ky))
+        for b in gr.get("branches", []):
+            if b["treasure"]:
+                tx, ty = gr["cells"][b["nodes"][-1]]
+                kx, ky = c((tx * CELL + CELL // 2, ty * CELL + CELL // 2 + 1))
+                o.append('<circle class="treasure" cx="%.1f" cy="%.1f" r="%.1f" fill="#e0b020" stroke="#7a5a10" '
+                         'stroke-width="%.1f"/>' % (kx, ky, r * 0.8, max(1.0, pps * 0.04)))
         for e in gr["edges"]:
             dx, dy = c(e["door"])
+            if e.get("secret"):
+                o.append('<text class="secret" x="%.1f" y="%.1f" text-anchor="middle" font-size="%.1f" '
+                         'font-weight="bold" fill="#8a3ab9">S</text>' % (dx, dy + r * 0.7, r * 2))
             if "lock" in e:
                 o.append('<rect class="lock" x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="#c8332b"/>'
                          % (dx - r, dy - r, 2 * r, 2 * r))
@@ -1172,6 +1316,7 @@ def render_grid_svg(rc, gj, st):
     w, h, pps = gj["w"], gj["h"], rc["params"]["pps"]
     g = gj["cells"]
     col = {WALLC: st["rock"], FLOOR: st["floor"], DOOR: st["door"], TREE: st["tree"]}
+    lbox = None
     if gj["grid"] == "hex":
         centre, verts, W, H = hex_geometry(w, h, pps)
         o = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">' % (W, H, W, H),
@@ -1183,6 +1328,9 @@ def render_grid_svg(rc, gj, st):
                 o.append('<polygon points="%s" fill="%s"/>' % (" ".join("%d,%d" % p for p in v), col[g[y][x]]))
         o.append("</g>")
         cands = [(rc["name"], W / 2, 30.0, 22.0)]
+        if rc["kind"] == "battle":
+            lsvg, lbox = legend_box_svg(battle_legend(gj), W, H, st, pps)
+            o.append(lsvg)
     else:
         W, H = w * pps, h * pps
         o = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">' % (W, H, W, H),
@@ -1210,12 +1358,15 @@ def render_grid_svg(rc, gj, st):
         o.append("</g>")
         if gj.get("goal"):
             o.append(markers_svg(gj, pps))
+        if rc["kind"] == "battle":
+            lsvg, lbox = legend_box_svg(battle_legend(gj), W, H, st, pps)
+            o.append(lsvg)
         cands = []
         for r in gj.get("rooms", []):
             cands.append((str(r["id"] + 1), (r["x"] + r["w"] / 2) * pps, (r["y"] + r["h"] / 2) * pps + pps * 0.3,
                           max(10.0, pps * 0.55)))
         cands.insert(0, (rc["name"], W / 2, pps * 0.75, max(14.0, pps * 0.6)))
-    labs, _ = place_labels(cands, W, H, st["mono"])
+    labs, _ = place_labels(cands, W, H, st["mono"], reserved=[lbox] if lbox else ())
     o.append(labels_svg(labs, st))
     o.append("</svg>")
     return "\n".join(o) + "\n"
@@ -1224,12 +1375,12 @@ def render_grid_svg(rc, gj, st):
 PATH_TRIES = 16     # bsp and cave re-rolls when the entrance-to-goal path is under min_path
 
 
-def build_dungeon(seed, w, h, method="bsp", cave=None, legacy=False):
+def build_dungeon(seed, w, h, method="bsp", cave=None, legacy=False, branches=0):
     """The dungeon itself, without names or files: grid rows, rooms, lights, entrance, goal, graph.
     legacy=True rebuilds a recipe written before 0.9.0 exactly: no wall cleanup, no goal, the old entrance.
     A bsp or cave map whose path is under min_path is drawn again from stream 3000 + k (k = re-roll)."""
     if legacy or method == "cyclic":
-        return _build_once(seed, w, h, method, cave, legacy, Rng(seed, 2))
+        return _build_once(seed, w, h, method, cave, legacy, Rng(seed, 2), branches)
     for k in range(PATH_TRIES):
         D = _build_once(seed, w, h, method, cave, legacy, Rng(seed, 2) if k == 0 else Rng(seed, 3000 + k))
         D["stats"]["rerolls"] = k
@@ -1239,7 +1390,7 @@ def build_dungeon(seed, w, h, method="bsp", cave=None, legacy=False):
     return D
 
 
-def _build_once(seed, w, h, method, cave, legacy, rng):
+def _build_once(seed, w, h, method, cave, legacy, rng, branches=0):
     rooms, lights, graph, goal, stats = [], [], None, None, {}
     if method == "bsp":
         g, rr = bsp_dungeon(w, h, rng)
@@ -1247,7 +1398,7 @@ def _build_once(seed, w, h, method, cave, legacy, rng):
     elif method == "cave":
         g, _ = cave_dungeon(w, h, rng, stats=stats, **dict(CAVE_DEFAULTS, **(cave or {})))
     elif method == "cyclic" and not legacy:
-        g, rr, graph = cyclic_dungeon(w, h, seed, rng)
+        g, rr, graph = cyclic_dungeon(w, h, seed, rng, branches)
         rooms = [dict(id=i, x=r[0], y=r[1], w=r[2], h=r[3]) for i, r in enumerate(rr)]
     else:
         raise ValueError("unknown dungeon method %r (bsp, cave, cyclic)" % method)
@@ -1283,7 +1434,7 @@ def _build_once(seed, w, h, method, cave, legacy, rng):
 
 
 def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style=None, version="0.5.0",
-             name_style=None, cave=None, legacy=False):
+             name_style=None, cave=None, legacy=False, density=None, branches=None):
     t0 = time.perf_counter()
     rng = Rng(seed, 2 if kind == "dungeon" else 3)
     lang = mpw_names.make_language(seed, name_style)
@@ -1301,7 +1452,11 @@ def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style
     if kind == "dungeon":
         if cave and method != "cave":
             raise ValueError("--fill, --passes, --birth, --survival, --radius and --border are cave flags")
-        D = build_dungeon(seed, w, h, method, cave, legacy)
+        if branches and method != "cyclic":
+            raise ValueError("--branches works with --method cyclic")
+        if branches is not None and not 0 <= branches <= 8:
+            raise ValueError("--branches must be 0 to 8")
+        D = build_dungeon(seed, w, h, method, cave, legacy, branches or 0)
         g, rooms, lights, entrance, goal, graph = D["g"], D["rooms"], D["lights"], D["entrance"], D["goal"], D["graph"]
         nb = nbrs4
     else:
@@ -1312,6 +1467,10 @@ def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style
         else:
             g, lights = battle_square(w, h, rng)
             nb = nbrs4
+        if density not in (None,) + tuple(BATTLE_DENSITY):
+            raise ValueError("--density must be one of %s" % ", ".join(BATTLE_DENSITY))
+        if density and BATTLE_DENSITY[density]:
+            add_cover(g, w, h, nb, BATTLE_DENSITY[density], Rng(seed, DENSITY_STREAM))
         edge = {(x, y) for y in range(h) for x in range(w) if x in (0, w - 1) or y in (0, h - 1)}
         keep = set(fill_pockets(g, w, h, nb, edge))
         entrance = list(min(p for p in edge if p in keep))
@@ -1351,7 +1510,15 @@ def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style
         r = rooms[k["node"]]
         feats.append({"type": "Feature", "properties": dict(kind="key", id=k["id"], room=k["node"]),
                       "geometry": {"type": "Point", "coordinates": [r["x"] + r["w"] / 2, r["y"] + r["h"] / 2]}})
+    for b in (graph or {}).get("branches", []):
+        r = rooms[b["nodes"][-1]]
+        if b["treasure"]:
+            feats.append({"type": "Feature", "properties": dict(kind="treasure", room=b["nodes"][-1]),
+                          "geometry": {"type": "Point", "coordinates": [r["x"] + r["w"] / 2, r["y"] + r["h"] / 2]}})
     for e in (graph or {}).get("edges", []):
+        if e.get("secret"):
+            feats.append({"type": "Feature", "properties": dict(kind="secret door"),
+                          "geometry": {"type": "Point", "coordinates": [e["door"][0] + 0.5, e["door"][1] + 0.5]}})
         if "lock" in e or "oneway" in e:
             feats.append({"type": "Feature", "properties": dict(kind="lock" if "lock" in e else "one-way",
                                                                 key=e.get("lock"), rooms=e.get("oneway")),
@@ -1360,6 +1527,10 @@ def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style
                   params=dict(w=w, h=h, method=method, grid=grid, pps=pps, style=style, name_style=name_style),
                   projection=dict(kind="grid", units="square", axes="x east, y south, origin top-left"),
                   extent=[0, 0, w, h], parent=None, language=lang)
+    if kind == "battle" and density is not None:
+        recipe["params"]["density"] = density
+    if kind == "dungeon" and branches is not None:
+        recipe["params"]["branches"] = branches
     if kind == "dungeon" and not legacy:
         recipe["params"]["goal"] = "graph" if graph else "farthest"
         if method == "cave":
@@ -1495,7 +1666,8 @@ def regenerate(d, tmp):
     else:
         gen_grid(rc["kind"], rc["seed"], tmp, p["w"], p["h"], p["method"] or "bsp", p["grid"], p["pps"], p["style"],
                  rc["tool_version"], p["name_style"], cave=p.get("cave"),
-                 legacy=rc["kind"] == "dungeon" and "goal" not in p)
+                 legacy=rc["kind"] == "dungeon" and "goal" not in p, density=p.get("density"),
+                 branches=p.get("branches"))
 
 
 def _city_bars(d):

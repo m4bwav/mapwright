@@ -155,7 +155,7 @@ Johnson, Yannakakis and Togelius 2010, "Cellular automata for real-time generati
 
 ### Noise terrain: fBm and domain warping
 
-- fBm sums octaves of a band-limited noise: f(p) = Σ a^i · noise(l^i · p), lacunarity l about 2, gain a about 0.5, which relates to the Hurst exponent by a = 2^-H (Musgrave in Ebert et al., Texturing and Modeling, 3rd ed. 2003; Quilez, https://iquilezles.org/articles/fbm/, gain/Hurst relation recalled, page not fetched: unverified). Ridged variants use 1 - |noise| per octave for crests.
+- fBm sums octaves of a band-limited noise: f(p) = Σ a^i · noise(l^i · p), lacunarity l about 2, gain a about 0.5, which relates to the Hurst exponent by a = 2^-H (Musgrave in Ebert et al., Texturing and Modeling, 3rd ed. 2003; Quilez, https://iquilezles.org/articles/fbm/, checked 2026-11-16: "G=2^-H"; H runs 0 to 1, G = 0.5 is H = 1, which the article measures as a fit for mountain profiles). Ridged variants use 1 - |noise| per octave for crests.
 - Domain warping evaluates f(p + h(p)) instead of f(p). Quilez's form: q = (fbm(p), fbm(p + (5.2, 1.3))), result fbm(p + 4·q); a second layer r = (fbm(p + 4q + (1.7, 9.2)), fbm(p + 4q + (8.3, 2.8))), result fbm(p + 4·r). The offsets only decorrelate the components (https://iquilezles.org/articles/warp/, content via search snippet 2026-11-14; direct fetch returned 404).
 - Use: noise is the base and detail layer; it never makes drainage networks, so run Priority-Flood and stream power after it (sections 3-5).
 - Per-cell random heights look like spikes, because real heights depend on their neighbours. Lattice noise eased with 3x^2 - 2x^3 and summed over scales with falling amplitude is the textbook cure, which fBm already is (Shaker, Togelius and Nelson, Procedural Content Generation in Games, ch. 4, p. 59-63). No book read so far adds to the fBm or domain-warping notes above.
@@ -197,7 +197,7 @@ CPython does very roughly 10-30 M simple loop operations per second. Per-cell co
 | 262k (512²) | detailed world | 30-90 s; memory a few hundred MB as Python lists, use array module |
 | 1M | not recommended pure Python | several minutes |
 
-Azgaar defaults to about 10k cells and allows up to 100k (unverified) [22]; mapgen4 is tuned to look best around 25k cells and supports 1M+ (mapgen4 README, checked 2026-11-14) [25]. 10k-65k is the sweet spot. Measure these numbers in the first prototype and replace this table.
+Azgaar defaults to 10k cells (density step 4) and allows 1k to 100k in 13 steps, flagging above 50k as slow (`src/data/graph-density.ts`, https://github.com/Azgaar/Fantasy-Map-Generator, checked 2026-11-16) [22]; mapgen4 is tuned to look best around 25k cells and supports 1M+ (mapgen4 README, checked 2026-11-14) [25]. 10k-65k is the sweet spot. Measure these numbers in the first prototype and replace this table.
 
 ## 13. Proof rules (checkable)
 

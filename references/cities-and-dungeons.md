@@ -27,7 +27,7 @@ mapwright is stdlib-first Python, so this file favours methods that need only `r
 ### 1.3 Agent-based growth
 
 - Lechner, Watson, Wilensky et al. let "extender" agents wander in undeveloped land and propose roads back to the network, and "connector" agents add shortcuts where travel distance on roads is far longer than straight-line distance [LE03].
-- The detour test (network distance over straight distance above a threshold, e.g. above about 1.5 to 2, gives a new road) is cheap and makes believable connectivity on its own [LE03] (threshold values unverified).
+- The detour test is cheap and makes believable connectivity on its own [LE03]. In the paper a connector agent adds a road only if reaching the target over the network takes longer than a constant k times the Manhattan distance; low k gives a tighter network with more loops, high k more dead ends. The paper gives no value for k, so 1.5 to 2 is our own starting range, not the paper's (https://arxiv.org/abs/2507.18899, section 3, checked 2026-11-16).
 
 ### 1.4 What mapwright should pick
 
@@ -66,7 +66,7 @@ mapwright is stdlib-first Python, so this file favours methods that need only `r
   - Each ward gets a type (market, craftsmen, merchant, slum, cathedral, castle, farm, park, administration, military) by rated placement: each type scores candidate patches (near plaza, near wall, near water) and takes the best.
   - Inside a ward, the patch polygon is cut into buildings by recursive splitting with alleys, then some buildings are dropped for gaps.
 - Current MFCG exports PNG, SVG and a JSON with features (walls, roads, buildings, districts) [WAT-MFCG] (exact JSON schema unverified).
-- Watabou also makes the One Page Dungeon, Perilous Shores, Village and Neighbourhood generators; the Dungeon generator exports JSON with rooms and doors on a grid [WAT-OPD] (schema unverified).
+- Watabou also makes the One Page Dungeon, Perilous Shores, Village and Neighbourhood generators; the Dungeon generator exports JSON with rooms and doors on a grid [WAT-OPD] (schema unverified; the itch page confirms PNG, SVG, Markdown and JSON exports only through devlog titles and comments, https://watabou.itch.io/one-page-dungeon, checked 2026-11-16).
 - Do not copy output or code into mapwright; reimplement the method. GPL code cannot go into a permissively licensed plugin.
 
 ### 3.2 Townscaper-likes
@@ -307,7 +307,7 @@ A scene export (right-click scene, Export Data) contains, among others [FVTT-API
 
 - [PM01] Parish, Y. I. H. and Müller, P. "Procedural Modeling of Cities." SIGGRAPH 2001, pp. 301-308. https://doi.org/10.1145/383259.383292
 - [CH08] Chen, G., Esch, G., Wonka, P., Müller, P., Zhang, E. "Interactive Procedural Street Modeling." ACM Transactions on Graphics 27(3), SIGGRAPH 2008. https://doi.org/10.1145/1360612.1360702
-- [LE03] Lechner, T., Watson, B., Wilensky, U., Felsen, M. "Procedural City Modeling." 1st Midwestern Graphics Conference, 2003 (unverified venue details).
+- [LE03] Lechner, T., Watson, B., Wilensky, U., Felsen, M. "Procedural City Modeling." 1st Midwestern Graphics Conference, 2003 (venue from a secondary bibliography; the paper text itself is at https://arxiv.org/abs/2507.18899, read 2026-11-16, and its header names no venue: unverified).
 - [VA12] Vanegas, C. A., Kelly, T., Weber, B., Halatsch, J., Aliaga, D. G., Waddell, P. "Procedural Generation of Parcels in Urban Modeling." Computer Graphics Forum 31(2), Eurographics 2012. https://doi.org/10.1111/j.1467-8659.2012.03034.x
 - [DCG] de Berg, M., Cheong, O., van Kreveld, M., Overmars, M. Computational Geometry: Algorithms and Applications, 3rd ed., Springer 2008 (doubly connected edge list, ch. 2).
 - [SM-PORT] Hobby priority-queue ports of Parish and Müller, e.g. "citygen" write-ups (unverified; pick one before citing).
@@ -340,3 +340,10 @@ A scene export (right-click scene, Export Data) contains, among others [FVTT-API
 - [R20-DL] Roll20 Help Center, "Dynamic Lighting." https://help.roll20.net/
 - [R20-API] Roll20 API script library, UniversalVTTImporter 0.1.13. https://github.com/Roll20/roll20-api-scripts/tree/master/UniversalVTTImporter (checked 2026-11-15)
 - [OBR-DOC] Owlbear Rodeo documentation. https://docs.owlbear.rodeo/ (unverified details)
+
+## Flags added in session 17 (2026-11-16)
+
+- `gen battle --density sparse|normal|dense` (CLI default `normal`). Share of squares holding a feature (rock, ruin wall, tree, door): sparse is the old map (mean 0.136 square, 0.075 hex over seeds 1-30), normal 0.22, dense 0.32 (measured 0.220-0.227 and 0.320-0.328). Extra cover is tree clumps and lone boulders from its own random stream (4000), so the base map's draws are unchanged; a clump that splits the open ground is taken back, a boulder needs an all-floor ring, nothing sits beside a door. Trees block movement (TREE is not passable). Recipes without `params.density` (older ones, or the Python API default) regenerate as sparse.
+- Battle maps now draw a legend box (bottom right, untitled, map colours) listing only the cell kinds on the map: rock or ruined wall, trees, doorway. Labels avoid the box. The SVG canvas size is unchanged, so the hex PNG export and the whole-pixel grid stay as they were.
+- `gen dungeon --method cyclic --branches N` (0 to 8, default none): dead-end side branches of one or two cells, each hanging off a non-goal node by a plain edge, so the cycle rank is unchanged and no key or lock moves. A branch's first door is secret 40% of the time (purple S); its last room holds treasure always behind a secret door, else 60% (gold disc). Features `treasure` and `secret door` go to features.geojson. Drawn from stream 5000; without the flag the map is byte-identical to 0.10.x (checked on seeds 1, 5, 9, 13, 21, 30).
+- System diagrams: the habitable-zone key appears only when the green band is drawn. The schematic draws the band only around planets inside the zone; with none, the footer says "habitable zone a-b AU (no planet in it)" (L-041, closed).
