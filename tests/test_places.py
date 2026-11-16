@@ -421,5 +421,54 @@ class TestRange(PlacesBase):
         self.assertAlmostEqual(m["open_floor_share"], 13 / 40.0)
 
 
+class TestBattleDensity(PlacesBase):
+    """s17: --density on gen battle, cover never blocks reachability, legend lists only kinds present."""
+
+    def test_density_sweep_and_legend(self):
+        for grid in ("square", "hex"):
+            out = self.d("dens-" + grid)    # a hex map writes no map.png, so never share the folder
+            for dens, lo, hi in (("normal", 0.22, 0.26), ("dense", 0.32, 0.36)):
+                for seed in range(1, 11):
+                    P.gen_grid("battle", seed, out, 30, 20, grid=grid, pps=40, density=dens)
+                    self.assertEqual(failed(P.check(out, determinism=seed == 1, labels=False)), [], (grid, dens, seed))
+                    gj = P.load(out, "grid.json")
+                    self.assertTrue(lo <= P.feature_share(gj["cells"]) < hi, (grid, dens, seed))
+                    with open(os.path.join(out, "map.svg"), encoding="utf-8") as f:
+                        svg = f.read()
+                    kinds = {{"#": "rock", "T": "tree", "+": "door"}[c] for r in gj["cells"] for c in r if c != "."}
+                    drawn = {k for k in ("rock", "tree", "door") if 'class="legend-%s"' % k in svg}
+                    self.assertEqual(drawn, kinds, (grid, dens, seed))
+
+    def test_sparse_and_default_api_keep_old_map(self):
+        a, b = self.d("old"), self.d("sparse")
+        P.gen_grid("battle", 31, a, 30, 20, pps=40)
+        P.gen_grid("battle", 31, b, 30, 20, pps=40, density="sparse")
+        self.assertEqual(P.load(a, "grid.json"), P.load(b, "grid.json"))
+        self.assertNotIn("density", P.load(a, "recipe.json")["params"])
+        with self.assertRaises(ValueError):
+            P.gen_grid("battle", 1, self.d("bad"), 30, 20, density="thick")
+
+
+class TestCyclicBranches(PlacesBase):
+    def test_branches_sweep(self):
+        out = self.d("br")
+        for seed in range(1, 11):
+            P.gen_grid("dungeon", seed, out, 48, 36, method="cyclic", pps=40, branches=4)
+            self.assertEqual(failed(P.check(out, determinism=seed == 1, labels=False)), [], seed)
+            gr = P.load(out, "grid.json")["graph"]
+            self.assertTrue(gr["branches"])
+            keyed = {k["node"] for k in gr["keys"]}
+            for b in gr["branches"]:
+                self.assertFalse(keyed & set(b["nodes"]))
+
+    def test_default_has_no_branches_and_flag_needs_cyclic(self):
+        out = self.d("nobr")
+        P.gen_grid("dungeon", 77, out, 48, 36, method="cyclic", pps=40)
+        self.assertNotIn("branches", P.load(out, "grid.json")["graph"])
+        self.assertNotIn("branches", P.load(out, "recipe.json")["params"])
+        with self.assertRaises(ValueError):
+            P.gen_grid("dungeon", 1, self.d("bspbr"), 48, 36, method="bsp", branches=2)
+
+
 if __name__ == "__main__":
     unittest.main()

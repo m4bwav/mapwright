@@ -6,6 +6,20 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 
 ## Active
 
+### L-050 · 2026-11-16 · `trees-block-on-battle-maps`: tree cells are not passable, so scattered trees can seal pockets
+- Trigger: s17 density sweep: dense battle maps failed "every door reached" on 14 of 30 seeds and one map reached 0.64 feature share.
+- Hypothesis: PASS is (FLOOR, DOOR); TREE blocks. Tree clumps closed off doors and pockets, and fill_pockets then turned the pockets to rock.
+- Rule: any blocking scatter must keep the open ground in one piece: count flood regions before and after each clump and take it back if the count changes; keep scatter off cells beside a door. The legend says trees block.
+- Evidence: T-20261116-3
+- Scope: skill
+
+### L-051 · 2026-11-16 · `hex-leaves-stale-map-png`: reusing one folder for a square then a hex map fails determinism
+- Trigger: a test wrote a square battle then a hex battle into the same folder; check failed "byte-identical: map.png".
+- Hypothesis: hex maps write no map.png, so the square map's PNG stays behind and the regenerated folder has none.
+- Rule: one folder per grid kind in sweeps and tests (or clear the folder first).
+- Evidence: T-20261116-3
+- Scope: skill
+
 ### L-042 · 2026-11-16 · `find-osm-undertriggers`: "find OpenStreetMap data ... tell me the licence" fires mapwright 1 of 3
 - Trigger: T-20261116-2: trigger-find-place missed in one run and a rerun pair (1 hit of 3); it was 3/3 in T-20261116-1 after the Step F fix.
 - Hypothesis: the prompt reads as a licence question sonnet can answer from memory, and the description says "find" maps of places but does not name OpenStreetMap, Overpass or data licences.
@@ -121,11 +135,11 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 - Evidence: tests/test_space.py test_rendered_extra_file_does_not_fail_determinism
 - Scope: skill
 
-### L-041 · 2026-11-15 · `system-hz-legend-undrawn`: schematic system view names a green habitable zone it does not draw
+### L-041 · 2026-11-15 · `system-hz-legend-undrawn`: Closed: schematic system view names a green habitable zone it does not draw
 - Trigger: Step E system seed 2077 (G9 V): legend says "green: habitable zone 0.88-1.56 AU", the schematic shows no green band, and no planet sits in the zone.
 - Hypothesis: the schematic uses equal spacing, so the zone has no x extent; the legend line is shared with the to-scale view.
-- Rule: open item: drop the legend line in the schematic or mark planets in the zone; pick a seed with a planet in the zone for a showcase.
-- Evidence: Step E note 2026-11-15
+- Rule: closed 2026-11-16 (session 17): the key follows the drawing. Both views tag the band `class="hz"` and its key `class="legend-hz"`; the schematic with no planet in the zone prints the range without the colour. Test TestSystemHzLegend (40 seeds, both views, both cases seen).
+- Evidence: Step E note 2026-11-15; T-20261116-3
 - Scope: skill
 
 ## Archived

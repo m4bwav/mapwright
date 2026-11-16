@@ -243,5 +243,21 @@ class TestCli(SpaceBase):
             run_cli("export", sysd, "-o", self.d("x.png"))
 
 
+class TestSystemHzLegend(SpaceBase):
+    """L-041: the habitable-zone key appears exactly when the zone is drawn, in both views."""
+
+    def test_key_iff_band(self):
+        out = self.d("hz")
+        seen = set()
+        for seed in range(1, 41):
+            S.gen_system(seed, out)
+            for view in ("schematic", "scale"):
+                svg = S.render_svg(out, view)
+                band = 'class="hz"' in svg
+                self.assertEqual(band, 'class="legend-hz"' in svg, (seed, view))
+                seen.add(band)
+        self.assertEqual(seen, {True, False})
+
+
 if __name__ == "__main__":
     unittest.main()

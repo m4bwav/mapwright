@@ -340,3 +340,10 @@ A scene export (right-click scene, Export Data) contains, among others [FVTT-API
 - [R20-DL] Roll20 Help Center, "Dynamic Lighting." https://help.roll20.net/
 - [R20-API] Roll20 API script library, UniversalVTTImporter 0.1.13. https://github.com/Roll20/roll20-api-scripts/tree/master/UniversalVTTImporter (checked 2026-11-15)
 - [OBR-DOC] Owlbear Rodeo documentation. https://docs.owlbear.rodeo/ (unverified details)
+
+## Flags added in session 17 (2026-11-16)
+
+- `gen battle --density sparse|normal|dense` (CLI default `normal`). Share of squares holding a feature (rock, ruin wall, tree, door): sparse is the old map (mean 0.136 square, 0.075 hex over seeds 1-30), normal 0.22, dense 0.32 (measured 0.220-0.227 and 0.320-0.328). Extra cover is tree clumps and lone boulders from its own random stream (4000), so the base map's draws are unchanged; a clump that splits the open ground is taken back, a boulder needs an all-floor ring, nothing sits beside a door. Trees block movement (TREE is not passable). Recipes without `params.density` (older ones, or the Python API default) regenerate as sparse.
+- Battle maps now draw a legend box (bottom right, untitled, map colours) listing only the cell kinds on the map: rock or ruined wall, trees, doorway. Labels avoid the box. The SVG canvas size is unchanged, so the hex PNG export and the whole-pixel grid stay as they were.
+- `gen dungeon --method cyclic --branches N` (0 to 8, default none): dead-end side branches of one or two cells, each hanging off a non-goal node by a plain edge, so the cycle rank is unchanged and no key or lock moves. A branch's first door is secret 40% of the time (purple S); its last room holds treasure always behind a secret door, else 60% (gold disc). Features `treasure` and `secret door` go to features.geojson. Drawn from stream 5000; without the flag the map is byte-identical to 0.10.x (checked on seeds 1, 5, 9, 13, 21, 30).
+- System diagrams: the habitable-zone key appears only when the green band is drawn. The schematic draws the band only around planets inside the zone; with none, the footer says "habitable zone a-b AU (no planet in it)" (L-041, closed).
