@@ -40,7 +40,7 @@ dzdx = (f - d) / (2 * cs)
 dzdy = (h - b) / (2 * cs)
 ```
 
-It is cheaper and follows fine detail more closely; Horn smooths more and is said to behave better on rough or noisy DEMs [Jones1998] (Jones compared eight methods and ranked these two highest; exact ranking unverified). GDAL exposes both (`gdaldem hillshade -alg Horn|ZevenbergenThorne`) and notes ZT suits smoother landscapes [GDAL].
+It is cheaper and follows fine detail more closely; Horn smooths more and is said to behave better on rough or noisy DEMs [Jones1998] (Jones compared eight methods by RMS error on a synthetic surface with added noise; Horn beat Fleming and Hoffer's four-cell method, the slope term Zevenbergen-Thorne shares, when noise was large; checked 2026-11-16 via the abstract, https://doi.org/10.1016/S0098-3004(98)00032-6; the full ranking is still unverified). GDAL exposes both (`gdaldem hillshade -alg Horn|ZevenbergenThorne`) and notes ZT suits smoother landscapes [GDAL].
 
 ### 1.5 Slope, aspect, shade (Esri formulation)
 
@@ -120,11 +120,11 @@ Compute the minimum spacing: horizontal distance between lines on the page = `in
 
 ### 2.3 Index and supplementary contours
 
-Every fifth contour is an index contour, drawn heavier and labelled; USGS uses this convention [USGS-Topo]. Typical weights: intermediate about 0.1-0.15 mm, index about 0.25-0.3 mm, in brown (unverified exact widths). Supplementary contours at half interval may be dashed in flat areas [USGS-Topo]. Depression contours carry ticks pointing downslope [USGS-Topo].
+Every fifth contour is an index contour, drawn heavier and labelled; USGS uses this convention [USGS-Topo]. Typical weights: intermediate about 0.1-0.15 mm, index about 0.25-0.3 mm, in brown. Corrected 2026-11-16 from the USGS US Topo elevation specification (https://www.usgs.gov/ngp-standards-and-specifications/us-topo-cartographic-specifications-elevation): index 0.504 pt (about 0.18 mm) RGB 145,88,40, intermediate 0.216 pt (about 0.08 mm) RGB 179,134,89, supplemental 0.36 pt. Supplementary contours at half interval may be dashed in flat areas [USGS-Topo]. Depression contours carry ticks pointing downslope [USGS-Topo].
 
 ### 2.4 Contour labels
 
-Labels sit on index contours, read uphill (top of the letters toward higher ground) and break the line under them [Imhof1982][USGS-Topo]. Place them in a staggered "ladder" so a reader can follow values up a slope, avoid sharp bends, and never upside down relative to the page beyond what uphill reading forces (practice; unverified as a stated rule).
+Labels sit on index contours, read uphill (top of the letters toward higher ground) and break the line under them [Imhof1982][USGS-Topo] (2026-11-16: the US Topo elevation spec only says index labels are "straight and centered on line", 6 pt Segoe UI Italic with a 0.70 pt halo; uphill reading not stated there, unverified). Place them in a staggered "ladder" so a reader can follow values up a slope, avoid sharp bends, and never upside down relative to the page beyond what uphill reading forces (practice; unverified as a stated rule).
 
 ## 3. Hypsometric tints
 
@@ -141,9 +141,9 @@ Implementation rules:
 
 ## 4. Hachures
 
-Hachures are short strokes drawn down the line of steepest slope; denser and thicker strokes mean steeper ground. Lehmann's 1799 system fixed the ratio of black to white by slope, with 45 degrees fully black (often cited; unverified details) [Imhof1982][Kennelly2008]. Shadow hachures (Dufour map of Switzerland) vary weight with illumination instead of slope [Imhof1982].
+Hachures are short strokes drawn down the line of steepest slope; denser and thicker strokes mean steeper ground. Lehmann's 1799 system fixed the ratio of black to white by slope, with 45 degrees fully black (often cited; blocked 2026-11-16: Wikipedia "Hachure map" names only Lehmann 1799 and thicker strokes for steeper slopes; the Geographia Technica 2017 hachure paper, https://doi.org/10.21163/GT_2017.121.08, gives 5-45 degrees in 8 classes but credits that range to later work; its PDF had no readable text and academia.edu answered 403) [Imhof1982][Kennelly2008]. Shadow hachures (Dufour map of Switzerland) vary weight with illumination instead of slope [Imhof1982].
 
-Algorithm sketch (after Kennelly's review and modern digital hachure work [Kennelly2008][Pegg2012 (unverified citation)]):
+Algorithm sketch (after Kennelly's review and modern digital hachure work [Kennelly2008][KennellyKimerling2000]):
 1. Compute contours at a small interval as guide lines.
 2. Seed points along each contour with spacing inversely related to slope.
 3. From each seed, trace downhill along the gradient until the next contour; that segment is one hachure.
@@ -244,8 +244,8 @@ Conventions [Imhof1975][Imhof1982][USGS-Topo]:
 - Landforms (mountains, ranges) in a different style, often upright or sans, brown or black; ranges letterspaced.
 - Settlements in upright type, size by population class.
 - Hierarchy shown by size, weight, case (capitals for larger regions) and spacing, with no more than a few size steps.
-- Minimum legible size: about 6-7 pt for print on paper; 5 pt is a hard floor for high-quality print (unverified thresholds). For screen output use 10-11 px minimum (unverified).
-- Halos (a thin background-coloured stroke behind text) improve legibility over relief; keep them narrow (about 1-1.5 px or 0.3 mm; unverified) and use `paint-order: stroke` in SVG [SVG2].
+- Minimum legible size: about 6-7 pt for print on paper; 5 pt is a hard floor for high-quality print (unverified thresholds; 2026-11-16 the US Topo spec sets contour labels at 6 pt, consistent with the 6 pt floor). For screen output use 10-11 px minimum (unverified).
+- Halos (a thin background-coloured stroke behind text) improve legibility over relief; keep them narrow (about 1-1.5 px or 0.3 mm; 2026-11-16 the US Topo spec uses a 0.70 pt, about 0.25 mm, halo on 6 pt contour labels) and use `paint-order: stroke` in SVG [SVG2].
 
 ## 8. Curved text in SVG
 
@@ -277,7 +277,7 @@ For each feature generate candidates with a cost: position rank penalty (7.2), o
 - Gradient descent / local search: start from a placement, repeatedly move one label to the position that most lowers total cost [Hirsch1982][Christensen1995].
 - Simulated annealing: random moves, accept worse moves with probability `exp(-delta/T)`, cool `T` geometrically. Christensen, Marks and Shieber (1995, ACM TOG 14(3):203-232) compared methods and found annealing gave the best quality for reasonable time, beating greedy, gradient descent, Hirsch's method and Zoraster's integer programming approach [Christensen1995]. Their schedule (initial T so that a cost increase of 1/3 is accepted with probability 2/3; T lowered 10 percent after a fixed number of moves) is as I recall it (unverified details; 2026-11-16 the Harvard copy answered 429 and the MERL TR94-12 PDF had no readable text layer).
 - Rule-based expert systems (Ahn and Freeman's AUTONAP, Doerschler and Freeman) and the commercial Maplex/Esri label engine use rule sets plus optimisation [Freeman2005][EsriMaplex].
-- Wagner, Wolff and others give approximation algorithms for maximum independent sets of labels (sliding models, unverified detail) [Wagner-Wolff1997].
+- Wagner and Wolff (1997) keep the factor-1/2 guarantee of Formann and Wagner's algorithm for the four-position point model while placing labels much closer to the optimum in practice [Wagner-Wolff1997]. Corrected 2026-11-16 (abstract checked by search): that paper is not about sliding labels; slider models come from van Kreveld, Strijk and Wolff, "Point set labeling with sliding labels", SoCG 1998.
 
 Annealing in stdlib Python is fine for hundreds to a few thousand labels; cost function is the hot loop, so keep conflicts precomputed as candidate-pair lists.
 
@@ -312,7 +312,7 @@ Each is a pure function over the rendered geometry:
 
 1. No label-label overlap: rectangles (or glyph boxes for curved text) intersect pairwise with zero area. Allow an optional padding of 0.5 mm.
 2. No edge cut: every label box lies inside the map frame minus a margin (default 1 mm).
-3. Minimum size: every text element's size >= 6 pt (print profile) or >= 10 px (screen profile); halo width <= 0.4 x font size (unverified ratio).
+3. Minimum size: every text element's size >= 6 pt (print profile) or >= 10 px (screen profile); halo width <= 0.4 x font size (unverified ratio; the US Topo labels use about 0.12).
 4. Association: for each point label, the nearest point symbol to the label's anchor is its own feature, and the gap is <= 2 mm. Swapped labels are a classic slip (Monmonier, How to Lie with Maps, 1991 ed., ch. 4).
 5. Feature overlap: point labels do not cover other point symbols; optional limit on covered line length.
 6. Line labels: total turning angle within limit (section 8); text not upside down (glyph rotation in [-90, 90] degrees).
@@ -343,7 +343,7 @@ All accessed 2026-11-14 unless marked unverified (cited from memory, not opened 
 - [EsriHS] Esri, "How Hillshade works", ArcGIS Pro documentation. https://pro.arcgis.com/en/pro-app/latest/tool-reference/3d-analyst/how-hillshade-works.htm
 - [EsriSlope] Esri, "How Slope works", ArcGIS Pro documentation. https://pro.arcgis.com/en/pro-app/latest/tool-reference/3d-analyst/how-slope-works.htm
 - [EsriZ] Esri, "Setting the z-factor parameter correctly" (ArcGIS blog and help table of z-factors by latitude). Table checked 2026-11-16 at https://desktop.arcgis.com/en/arcmap/latest/tools/spatial-analyst-toolbox/applying-a-z-factor.htm (0.00000898 at 0°, 0.00001792 at 60°, metres); the blog itself answered 403.
-- [EsriMaplex] Esri, Maplex Label Engine documentation, ArcGIS Pro. (unverified; not reached in pass 5, 2026-11-16)
+- [EsriMaplex] Esri, "Labeling basics", ArcGIS Pro documentation, https://doc.esri.com/en/arcgis-pro/latest/help/mapping/text/labeling-basics.html (checked 2026-11-16: Maplex is the default engine, with priorities, weights and a draft-quality mode that spends less time resolving conflicts; its internal rules are not published there)
 - [Formann-Wagner1991] Formann, M., Wagner, F. "A packing problem with applications to lettering of maps." Proc. 7th ACM Symposium on Computational Geometry, 281-288, 1991.
 - [Freeman2005] Freeman, H. "Automated cartographic text placement." Pattern Recognition Letters, 2005, https://doi.org/10.1016/j.patrec.2004.10.023 (citation checked via Crossref 2026-11-16; corrected from a 1995 "On the automated labeling of maps" in Shape, Structure and Pattern Recognition, which neither Crossref nor a web search could find).
 - [GDAL] GDAL, "gdaldem" documentation. https://gdal.org/programs/gdaldem.html
@@ -365,7 +365,7 @@ All accessed 2026-11-14 unless marked unverified (cited from memory, not opened 
 - [OpenType] Microsoft, OpenType specification, "hmtx — Horizontal Metrics Table". https://learn.microsoft.com/en-us/typography/opentype/spec/hmtx
 - [Patterson-SR] Patterson, T. shadedrelief.com, "Shaded relief" tutorials and design notes. https://www.shadedrelief.com
 - [Patterson-Jenny2011] Patterson, T., Jenny, B. "The development and rationale of cross-blended hypsometric tints." Cartographic Perspectives 69:31-46, 2011.
-- [Pegg2012] Pegg, D. "Design issues with 3D maps and the need for 3D cartographic standards" / digital hachure work. (unverified citation; find a proper digital hachure paper)
+- [KennellyKimerling2000] Kennelly, P., Kimerling, A.J. "Desktop hachure maps from digital elevation models." Cartographic Perspectives 37, 2000, https://cartographicperspectives.org/index.php/journal/article/download/cp37-kennelly-kimerling/pdf/3966 (found 2026-11-16 by search; replaces a "Pegg2012" citation that no search could find; see also Eric Fischer's 2012 digital hachures via https://persquaremile.com/2012/04/26/digital-hachures)
 - [SVG11] W3C, Scalable Vector Graphics 1.1 (Second Edition), "Text on a path". https://www.w3.org/TR/SVG11/text.html#TextOnAPath
 - [SVG2] W3C, SVG 2, "Text" chapter (textPath `side`, `paint-order`). https://www.w3.org/TR/SVG2/text.html
 - [Tanaka1950] Tanaka, K. "The relief contour method of representing topography on maps." Geographical Review 40(3):444-456, 1950.
