@@ -2,7 +2,7 @@
 """mapwright CLI: read, write, measure and project maps with the standard library.
 
 Subcommands: doctor, explain, inspect, convert, measure, project, read, trace, gen, zoom, check,
-names, render, label, legend, style, serve, sheet.
+names, render, label, legend, style, serve, sheet, aistyle.
 Optional extras (numpy, shapely, pyproj, GDAL, geographiclib) are probed, never
 imported at the top level.
 """
@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.7.0"
+VERSION = "0.8.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -92,6 +92,10 @@ def cmd_doctor(a):
     }
     # export targets: everything but print is standard library only
     info["export"] = {"heightmaps": True, "tiled": True, "uvtt": True, "mesh": True, "print": bool(info["browser"])}
+    try:
+        info["aistyle"] = _aistyle().doctor(getattr(a, "host", None))
+    except (ValueError, OSError) as e:
+        info["aistyle"] = {"note": "workflow template unreadable: %s" % e}
     if a.json:
         print(json.dumps(info, indent=2))
         return
@@ -103,6 +107,17 @@ def cmd_doctor(a):
         print("%-14s%s" % (k, v or "absent (optional)"))
     print("export        heightmaps, tiled, uvtt and mesh ready; print (PDF/PNG at a paper size) %s"
           % ("ready" if info["browser"] else "skipped: no Chrome or Edge"))
+    ai = info["aistyle"]
+    if not ai.get("answers"):
+        print("aistyle       %s" % ai.get("note", "not checked"))
+    else:
+        files = ai.get("files", {})
+        missing = sorted(k for k, v in files.items() if v is False)
+        unknown = sorted(k for k, v in files.items() if v is None)
+        print("aistyle       ComfyUI %s answers; model %s %s"
+              % (ai.get("comfyui") or "?", ai.get("model"),
+                 ("MISSING on the server: " + ", ".join(missing)) if missing
+                 else ("not checked: " + ", ".join(unknown)) if unknown else "present"))
 
 
 # ---------------------------------------------------------------- explain
@@ -1380,6 +1395,11 @@ def cmd_check(a):
             die(str(e))
         nxt = max(b[0] for b in bars) + 1
         bars += [(nxt + i, name, ok, detail) for i, (name, ok, detail) in enumerate(lb)]
+    if not a.no_aistyle and _kind(a.dir) not in ("city", "dungeon", "battle") + SPACE:
+        # optional: one bar per styled picture with a sidecar in the folder; none there, no bar
+        ab = _aistyle().bars(a.dir)
+        nxt = max(b[0] for b in bars) + 1
+        bars += [(nxt + i, name, ok, detail) for i, (name, ok, detail) in enumerate(ab)]
     if a.json:
         print(json.dumps([dict(bar=b[0], name=b[1], ok=b[2], detail=b[3]) for b in bars], indent=1))
     else:
@@ -1562,6 +1582,61 @@ def cmd_style(a):
         die(str(e))
 
 
+def _aistyle():
+    _render()
+    import mpw_aistyle
+    return mpw_aistyle
+
+
+def cmd_aistyle(a):
+    ai = _aistyle()
+    if a.list:
+        for k in sorted(ai.LOOKS):
+            print("%-18s over %-18s %s" % (k, ai.LOOKS[k]["base"], ai.LOOKS[k]["desc"]))
+        return
+    if not a.dir:
+        die("aistyle RECIPE --look NAME [--dry-run]; --list shows the looks")
+    _need_recipe(a.dir)
+    if a.measure:
+        try:
+            m = ai.measure(a.dir, a.measure)
+        except (ValueError, OSError) as e:
+            die(str(e))
+        ok, detail = ai.judge(m)
+        if a.json:
+            print(json.dumps(dict(overlap=m, ok=ok, detail=detail), indent=1))
+        else:
+            print("%s: %s" % ("SKIP" if ok is None else ("PASS" if ok else "FAIL"), detail))
+        if ok is False:
+            sys.exit(1)
+        return
+    if not a.look:
+        die("aistyle wants --look NAME (%s)" % ", ".join(sorted(ai.LOOKS)))
+    try:
+        res = ai.run(a.dir, a.look, out=a.out, host=a.host, denoise=a.denoise, seed=a.seed, dry_run=a.dry_run,
+                     template=a.workflow, model=a.model, clip=a.clip, vae=a.vae, size=a.size, style=a.style,
+                     font=a.font, title=a.title, timeout=a.timeout, do_measure=not a.no_measure)
+    except (ValueError, RuntimeError, OSError) as e:
+        die(str(e))
+    if a.json:
+        print(json.dumps(res, indent=1))
+        return
+    if res.get("warning"):
+        print("warning: " + res["warning"])
+    if res["dry_run"]:
+        print("dry run: wrote %s and %s (%dx%d, %s, seed %d, denoise %.2f runs as %.3f); no server contacted"
+              % (res["control"], res["workflow"], res["size"][0], res["size"][1], res["look"], res["seed"],
+                 res["denoise"], res["denoise_effective"]))
+        return
+    ov = res["overlap"]
+    print("wrote %s (%s, seed %d, denoise %.2f runs as %.3f, %.0f s) and %s"
+          % (res["out"], res["look"], res["seed"], res["denoise"], res["denoise_effective"], res["seconds"],
+             res["sidecar"]))
+    print("%s: %s" % ("SKIP" if ov["ok"] is None else ("PASS" if ov["ok"] else "FAIL"), ov["detail"]))
+    if ov["ok"] is False:
+        sys.exit(1)
+
+
 def cmd_serve(a):
     r = _render()
     _need_recipe(a.dir)
@@ -1626,6 +1701,7 @@ def build_parser():
 
     s = sub.add_parser("doctor", help="check Python, browser and optional extras")
     s.add_argument("--json", action="store_true")
+    s.add_argument("--host", help="ComfyUI server to probe for aistyle (default: MAPWRIGHT_COMFYUI; unset = not probed)")
     s.set_defaults(fn=cmd_doctor)
 
     s = sub.add_parser("explain", help="explain a cartography term (`explain list`)")
@@ -1823,6 +1899,7 @@ def build_parser():
     s.add_argument("--no-regen", action="store_true", help="skip the byte-identical regeneration bar")
     s.add_argument("--no-labels", action="store_true", help="skip the label bars (overlap, edge, OCR)")
     s.add_argument("--style", default="topographic", help="style the label bars render with")
+    s.add_argument("--no-aistyle", action="store_true", help="skip the bars on styled pictures (*.aistyle.json) in the folder")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_check)
 
@@ -1898,6 +1975,32 @@ def build_parser():
     s.add_argument("--seeds", help="comma list of seeds: regenerate the world per seed (first --styles entry)")
     s.add_argument("--cols", type=int)
     s.set_defaults(fn=cmd_sheet)
+
+    s = sub.add_parser("aistyle", help="optional AI style pass on a ComfyUI server: the unlabelled render is the "
+                                       "init image, labels and furniture are set in code after, the coast is measured")
+    s.add_argument("dir", nargs="?", help="world or region recipe folder")
+    s.add_argument("--look", help="named look (`aistyle --list`)")
+    s.add_argument("--list", action="store_true", help="list the looks")
+    s.add_argument("--denoise", type=float, help="how far the model may repaint, 0-1 (default 0.45, the "
+                                                 "measured ceiling: above it the coast drifts)")
+    s.add_argument("--seed", type=int, default=0)
+    s.add_argument("--host", help="ComfyUI server URL (default: the MAPWRIGHT_COMFYUI environment variable)")
+    s.add_argument("-o", "--out", help=".png, .svg or .pdf (default: RECIPE/aistyle-LOOK.png); the control "
+                                       "picture, workflow, raw styled picture and sidecar go beside it")
+    s.add_argument("--dry-run", action="store_true", help="write the control PNG and the workflow JSON; contact no server")
+    s.add_argument("--measure", metavar="PNG", help="only measure an unlabelled picture of this map against the recipe")
+    s.add_argument("--workflow", help="workflow template JSON (default: scripts/data/aistyle-zimage-turbo.json)")
+    s.add_argument("--model", help="diffusion model file name on the server (overrides the template)")
+    s.add_argument("--clip", help="text encoder file name on the server")
+    s.add_argument("--vae", help="VAE file name on the server")
+    s.add_argument("--size", type=int, help="long side sent to the model, px (default: the template's, 1024)")
+    s.add_argument("--style", help="code style under the look (default: the look's own)")
+    s.add_argument("--font", help="TTF whose hmtx widths measure the labels")
+    s.add_argument("--title")
+    s.add_argument("--timeout", type=float, default=900, help="seconds to wait for the server")
+    s.add_argument("--no-measure", action="store_true", help="skip the overlap measurement")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_aistyle)
     return p
 
 

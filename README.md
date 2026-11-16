@@ -6,7 +6,7 @@ An agent plugin for maps of real places, fantasy worlds and science fiction sett
 
 mapwright is a skill for AI coding agents plus one small script, `mpw.py`, that needs nothing but Python's standard library.
 
-## What works in 0.7.0
+## What works in 0.8.0
 
 - **Inspect** a map file: GeoJSON, GPX, KML and KMZ, shapefiles, dBASE, PNG heightmaps with world files, GeoPackage and MBTiles. Feature counts, extent, properties and the CRS when the file states one.
 - **Convert** between GeoJSON, GPX and KML, and read shapefiles into GeoJSON. Ring order is fixed on the way (shapefiles clockwise, GeoJSON counter-clockwise).
@@ -33,6 +33,8 @@ mapwright is a skill for AI coding agents plus one small script, `mpw.py`, that 
   - deck plans to Universal VTT and hex battle maps to PNG;
   - a terrain mesh (OBJ) with optional vertical exaggeration and a base that makes it a watertight print tile, plus a manifest in polywright's asset format;
   - print-ready PDF and PNG at A4, A3, Letter, Tabloid or a custom size, at a chosen DPI, with bleed and crop marks, through headless Chrome or Edge.
+
+- **AI style pass** (0.8.0, optional): `aistyle` repaints a world or region map on your own ComfyUI server in four looks (painted atlas, ink and parchment, satellite, watercolour) and keeps the geography. The model gets the map without text; lakes, rivers, roads, symbols, labels, the legend, the scale bar and the north arrow are set in code on top. Each picture is measured against the map's own coast and gets a sidecar with the model, its licence class, the prompt, the seed and the numbers. Measured on 72 pictures: every one kept the coast at denoise 0.45 or below, none at 0.65. `--dry-run` works with no server.
 
 Labels on curves come next.
 
@@ -61,11 +63,13 @@ python scripts/mpw.py export isles.map -o tile.obj --print-mm 100 --exaggeration
 python scripts/mpw.py export crypt.map -o crypt.tmj --csv
 python scripts/mpw.py export ship.map -o ship.dd2vtt
 python scripts/mpw.py export isles.map --to print -o poster --paper A3 --bleed 3
+python scripts/mpw.py aistyle isles.map --look watercolour --dry-run
+python scripts/mpw.py aistyle isles.map --look painted-atlas --host http://127.0.0.1:8188
 ```
 
 ## Tests
 
-`python -m unittest discover -s tests`. Distances match Geoscience Australia's Vincenty example and GeographicLib's documented values to a millimetre.
+`python -m unittest discover -s tests`. Distances match Geoscience Australia's Vincenty example and GeographicLib's documented values to a millimetre. The tests need no GPU and no network; `tests/aistyle_grid.py` is the harness that measured the style pass on a real server.
 
 ## Licence
 

@@ -1,0 +1,41 @@
+{
+  "name": "zimage-turbo-img2img",
+  "note": "img2img with the unlabelled render as the init image. Slots in braces are filled by mpw.py aistyle; a slot must be a whole value. Copy this file, change the loaders or the model block, and pass it with --workflow to use another model.",
+  "model": {
+    "name": "Z-Image Turbo",
+    "unet": "z_image_turbo_bf16.safetensors",
+    "clip": "qwen_3_4b.safetensors",
+    "clip_type": "lumina2",
+    "vae": "ae.safetensors",
+    "licence": "Apache-2.0",
+    "licence_class": "ok-commercial",
+    "card": "https://huggingface.co/Tongyi-MAI/Z-Image-Turbo"
+  },
+  "settings": {
+    "steps": 9,
+    "cfg": 1.0,
+    "sampler": "res_multistep",
+    "scheduler": "simple",
+    "size": 1024,
+    "multiple": 16
+  },
+  "probe": {
+    "unet": "UNETLoader.unet_name",
+    "clip": "CLIPLoader.clip_name",
+    "vae": "VAELoader.vae_name"
+  },
+  "workflow": {
+    "1": {"class_type": "UNETLoader", "inputs": {"unet_name": "{UNET}", "weight_dtype": "default"}},
+    "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": "{CLIP}", "type": "{CLIP_TYPE}"}},
+    "3": {"class_type": "VAELoader", "inputs": {"vae_name": "{VAE}"}},
+    "4": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["2", 0], "text": "{PROMPT}"}},
+    "5": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["2", 0], "text": "{NEGATIVE}"}},
+    "6": {"class_type": "LoadImage", "inputs": {"image": "{IMAGE}"}},
+    "7": {"class_type": "VAEEncode", "inputs": {"pixels": ["6", 0], "vae": ["3", 0]}},
+    "8": {"class_type": "KSampler", "inputs": {"model": ["1", 0], "seed": "{SEED}", "steps": "{STEPS}", "cfg": "{CFG}",
+          "sampler_name": "{SAMPLER}", "scheduler": "{SCHEDULER}", "positive": ["4", 0], "negative": ["5", 0],
+          "latent_image": ["7", 0], "denoise": "{DENOISE}"}},
+    "9": {"class_type": "VAEDecode", "inputs": {"samples": ["8", 0], "vae": ["3", 0]}},
+    "10": {"class_type": "SaveImage", "inputs": {"images": ["9", 0], "filename_prefix": "{PREFIX}"}}
+  }
+}

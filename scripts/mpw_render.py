@@ -495,6 +495,18 @@ def _P(c, x0, y0, s):
 
 def render_svg(d, style_name=DEFAULT_STYLE, font=None, title=None):
     """Return (svg_text, info). info: placed, dropped, legend, times, style."""
+    p, info = render_parts(d, style_name, font, title)
+    return "\n".join(p["head"] + p["ground"] + p["water"] + p["coast"] + p["over"] + ["</svg>"]) + "\n", info
+
+
+def render_parts(d, style_name=DEFAULT_STYLE, font=None, title=None):
+    """Return (parts, info). parts holds the SVG lines of the map in drawing order:
+
+    head: the opening tag. ground: sea, land raster, star field, grid. water: lakes and rivers.
+    coast: the coast line. over: roads, settlement dots, labels, title, legend, scale bar, north arrow, frame.
+    head + ground + water + coast + over + ["</svg>"] is the full map, byte for byte what render_svg returns.
+    A style pass may repaint ground and coast; water and over are always set in code.
+    """
     t0 = time.perf_counter()
     st = style(style_name)
     rc, m, feats = load(d)
@@ -525,6 +537,7 @@ def render_svg(d, style_name=DEFAULT_STYLE, font=None, title=None):
         k = f["properties"]["kind"]
         {"lake": lakes, "river": rivers, "coast": coast, "road": roads, "track": roads,
          "settlement": sets}.get(k, []).append(f)
+    n_ground = len(o)
     d_l = []
     for f in lakes:
         for poly in f["geometry"]["coordinates"]:
@@ -538,8 +551,11 @@ def render_svg(d, style_name=DEFAULT_STYLE, font=None, title=None):
         w = min(3.5, 0.5 + 0.35 * math.sqrt(f["properties"]["acc"] / thr))
         o.append('<path stroke-width="%.2f" d="M%s"/>' % (w, "L".join(_P(c, x0, y0, s) for c in f["geometry"]["coordinates"])))
     o.append("</g>")
+    n_water = len(o)
     cd = ["M" + "L".join(_P(c, x0, y0, s) for c in f["geometry"]["coordinates"]) for f in coast]
     o.append('<path class="coast" fill="none" stroke="%s" stroke-width="1.1" d="%s"/>' % (st["coast"], "".join(cd)))
+    parts = dict(head=o[:1], ground=o[1:n_ground], water=o[n_ground:n_water], coast=o[n_water:])
+    o = []
     rk = {"major": (0, 1.6, ""), "minor": (1, 1.0, ""), "track": (2, 0.7, "3 2")}
     for f in roads:
         i, w, dash = rk.get(f["properties"].get("rank"), rk["minor"])
@@ -580,12 +596,12 @@ def render_svg(d, style_name=DEFAULT_STYLE, font=None, title=None):
              % (MARGIN + 6, MARGIN + 24, fam, st["ink"], escape(title)))
     o += lg + sb + na
     o.append('<rect width="%d" height="%.1f" fill="none" stroke="%s" stroke-width="2"/>' % (W, Hs, st["ink"]))
-    o.append("</svg>")
     times["total"] = time.perf_counter() - t0
     info = dict(style=style_name, placed=len(placed), dropped=[x["text"] for x in dropped],
                 legend=[e["label"] for e in ents], scale_km=km, width=int(W), height=round(Hs, 1), times=times,
                 labels=placed)
-    return "\n".join(o) + "\n", info
+    parts["over"] = o
+    return parts, info
 
 
 # ------------------------------------------------------------------ browser export
@@ -653,6 +669,9 @@ def labels_from_svg(svg, metrics=None):
     root = ET.fromstring(svg.encode("utf-8"))
     w = float(root.get("width"))
     h = float(root.get("height"))
+    vb = (root.get("viewBox") or "").split()
+    if len(vb) == 4:        # label coordinates are in viewBox units (a styled composite is drawn at another pixel size)
+        w, h = float(vb[2]), float(vb[3])
     fam = ""
     out = []
     for g in root.iter(SVGNS + "g"):
