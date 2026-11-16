@@ -240,6 +240,27 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 - Evidence: T-20261115-6 (the ring scores loop 1, dead end 0; the stub scores loop 0)
 - Scope: skill
 
+### L-036 · 2026-11-15 · `h-is-taken`: a heuristic method named h shadowed the grid height
+- Trigger: the first `path` run died with "'int' object is not callable" on G.h(...).
+- Hypothesis: the graph classes store the grid height as self.h, which hides a method of the same name.
+- Rule: never give a method a one-letter name a map class may also use for a size (w, h, x, y); the estimate is `est`.
+- Evidence: T-20261115-7
+- Scope: skill
+
+### L-037 · 2026-11-15 · `tobler-flat-is-5-0367`: Tobler on the flat is 5.036742 km/h, not 5.037
+- Trigger: a flat-leg test against d / 5.0374 failed by 1.6e-4 h.
+- Hypothesis: 6 exp(-0.175) = 5.036742; 5.037 and 5.04 are that number rounded, so a 1e-6 bar against d / 5.037 cannot hold.
+- Rule: test travel times against the formula (`TOBLER_FLAT`), and the published table only to its 0.01 km/h.
+- Evidence: T-20261115-7
+- Scope: skill
+
+### L-038 · 2026-11-15 · `road-cost-is-directed`: the road router charges the cell entered
+- Trigger: world paths cost 1225.07 one way and 1234.13 the other.
+- Hypothesis: `Router.step` multiplies by the terrain of the cell entered and adds a bridge only when entering a river, so the cost is directed even on flat ground.
+- Rule: treat world and region graphs as directed: the symmetry bar applies to grids only, and a field (cost to a goal) runs Dijkstra on reversed edges.
+- Evidence: T-20261115-7
+- Scope: skill
+
 ### L-006 · 2026-11-14 · Embedded RGB PNG drew blank: width passed as bytes per row
 - Trigger: map.svg showed only the sea colour.
 - Hypothesis: the PNG width was len(row) of an RGB bytearray, three times the pixel width.

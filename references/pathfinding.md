@@ -343,7 +343,7 @@ Has, as internal code:
 - Flood fills: every floor square, room and door reached from the entrance (dungeon, battle), every room from the airlock (deck), regions of a cave.
 - Graph tests: one connected route graph and a bridge count (sector); all settlements of a landmass joined by road (world, region).
 
-Lacks: any command a user can call to get a path, a distance field, a travel time, a chokepoint list, or a navigation hand-over.
+Lacked before 0.10.0: any command a user can call to get a path, a distance field, a travel time, a chokepoint list, or a navigation hand-over. Still lacks a navigation hand-over (`export --nav`) and JPS.
 
 Candidate commands and the proof bar each would need:
 
@@ -356,6 +356,8 @@ Candidate commands and the proof bar each would need:
 | `check DIR --chokepoints` | Articulation points and bridges with the size of what each cuts off; minimum cut entrance to exit | Equals brute force (remove each node, recount components) on small fixtures. Removing a reported chokepoint leaves at least one room unreachable; removing any other single cell leaves none |
 | `check DIR --fair` | Per-start distances to resources and first-reach areas | Distances equal brute-force Dijkstra. Areas sum to the passable total. The reported ratio is reproducible |
 | `export DIR --nav` | Walkable polygons and a cost grid (section 6.4) | Polygon area equals passable cells x cell area within 1e-9. Polygons are simple and do not overlap; no vertex lies inside a wall. Grid is w x h and blocked cells equal wall cells exactly. Flood fill on the re-read grid reaches the same count as `check` |
+
+Built in 0.10.0 (`scripts/mpw_path.py`, bars in TESTS.md T-20261115-7): `path`, `path --field`, `travel` (modes walk, offpath, horse), `check --chokepoints`, `check --fair`. Not built yet: `path --jps`, `export --nav`.
 
 Order suggested: `path` and its field first (everything else reuses them), then `--chokepoints`, then `travel`, then `--nav`.
 
