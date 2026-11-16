@@ -119,7 +119,7 @@ The pass is accepted only if geometry survived. mapwright knows the true land ma
 2. After: classify each pixel of the styled image as land or sea. Options, cheapest first:
    - Colour threshold in a known style (sea is blue-ish): k-means with k=2 in Lab space, pick the cluster nearest the input sea colour.
    - Ask the model to keep a sea colour, then threshold.
-   - A small segmenter; avoid SAM 3 (Meta-gated); SAM 2.1 is the house ungated default but SAM 2 is itself a Meta release under Apache 2.0 (check before use; unverified ruling).
+   - A small segmenter; avoid SAM 3 (Meta-gated); SAM 2.1 is the house ungated default but SAM 2 is itself a Meta release under Apache 2.0, not gated (repo licence Apache-2.0, https://github.com/facebookresearch/sam2, checked 2026-11-16).
 3. IoU = |A and B| / |A or B| (Jaccard index) [Jaccard].
 
 Thresholds as built (set by testing, T-20261115-5): `aistyle` accepts at land IoU >= 0.92, with lakes and a 3 px river band left out of the mask because both are redrawn in code. The clean render itself scores 0.972 to 0.988 on this measure, so 0.97 was never reachable for a repainted picture. The classifier is a colour table trained on the picture's own pixels at least 12 px from the true coast; a fixed "sea is blue" rule fails on parchment looks.
@@ -143,7 +143,7 @@ As built: a bare "is there a contrasting line here" test fires on 22 to 33 perce
 
 ### 4.4 Text leakage
 
-Run OCR (Tesseract, Apache 2.0) on the styled image before labels go on. Any confident word means the model painted text; reject or inpaint it out [Tesseract] (licence check: Apache 2.0, unverified version detail).
+Run OCR (Tesseract, Apache 2.0) on the styled image before labels go on. Any confident word means the model painted text; reject or inpaint it out [Tesseract] (licence Apache-2.0, https://github.com/tesseract-ocr/tesseract, checked 2026-11-16).
 
 ## 5. Base models and licence classes
 

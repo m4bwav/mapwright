@@ -124,19 +124,19 @@ fantasy generator.
 
 | Tool | What it is | Licence | Install size | Source |
 |---|---|---|---|---|
-| MapLibre GL JS | WebGL vector-tile renderer, fork of Mapbox GL JS v1 | BSD-3-Clause | ~800 KB min JS (unverified) | https://github.com/maplibre/maplibre-gl-js |
+| MapLibre GL JS | WebGL vector-tile renderer, fork of Mapbox GL JS v1 | BSD-3-Clause | ~1.06 MB `dist/maplibre-gl.js` (minified) at v6.18.0; LICENSE.txt is BSD-3-Clause (https://cdn.jsdelivr.net/npm/maplibre-gl/dist/maplibre-gl.js, https://github.com/maplibre/maplibre-gl-js/blob/main/LICENSE.txt, checked 2026-11-16) | https://github.com/maplibre/maplibre-gl-js |
 | MapLibre Style Spec | JSON style language (sources, layers, expressions) | BSD-3-Clause, with bundled third-party notices (an MIT part, d3-color BSD-3) in its LICENSE.txt; no ISC seen (checked 2026-11-14, https://github.com/maplibre/maplibre-style-spec) | small npm pkg | https://maplibre.org/maplibre-style-spec/ |
 | MapLibre Native (`@maplibre/maplibre-gl-native`) | C++ renderer with Node bindings; headless PNG render of a style | BSD-2-Clause | prebuilt binaries tens of MB (unverified) | https://github.com/maplibre/maplibre-native |
 | Leaflet | Small raster/vector-overlay JS map library | BSD-2-Clause | ~42 KB gz JS | https://leafletjs.com/ |
 | OpenLayers | Full-featured JS GIS client, many projections | BSD-2-Clause | large npm, tree-shakable | https://openlayers.org/ |
 | Mapnik | C++ server-side raster renderer (OSM Carto uses it) | LGPL-2.1 | native build, heavy | https://github.com/mapnik/mapnik |
 | CartoCSS | CSS-like style language compiled to Mapnik XML; effectively legacy | Apache-2.0 (checked 2026-11-14, https://github.com/mapbox/carto) | npm `carto` | https://github.com/mapbox/carto |
-| Tangram | WebGL renderer with YAML scene files and shaders; low activity | MIT | ~300 KB (unverified) | https://github.com/tangrams/tangram |
+| Tangram | WebGL renderer with YAML scene files and shaders; low activity | MIT | ~615 KB `dist/tangram.min.js` at 0.21.1 (https://unpkg.com/tangram@0.21.1/dist/tangram.min.js, checked 2026-11-16) | https://github.com/tangrams/tangram |
 | deck.gl | WebGL2/WebGPU layers for big data, works over MapLibre | MIT | modular npm | https://deck.gl/ |
 | Kepler.gl | deck.gl-based exploratory app; heavy React app | MIT | large | https://github.com/keplergl/kepler.gl |
 | D3-geo | Projections and SVG path generation in JS | ISC | ~50 KB (unverified) | https://github.com/d3/d3-geo |
-| Protomaps / PMTiles | Single-file tile archive, served from static storage, plus basemap styles | BSD-3-Clause (format and tools) | `pmtiles` Go binary ~15 MB (unverified) | https://protomaps.com/ , https://github.com/protomaps/PMTiles |
-| tippecanoe (felt fork) | Builds vector tilesets (MBTiles/PMTiles) from GeoJSON | BSD-2-Clause | C++ build, no Windows binary (unverified) | https://github.com/felt/tippecanoe |
+| Protomaps / PMTiles | Single-file tile archive, served from static storage, plus basemap styles | BSD-3-Clause (format and tools) | `pmtiles` Go binary, Windows x86_64 zip 17.8 MB at v1.31.2; reference code BSD-3, spec public domain/CC0 (https://github.com/protomaps/go-pmtiles/releases, https://github.com/protomaps/PMTiles/blob/main/LICENSE, checked 2026-11-16) | https://protomaps.com/ , https://github.com/protomaps/PMTiles |
+| tippecanoe (felt fork) | Builds vector tilesets (MBTiles/PMTiles) from GeoJSON | BSD-2-Clause | C++ build; GitHub releases carry no binaries at all (2.79.0, checked 2026-11-16 via the releases API) | https://github.com/felt/tippecanoe |
 
 Notes:
 - The MapLibre style spec is the open lingua franca for vector map styling; Mapbox's own
@@ -199,17 +199,17 @@ Notes for mapwright:
 
 | Library | Use | Licence | Wheel size (Windows x64, approx.) | Source |
 |---|---|---|---|---|
-| pyproj | PROJ bindings: CRS transforms, geodesics | MIT | ~6 MB, bundles PROJ data (unverified) | https://pypi.org/project/pyproj/ |
-| shapely | GEOS geometry ops | BSD-3-Clause | ~1.5 MB (unverified) | https://pypi.org/project/shapely/ |
-| geopandas | DataFrames of geometries, file IO via pyogrio | BSD-3-Clause | ~0.3 MB itself, but pulls pandas, numpy, shapely, pyproj, pyogrio (~60 MB+ total, unverified) | https://pypi.org/project/geopandas/ |
-| pyogrio | GDAL vector IO with bundled GDAL | MIT | ~15-20 MB (unverified) | https://pypi.org/project/pyogrio/ |
-| rasterio | GDAL raster IO (GeoTIFF, DEMs) | BSD-3-Clause | ~25 MB, bundles GDAL (unverified) | https://pypi.org/project/rasterio/ |
-| cartopy | Projected maps on matplotlib; Natural Earth downloads | BSD-3-Clause (relicensed from LGPL-3 in 0.23, April 2024; https://cartopy.readthedocs.io/stable/_sources/whatsnew/v0.23.rst.txt, checked 2026-11-14) | ~10 MB + matplotlib (unverified) | https://pypi.org/project/Cartopy/ |
-| folium | Writes Leaflet HTML from Python | MIT | <0.2 MB, pulls jinja2, requests, branca (unverified) | https://pypi.org/project/folium/ |
+| pyproj | PROJ bindings: CRS transforms, geodesics | MIT | ~6.7 MB cp312 win wheel at 3.8.0, bundles PROJ data (PyPI JSON, checked 2026-11-16) | https://pypi.org/project/pyproj/ |
+| shapely | GEOS geometry ops | BSD-3-Clause | ~1.8 MB cp312 win wheel at 2.2.0 (PyPI JSON, checked 2026-11-16) | https://pypi.org/project/shapely/ |
+| geopandas | DataFrames of geometries, file IO via pyogrio | BSD-3-Clause | ~0.3 MB itself, but pulls pandas, numpy, shapely, pyproj, pyogrio (~60 MB+ total, estimate; geopandas 1.2.0 wheel itself 0.37 MB, PyPI JSON checked 2026-11-16) | https://pypi.org/project/geopandas/ |
+| pyogrio | GDAL vector IO with bundled GDAL | MIT | ~34 MB cp312 win wheel at 0.13.0 (PyPI JSON, checked 2026-11-16) | https://pypi.org/project/pyogrio/ |
+| rasterio | GDAL raster IO (GeoTIFF, DEMs) | BSD-3-Clause | ~31 MB cp312 win wheel at 1.5.2, bundles GDAL (PyPI JSON, checked 2026-11-16) | https://pypi.org/project/rasterio/ |
+| cartopy | Projected maps on matplotlib; Natural Earth downloads | BSD-3-Clause (relicensed from LGPL-3 in 0.23, April 2024; https://cartopy.readthedocs.io/stable/_sources/whatsnew/v0.23.rst.txt, checked 2026-11-14) | ~9 MB cp312 win wheel at 0.26.0 + matplotlib (PyPI JSON, checked 2026-11-16) | https://pypi.org/project/Cartopy/ |
+| folium | Writes Leaflet HTML from Python | MIT | 0.13 MB wheel at 1.0.0, pulls jinja2, requests, branca (PyPI JSON, checked 2026-11-16) | https://pypi.org/project/folium/ |
 | prettymaps | Artistic OSM poster maps on matplotlib + osmnx | AGPL-3.0 (checked 2026-11-14, https://github.com/marceloprates/prettymaps) | small, heavy deps | https://github.com/marceloprates/prettymaps |
 | osmnx | Downloads and analyses OSM street networks | MIT | small, pulls geopandas, networkx | https://pypi.org/project/osmnx/ |
 | matplotlib basemap | Older projected-map toolkit; deprecated in favour of cartopy | MIT code; bundled GEOS library LGPL-2.1-only; basemap-data licences not stated on the repo page (checked 2026-11-14, https://github.com/matplotlib/basemap) | large data package | https://github.com/matplotlib/basemap |
-| matplotlib | Plotting, PNG/SVG output | PSF-based matplotlib licence | ~8 MB (unverified) | https://pypi.org/project/matplotlib/ |
+| matplotlib | Plotting, PNG/SVG output | PSF-based matplotlib licence | ~9.3 MB cp312 win wheel at 3.11.2 (PyPI JSON, checked 2026-11-16) | https://pypi.org/project/matplotlib/ |
 
 Notes:
 - prettymaps being AGPL (confirmed 2026-11-14) matters: mapwright must not vendor its code, only
