@@ -534,3 +534,55 @@ class TestS18BattleFrameAndTreasure(unittest.TestCase):
         with redirect_stderr(err), self.assertRaises(SystemExit):
             run_cli("legend", d)
         self.assertIn("no legend", err.getvalue())
+
+
+class TestBlocks(PlacesBase):
+    def test_blocks_passes_and_regens(self):
+        out = self.d("blk")
+        P.gen_grid("dungeon", 7, out, 48, 36, "blocks", pps=20)
+        bars = P.check(out)
+        self.assertEqual([b for b in failed(bars) if "OCR" not in b[-3]], [], bars)
+        for part in ("unmatched exit", "blocks placed", "byte-identical", "every floor square reachable",
+                     "goal at the floor square"):
+            self.assertTrue(named(bars, part)[-2], part)
+        rc = P.load(out, "recipe.json")
+        self.assertEqual(rc["params"]["method"], "blocks")
+        self.assertEqual(rc["blocks"]["bar"], 25)      # 6x5 blocks, 40/49 of 30 rounded up
+        self.assertIn("rerolls", rc["blocks"])
+        self.assertGreaterEqual(rc["blocks"]["placed"], 25)
+
+    def test_full_7x7_grid_goal_40(self):
+        L = P.block_layout(49, 49)
+        self.assertEqual((L["cols"], L["rows"], L["bar"]), (7, 7, 40))
+        g, rooms, info = P.blocks_dungeon(49, 49, 3)
+        self.assertGreaterEqual(info["placed"], 40)
+
+    def test_blocks_sweep_200(self):
+        rerolls = 0
+        for seed in range(1, 201):
+            D = P.build_dungeon(seed, 48, 36, "blocks")
+            rerolls += D["stats"]["rerolls"]
+            gj = core_gj(D, 48, 36)
+            gj["blocks"] = D["stats"]["blocks"]
+            bad = [b for b in P.goal_bars(gj, {}) + P.block_bars(gj) if not b[1]]
+            self.assertEqual(bad, [], seed)
+        self.assertLess(rerolls, 200)
+
+    def test_block_bars_catch_faults(self):
+        D = P.build_dungeon(5, 48, 36, "blocks")
+        gj = core_gj(D, 48, 36)
+        B = json.loads(json.dumps(D["stats"]["blocks"]))
+        gj["blocks"] = B
+        self.assertTrue(all(b[1] for b in P.block_bars(gj)))
+        c = next(c for c in B["cells"] if "E" in c[2] and c[0] + 1 < B["cols"])
+        c[2] = c[2].replace("E", "")      # one side drops its exit: unmatched and squares disagree
+        self.assertFalse(P.block_bars(gj)[0][1])
+        B["cells"] = B["cells"][:B["bar"] - 1]
+        self.assertFalse(P.block_bars(gj)[1][1])
+
+    def test_small_map_refused_and_cli(self):
+        with self.assertRaises(ValueError):
+            P.gen_grid("dungeon", 1, self.d("blk-small"), 20, 30, "blocks")
+        out = self.d("blk-cli")
+        run_cli("gen", "dungeon", "--seed", "9", "--method", "blocks", "--pps", "20", "--out", out)
+        self.assertEqual(P.load(out, "recipe.json")["params"]["method"], "blocks")

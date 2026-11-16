@@ -858,6 +858,116 @@ def cyclic_dungeon(w, h, seed, rng, branches=0):
 BRANCH_STREAM = 5000
 
 
+# ------------------------------------------------------------------ blocks (exit-matched block grid)
+BLOCK = 7               # squares per block side
+BLOCK_GOAL = 40 / 49.0  # the book's goal: 40 placements on a 7 x 7 block grid, scaled to the map's grid
+BLOCK_TRIES = 32        # restarts before giving up (ours)
+BLOCK_STREAM = 6000     # restart k draws from Rng(seed, 6000 + k); no other method reads these streams
+BLOCK_EXIT_P = 0.65     # chance an open side toward an empty slot gets an exit
+BLOCK_HALL_P = 0.3      # chance a block is a hall (corridors only) instead of a room
+SIDES = (("N", 0, -1, "S"), ("E", 1, 0, "W"), ("S", 0, 1, "N"), ("W", -1, 0, "E"))
+
+
+def block_layout(w, h):
+    """Block grid on the map: columns, rows, offset in squares, and the placement bar."""
+    cols, rows = w // BLOCK, h // BLOCK
+    if cols < 3 or rows < 3:
+        raise ValueError("a blocks dungeon needs at least %dx%d squares (3x3 blocks of %d)"
+                         % (3 * BLOCK, 3 * BLOCK, BLOCK))
+    return dict(size=BLOCK, cols=cols, rows=rows, ox=(w - cols * BLOCK) // 2, oy=(h - rows * BLOCK) // 2,
+                bar=int(math.ceil(cols * rows * BLOCK_GOAL)))
+
+
+def block_grid(cols, rows, rng):
+    """One attempt: grow from a start slot. A new block opens the side it was entered by, copies the flag of
+    every placed neighbour, closes the map edge and rolls the rest. Growth stops only when no exit points at
+    an empty slot, so every exit inside the map is matched. Returns {(cx, cy): set of sides}."""
+    placed = {}
+    todo = [((rng.randint(0, cols - 1), rng.randint(0, rows - 1)), None)]
+    while todo:
+        (cx, cy), came = todo.pop(int(rng.random() * len(todo)))
+        if (cx, cy) in placed:
+            if came:    # a second exit toward a slot placed since: open the matching side there
+                placed[(cx, cy)].add(came)
+            continue
+        ex = set()
+        for side, dx, dy, opp in SIDES:
+            nx, ny = cx + dx, cy + dy
+            if side == came:
+                ex.add(side)
+            elif not (0 <= nx < cols and 0 <= ny < rows):
+                continue
+            elif (nx, ny) in placed:
+                if opp in placed[(nx, ny)]:
+                    ex.add(side)
+            elif rng.random() < BLOCK_EXIT_P:
+                ex.add(side)
+        placed[(cx, cy)] = ex
+        for side, dx, dy, opp in SIDES:
+            if side in ex and side != came:
+                todo.append(((cx + dx, cy + dy), opp))
+    return placed
+
+
+def blocks_dungeon(w, h, seed, k0=0):
+    """Exit-matched block grid (Short and Adams ch. 7): blocks with an exit flag per side on a grid of
+    BLOCK-square blocks, open edges merged into one-square halls. A grid under the placement bar is thrown
+    away and grown again from stream BLOCK_STREAM + k (build_dungeon also restarts on a short path). Returns (grid, rooms, info)."""
+    L = block_layout(w, h)
+    m = BLOCK // 2
+    for k in range(k0, BLOCK_TRIES):
+        rng = Rng(seed, BLOCK_STREAM + k)
+        placed = block_grid(L["cols"], L["rows"], rng)
+        if len(placed) < L["bar"]:
+            continue
+        g = [[WALLC] * w for _ in range(h)]
+        rooms = []
+        order = sorted(placed, key=lambda c: (c[1], c[0]))
+        for cx, cy in order:
+            x0, y0 = L["ox"] + cx * BLOCK, L["oy"] + cy * BLOCK
+            if rng.random() >= BLOCK_HALL_P:
+                rw, rh = rng.randint(3, BLOCK - 2), rng.randint(3, BLOCK - 2)
+                rx, ry = x0 + rng.randint(1, BLOCK - 1 - rw), y0 + rng.randint(1, BLOCK - 1 - rh)
+                for yy in range(ry, ry + rh):
+                    for xx in range(rx, rx + rw):
+                        g[yy][xx] = FLOOR
+                rooms.append(dict(id=len(rooms), x=rx, y=ry, w=rw, h=rh))
+            g[y0 + m][x0 + m] = FLOOR
+            for side, dx, dy, _ in SIDES:
+                if side in placed[(cx, cy)]:
+                    for i in range(m + 1):
+                        g[y0 + m + dy * i][x0 + m + dx * i] = FLOOR
+        info = dict(L, placed=len(placed), rerolls=k,
+                    cells=[[cx, cy, "".join(s for s, _, _, _ in SIDES if s in placed[(cx, cy)])] for cx, cy in order])
+        return g, rooms, info
+    raise ValueError("no block grid with %d placements after %d restarts; try a larger map" % (L["bar"], BLOCK_TRIES))
+
+
+def block_bars(gj):
+    """Bars on a blocks dungeon: every exit inside the map meets an exit, none leaves the map, the edge
+    squares match the flags, and the placements reach the bar."""
+    B = gj["blocks"]
+    cells = {(c[0], c[1]): c[2] for c in B["cells"]}
+    g, n = gj["cells"], B["size"]
+    m = n // 2
+    bad = edge = sq = 0
+    for (cx, cy), ex in cells.items():
+        x0, y0 = B["ox"] + cx * n, B["oy"] + cy * n
+        for side, dx, dy, opp in SIDES:
+            q = (cx + dx, cy + dy)
+            inside = 0 <= q[0] < B["cols"] and 0 <= q[1] < B["rows"]
+            if side in ex and not inside:
+                edge += 1
+            elif inside and (side in ex) != (q in cells and opp in cells[q]):
+                bad += 1
+            if (g[y0 + m + dy * m][x0 + m + dx * m] in PASS) != (side in ex):
+                sq += 1
+    return [("blocks: no unmatched exit inside the map, none off the edge, squares match the flags",
+             bad == 0 and edge == 0 and sq == 0, "%d unmatched, %d off the edge, %d squares disagree" % (bad, edge, sq)),
+            ("blocks: at least %d blocks placed (40 of 49, scaled to %dx%d)" % (B["bar"], B["cols"], B["rows"]),
+             len(cells) >= B["bar"], "%d placed after %d restarts" % (len(cells), B["rerolls"]))]
+
+
 def _carve_room(g, cx, cy, rng):
     r = [0, 0, rng.randint(3, CELL - 2), rng.randint(3, CELL - 2)]
     for k, s0 in ((0, cx * CELL), (1, cy * CELL)):
@@ -1405,6 +1515,13 @@ def build_dungeon(seed, w, h, method="bsp", cave=None, legacy=False, branches=0)
     A bsp or cave map whose path is under min_path is drawn again from stream 3000 + k (k = re-roll)."""
     if legacy or method == "cyclic":
         return _build_once(seed, w, h, method, cave, legacy, Rng(seed, 2), branches)
+    if method == "blocks":     # one restart counter for both causes: too few placements, path too short
+        k0 = 0
+        while True:
+            D = _build_once(seed, w, h, method, cave, legacy, k0)
+            if bfs_dist(D["g"], w, h, D["entrance"])[tuple(D["goal"])] >= min_path(w, h):
+                return D
+            k0 = D["stats"]["rerolls"] + 1
     for k in range(PATH_TRIES):
         D = _build_once(seed, w, h, method, cave, legacy, Rng(seed, 2) if k == 0 else Rng(seed, 3000 + k))
         D["stats"]["rerolls"] = k
@@ -1424,8 +1541,11 @@ def _build_once(seed, w, h, method, cave, legacy, rng, branches=0):
     elif method == "cyclic" and not legacy:
         g, rr, graph = cyclic_dungeon(w, h, seed, rng, branches)
         rooms = [dict(id=i, x=r[0], y=r[1], w=r[2], h=r[3]) for i, r in enumerate(rr)]
+    elif method == "blocks" and not legacy:
+        g, rooms, stats["blocks"] = blocks_dungeon(w, h, seed, rng)    # rng: first restart index
+        stats["rerolls"] = stats["blocks"]["rerolls"]
     else:
-        raise ValueError("unknown dungeon method %r (bsp, cave, cyclic)" % method)
+        raise ValueError("unknown dungeon method %r (bsp, cave, cyclic, blocks)" % method)
     if not legacy and method != "cyclic":
         stats["isolated_walls_cleared"] = clear_isolated_walls(g, w, h)
     for r in rooms:
@@ -1510,6 +1630,8 @@ def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style
         gj["rerolls"] = graph["rerolls"] if graph else D["stats"].get("rerolls", 0)
     if graph:
         gj["graph"] = graph
+    if kind == "dungeon" and "blocks" in D["stats"]:
+        gj["blocks"] = D["stats"]["blocks"]
     feats = []
     for r in rooms:
         x, y, rw, rh = r["x"], r["y"], r["w"], r["h"]
@@ -1559,6 +1681,10 @@ def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style
         recipe["params"]["goal"] = "graph" if graph else "farthest"
         if method == "cave":
             recipe["params"]["cave"] = dict(CAVE_DEFAULTS, **(cave or {}))
+        if method == "blocks":
+            B = gj["blocks"]
+            recipe["blocks"] = dict(size=B["size"], cols=B["cols"], rows=B["rows"], bar=B["bar"],
+                                    placed=B["placed"], rerolls=B["rerolls"], tries=BLOCK_TRIES)
     t1 = time.perf_counter()
     write_place(out, recipe, feats, [dict(kind=kind, id=0, name=name)], gj, None)
     t = dict(generate=round(t1 - t0, 3), write_render=round(time.perf_counter() - t1, 3),
@@ -1912,6 +2038,8 @@ def _grid_bars(d):
                      "%d rooms, %d unreached, %d overlapping pairs" % (len(rooms), len(unr), ov)))
     if gj.get("goal"):
         bars += goal_bars(gj, rc["params"])
+    if gj.get("blocks"):
+        bars += block_bars(gj)
     doors = [(x, y) for y in range(h) for x in range(w) if g[y][x] == DOOR]
     if doors or rooms:
         bad = 0

@@ -8,6 +8,19 @@ Entry shape: `### T-YYYYMMDD-n · date · harness · env · passed/total`, then 
 
 ## Runs
 
+### T-20261116-11 · 2026-11-16 · pytest (python -m pytest -q) + blocks sweeps after the path restart · Windows, Python 3.14 · 244 passed, 2 skipped (live) in 91 s
+- New tests (TestBlocks, 5): a blocks map passes every bar and regenerates byte for byte; a 49x49 map has a 7x7 grid with bar 40; 200 seeds pass the goal and block bars; the block bars catch a dropped exit and a short count; maps under 21 squares refused; the CLI writes method blocks.
+- Sweep seeds 1 to 1,000 at 48x36: 0 bar failures; restarts 0: 658, 1: 221, 2: 80, 3: 32, 4: 6, 5: 3.
+- `check --range blocks`, 500 seeds: loop share mean 0.666, dead-end share mean 0.173, path over diagonal 0.833 to 2.167 (mean 1.342), open floor 0.182 to 0.331; loop x dead-end 42 bins, fullest 12.0 %; path x open 74 bins, fullest 7.2 %. No dominant bin.
+- Byte identity: sha256 over bsp, cave and cyclic (seeds 1 to 8, cyclic with 2 branches) and 4 battle maps, all files, is the same before and after the change.
+- led to: L-054
+
+### T-20261116-10 · 2026-11-16 · blocks sweeps while building row 7 (scratch, not kept) · Windows, Python 3.14 · measurement only
+- Restarts to reach the bar, 500 seeds on a 6x5 grid: exit chance 0.55 mean 2.66, worst 24; 0.65 mean 0.49, worst 5; 0.75 mean 0.07, worst 3. Chose 0.65 so restarts stay visible in the recipe.
+- First full check sweep (200 seeds, 48x36, exit chance 0.55): every bar passed except OCR, skipped without tesseract.
+- `check --range blocks` before the path restart: path over diagonal minimum 0.767 (46 steps, under the 48-step bar).
+- led to: L-052, L-053, L-054
+
 ### T-20261116-9 · 2026-11-16 · unittest (tests/) + grandchild sweep after the edge-outlet fix · Windows, Python 3.14 · 238/238 passed, 2 skipped (live) in 78 s
 - New tests: hydrology drains a no-sea valley to its outlet and ignores outlets when sea exists; a seed 2 all-land grandchild has border outlets, rivers, and passes every bar with determinism; bar 7 says "too arid to judge" when the floor is raised.
 - Sweep seeds 1-8 (20 maps): g2_0 now 93 river cells, 0 failures, 1 edge outlet, bar 6 max 0.149 parent spacings (was 0.158); g1_0 40 rivers / 4 outlets, g1_1 13 rivers / 10 outlets, all bars pass.

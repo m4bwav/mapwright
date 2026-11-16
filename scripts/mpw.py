@@ -2013,7 +2013,7 @@ def build_parser():
     d = gs.add_parser("dungeon", help="seeded dungeon on a square grid: BSP rooms, cellular caves or a cyclic "
                                       "lock-and-key graph; doors, lights, entrance and goal")
     d.add_argument("--seed", type=int, required=True)
-    d.add_argument("--method", choices=("bsp", "cave", "cyclic"), default="bsp")
+    d.add_argument("--method", choices=("bsp", "cave", "cyclic", "blocks"), default="bsp")
     d.add_argument("--fill", type=float, help="cave: share of squares that start as wall (default 0.45)")
     d.add_argument("--passes", type=int, help="cave: smoothing passes (default 5)")
     d.add_argument("--birth", type=int, help="cave: floor turns to wall at this many wall neighbours (default 5)")
@@ -2112,7 +2112,7 @@ def build_parser():
 
     s = sub.add_parser("check", help="run the proof bars on a recipe folder (world, region, city, dungeon, battle, sector, system, planet, deck)")
     s.add_argument("dir", nargs="?", help="recipe folder (with --range: where range.json and range.svg go)")
-    s.add_argument("--range", choices=("bsp", "cave", "cyclic"), help="expressive range of gen dungeon --method over many seeds")
+    s.add_argument("--range", choices=("bsp", "cave", "cyclic", "blocks"), help="expressive range of gen dungeon --method over many seeds")
     s.add_argument("--seeds", type=int, default=500, help="--range: number of seeds (default 500)")
     s.add_argument("--w", type=int, default=48, help="--range: width in squares")
     s.add_argument("--h", type=int, default=36, help="--range: height in squares")
