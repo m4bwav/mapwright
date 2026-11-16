@@ -134,7 +134,7 @@ fantasy generator.
 | Tangram | WebGL renderer with YAML scene files and shaders; low activity | MIT | ~615 KB `dist/tangram.min.js` at 0.21.1 (https://unpkg.com/tangram@0.21.1/dist/tangram.min.js, checked 2026-11-16) | https://github.com/tangrams/tangram |
 | deck.gl | WebGL2/WebGPU layers for big data, works over MapLibre | MIT | modular npm | https://deck.gl/ |
 | Kepler.gl | deck.gl-based exploratory app; heavy React app | MIT | large | https://github.com/keplergl/kepler.gl |
-| D3-geo | Projections and SVG path generation in JS | ISC | ~50 KB (unverified) | https://github.com/d3/d3-geo |
+| D3-geo | Projections and SVG path generation in JS | ISC | ~36 KB `dist/d3-geo.min.js` at 3.1.2 (jsDelivr and npm registry, checked 2026-11-16) | https://github.com/d3/d3-geo |
 | Protomaps / PMTiles | Single-file tile archive, served from static storage, plus basemap styles | BSD-3-Clause (format and tools) | `pmtiles` Go binary, Windows x86_64 zip 17.8 MB at v1.31.2; reference code BSD-3, spec public domain/CC0 (https://github.com/protomaps/go-pmtiles/releases, https://github.com/protomaps/PMTiles/blob/main/LICENSE, checked 2026-11-16) | https://protomaps.com/ , https://github.com/protomaps/PMTiles |
 | tippecanoe (felt fork) | Builds vector tilesets (MBTiles/PMTiles) from GeoJSON | BSD-2-Clause | C++ build; GitHub releases carry no binaries at all (2.79.0, checked 2026-11-16 via the releases API) | https://github.com/felt/tippecanoe |
 
@@ -164,8 +164,8 @@ Notes:
 
 | Program | Kind | Licence / price | Source |
 |---|---|---|---|
-| Wonderdraft | Desktop fantasy world/region map painter, `.wonderdraft_map` files | Proprietary, one-time ~US$30 (unverified price) | https://www.wonderdraft.net/ |
-| Dungeondraft | Desktop battle-map maker by the same team; `.dungeondraft_map` is JSON (unverified); exports Universal VTT | Proprietary, ~US$20 (unverified) | https://dungeondraft.net/ |
+| Wonderdraft | Desktop fantasy world/region map painter, `.wonderdraft_map` files | Proprietary, one-time US$29.99; Windows 10 64-bit or Ubuntu (https://wonderdraft.net/, checked 2026-11-16) | https://www.wonderdraft.net/ |
+| Dungeondraft | Desktop battle-map maker by the same team; `.dungeondraft_map` is JSON (unverified); exports Universal VTT | Proprietary, one-time US$19.99; Windows 10 64-bit or Ubuntu, no ARM64 (https://dungeondraft.net/, checked 2026-11-16) | https://dungeondraft.net/ |
 | Inkarnate | Browser fantasy map maker, free tier and Pro subscription | Proprietary SaaS | https://inkarnate.com/ |
 | Azgaar's Fantasy Map Generator | Browser procedural world generator (Voronoi cells, heightmap, rivers, states, cultures); `.map` save, SVG/PNG/GeoJSON export | MIT (checked 2026-11-14, https://raw.githubusercontent.com/Azgaar/Fantasy-Map-Generator/master/LICENSE, "Copyright 2017-2024 Max Haniyeu") | https://github.com/Azgaar/Fantasy-Map-Generator |
 | Watabou generators | Medieval Fantasy City Generator, One Page Dungeon, Village, Perilous Shores etc.; browser | Freeware; the city generator source is public as watabou/TownGeneratorOS under GPL-3.0, an older Haxe version missing later features such as water bodies (checked 2026-11-14, https://watabou.itch.io/medieval-fantasy-city-generator/devlog/6592/source-code). Other generators are closed; terms for outputs (could not verify) | https://watabou.github.io/ , https://watabou.itch.io/ |

@@ -256,7 +256,7 @@ All accessed 2026-11-14. Entries marked (unverified) were cited from memory and 
 - QGIS Georeferencer documentation (transformation types, residuals). https://docs.qgis.org/latest/en/docs/user_manual/working_with_raster/georeferencer.html
 - Allmaps documentation and @allmaps/transform. https://allmaps.org/ ; https://github.com/allmaps/allmaps
 - Allmaps / IIIF Georeference Annotation specification. https://iiif.io/api/extension/georef/
-- Map Warper help and source. https://mapwarper.net/ ; https://github.com/timwaters/mapwarper (unverified for current behaviour)
+- Map Warper help and source. https://mapwarper.net/ ; https://github.com/timwaters/mapwarper (control-point minimum and transforms read from the source 2026-11-16)
 - Selinger, P. (2003). Potrace: a polygon-based tracing algorithm. https://potrace.sourceforge.net/potrace.pdf
 - Zhang, T. Y., Suen, C. Y. (1984). A fast parallel algorithm for thinning digital patterns. Communications of the ACM 27(3).
 - Douglas, D., Peucker, T. (1973). Algorithms for the reduction of the number of points required to represent a digitized line. Cartographica 10(2).
@@ -265,5 +265,5 @@ All accessed 2026-11-14. Entries marked (unverified) were cited from memory and 
 - Zhao, B., Zhang, S., Xu, C., Sun, Y., Deng, C. (2021). Deep fake geography? When geospatial data encounter Artificial Intelligence. Cartography and Geographic Information Science 48(4).
 - Manakul, P., Liusie, A., Gales, M. (2023). SelfCheckGPT. EMNLP 2023. https://arxiv.org/abs/2303.08896
 - El-Yaniv, R., Wiener, Y. (2010). On the Foundations of Noise-free Selective Classification. JMLR 11.
-- USGS / DARPA AI for Critical Mineral Assessment Competition (2022-2023). https://criticalminerals.darpa.mil/ (unverified link)
+- USGS / DARPA AI for Critical Mineral Assessment Competition (2022-2023). https://criticalminerals.darpa.mil/ (link answered 200 on 2026-11-16; page content is script-rendered and was not read)
 - Slocum, T., et al. Thematic Cartography and Geovisualization, 3rd ed. Pearson.
