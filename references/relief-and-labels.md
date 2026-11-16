@@ -73,11 +73,11 @@ The default light is from the north-west (azimuth 315 degrees, clockwise from no
 
 ### 1.7 Multidirectional hillshade
 
-One light leaves ridges parallel to it flat. Multidirectional shading blends several azimuths. Mark (1992) weighted the illumination from 225, 270, 315 and 360 degrees by aspect so each slope gets lit from the most revealing direction [Mark1992]; GDAL's `-multidirectional` implements that method [GDAL]. Esri's multidirectional option combines light from six directions (count checked 2026-11-16 in the ArcGIS Pro Hillshade function help, https://pro.arcgis.com/en/pro-app/3.3/help/analysis/raster-functions/hillshade-function.htm; the weights are not published there, unverified) [EsriHS]. Simple stdlib version: compute shades at several azimuths and take a weighted mean with weights `w_k = sin(aspect - az_k + pi/2)**2` or similar (this weighting is a guess, unverified). Corrected 2026-11-16: the gdaldem page gives no formula, it only says it "applies the formula of" Mark's report (https://gdal.org/programs/gdaldem.html), so copy the weights from [Mark1992] or GDAL's source; the USGS PDF answered 403 to scripts.
+One light leaves ridges parallel to it flat. Multidirectional shading blends several azimuths. Mark (1992) weighted the illumination from 225, 270, 315 and 360 degrees by aspect so each slope gets lit from the most revealing direction [Mark1992]; GDAL's `-multidirectional` implements that method [GDAL]. Esri's multidirectional option combines light from six directions (count checked 2026-11-16 in the ArcGIS Pro Hillshade function help, https://pro.arcgis.com/en/pro-app/3.3/help/analysis/raster-functions/hillshade-function.htm; the weights are not published there, unverified) [EsriHS]. Simple stdlib version: compute shades at several azimuths and take a weighted mean with weights `w_k = sin(aspect - az_k)**2` for az_k in 225, 270, 315, 360 (checked 2026-11-16 in GDAL's implementation of [Mark1992], apps/gdaldem_lib.cpp `GDALHillshadeMultiDirectionalAlg`, https://github.com/OSGeo/gdal/blob/master/apps/gdaldem_lib.cpp; the USGS PDF of Mark's report answered 403).
 
 ### 1.8 Z-factor and lat/lon grids
 
-The z-factor converts vertical units to horizontal units and can exaggerate relief [EsriHS]. If the DEM is in geographic coordinates (cell size in degrees, elevation in metres) the slope is nonsense unless corrected. Esri's rule [EsriZ]:
+The z-factor converts vertical units to horizontal units and can exaggerate relief [EsriHS]. If the DEM is in geographic coordinates (cell size in degrees, elevation in metres) the slope is nonsense unless corrected. Derived rule (Esri's page, now https://doc.esri.com/en/arcgis-pro/latest/tool-reference/3d-analyst/applying-a-z-factor.html, gives only a table, which this reproduces) [EsriZ]:
 
 ```
 z = 1 / (111320 * cos(radians(latitude)))
@@ -114,7 +114,7 @@ Checkable rules:
 
 ### 2.2 Interval choice
 
-USGS topographic maps use intervals tied to scale and relief; 1:24,000 quads use 5 to 80 ft depending on terrain, with 10, 20 and 40 ft common [USGS-Topo]. A workable rule: pick the interval from the series 1, 2, 2.5, 5, 10, 20, 25, 50, 100, 200, 250, 500 so that the steepest common slope gives lines no closer than about 0.2-0.3 mm on the page, and the map has roughly 10-30 levels (practical rule; unverified numbers). Imhof notes contour spacing is set by the scale and by the minimum separation the eye can resolve [Imhof1982].
+USGS topographic maps use intervals tied to scale and relief; 1:24,000 quads use a basic interval of 5, 10, 20, 40 or 80 ft chosen per sheet for the terrain, and US Topo allows 100 ft or more in steep areas [USGS-Topo] (USGS manual 800-2, checked 2026-11-16 via the UNT web archive: https://webarchive.library.unt.edu/eot2008/20090512131010/http:/www.usgs.gov/usgs-manual/800/800-2.html). A workable rule: pick the interval from the series 1, 2, 2.5, 5, 10, 20, 25, 50, 100, 200, 250, 500 so that the steepest common slope gives lines no closer than about 0.2-0.3 mm on the page, and the map has roughly 10-30 levels (practical rule; unverified numbers). Imhof notes contour spacing is set by the scale and by the minimum separation the eye can resolve [Imhof1982].
 
 Compute the minimum spacing: horizontal distance between lines on the page = `interval / tan(slope) / scale_denominator`. Reject an interval if that is below the threshold over more than a few percent of the area.
 
@@ -164,7 +164,7 @@ Eduard Imhof's "Kartographische Geländedarstellung" (1965), translated as "Cart
 
 Jenny's work made "analytical" shading interactively adjustable to imitate manual shading [Jenny2001]. Recent work trains neural networks on manual Swiss relief (Jenny, Heitzler, Singh, Farmakis-Serebryakova, Liu, Hurni, "Cartographic relief shading with neural networks", IEEE TVCG 2021) [Jenny2021]; out of scope for stdlib, but the target look.
 
-Stdlib approximation (recipe; unverified as a match to any source):
+Stdlib approximation (mapwright's own recipe, not taken from any source):
 1. Generalise DEM (blur scaled to output resolution).
 2. Hillshade at 315/45 plus multidirectional blend.
 3. Elevation-dependent contrast: `shade' = 128 + (shade - 128) * (0.6 + 0.4 * norm_elev)`.
@@ -255,7 +255,7 @@ Conventions [Imhof1975][Imhof1982][USGS-Topo]:
 - `method="stretch"` and `spacing="auto"` are in the spec; MDN browser-compat-data lists both attributes as supported in Chrome, Firefox and Safari but does not record whether `stretch` renders differently from `align`, and `side` and `path` are Firefox-only or Firefox and Safari 27.3 (https://github.com/mdn/browser-compat-data/blob/main/svg/elements/textPath.json, checked 2026-11-16), so test output in the target viewer; do letter spacing with `letter-spacing` or by computing glyph positions yourself.
 - Glyphs falling off the path end are not rendered [SVG11]; so the path must be longer than the text.
 
-Text width without a font engine: stdlib Python cannot measure glyphs. Options: ship a per-font advance-width table (parse the TTF `hmtx` table with `struct`; the format is documented in the OpenType spec [OpenType]) or use an average width factor (about 0.5-0.6 em per character for typical sans; unverified). Collision tests depend on this, so prefer the `hmtx` table.
+Text width without a font engine: stdlib Python cannot measure glyphs. Options: ship a per-font advance-width table (parse the TTF `hmtx` table with `struct`: one advanceWidth (uint16, font units; divide by `head.unitsPerEm`) per glyph up to `hhea.numberOfHMetrics`, after which the last advance repeats [OpenType], checked 2026-11-16) or use an average width factor (about 0.5-0.6 em per character for typical sans; unverified). Collision tests depend on this, so prefer the `hmtx` table.
 
 For PNG output, curved text needs per-glyph rotation; place each glyph at arc length `s_i` along the path, rotate by the tangent angle there.
 
@@ -275,7 +275,7 @@ For each feature generate candidates with a cost: position rank penalty (7.2), o
 
 - Greedy: sort features by priority (importance, then number of free candidates ascending), place the cheapest non-conflicting candidate, drop the label if none. Fast, decent [Christensen1995].
 - Gradient descent / local search: start from a placement, repeatedly move one label to the position that most lowers total cost [Hirsch1982][Christensen1995].
-- Simulated annealing: random moves, accept worse moves with probability `exp(-delta/T)`, cool `T` geometrically. Christensen, Marks and Shieber (1995, ACM TOG 14(3):203-232) compared methods and found annealing gave the best quality for reasonable time, beating greedy, gradient descent, Hirsch's method and Zoraster's integer programming approach [Christensen1995]. Their schedule (initial T so that a cost increase of 1/3 is accepted with probability 2/3; T lowered 10 percent after a fixed number of moves) is as I recall it (unverified details; 2026-11-16 the Harvard copy answered 429 and the MERL TR94-12 PDF had no readable text layer).
+- Simulated annealing: random moves, accept worse moves with probability `exp(-delta/T)`, cool `T` geometrically. Christensen, Marks and Shieber (1995, ACM TOG 14(3):203-232) compared methods and found annealing gave the best quality for reasonable time, beating greedy, gradient descent, Hirsch's method and Zoraster's integer programming approach [Christensen1995]. Their schedule: initial T set so that a cost increase of 1 is rejected (undone) with probability 2/3; at most 20n repositionings per temperature (n = point count), or fewer if 5n changes succeed first; then T drops 10 percent; at most 50 stages, stopping early if a stage accepts no move (pp. 218-219, scanned copy read 2026-11-16 at https://www.cs.du.edu/~snarayan/sada/maplabel/classes/docs/mapRef7.pdf).
 - Rule-based expert systems (Ahn and Freeman's AUTONAP, Doerschler and Freeman) and the commercial Maplex/Esri label engine use rule sets plus optimisation [Freeman2005][EsriMaplex].
 - Wagner and Wolff (1997) keep the factor-1/2 guarantee of Formann and Wagner's algorithm for the four-position point model while placing labels much closer to the optimum in practice [Wagner-Wolff1997]. Corrected 2026-11-16 (abstract checked by search): that paper is not about sliding labels; slider models come from van Kreveld, Strijk and Wolff, "Point set labeling with sliding labels", SoCG 1998.
 
@@ -336,7 +336,7 @@ Each is a pure function over the rendered geometry:
 
 All accessed 2026-11-14 unless marked unverified (cited from memory, not opened this session).
 
-- [Barrault2001] Barrault, M. "An automated system for linear feature name placement which complies with cartographic quality criteria." AutoCarto, 2001. (unverified: Crossref finds only Barrault, "An automated system for name placement which complies with cartographic quality criteria: The hydrographic network", COSIT 1997, LNCS, pp. 499-500, https://doi.org/10.1007/3-540-63623-4_71; cite that if the 2001 paper cannot be found; re-searched on Crossref 2026-11-16, still no 2001 paper, left unverified)
+- [Barrault2001] Barrault, M., Lecordix, F. "An automated system for linear feature name placement which complies with cartographic quality criteria." AutoCarto 12, 1995, https://cartogis.org/docs/proceedings/archive/auto-carto-12/pdf/an-automated-system-for-linear-feature-name-placement.pdf (found 2026-11-16; the key keeps its old year; Barrault's real 2001 paper is on area labels, "A methodology for placement and evaluation of area map labels", Computers, Environment and Urban Systems 25. Earlier note: Crossref finds only Barrault, "An automated system for name placement which complies with cartographic quality criteria: The hydrographic network", COSIT 1997, LNCS, pp. 499-500, https://doi.org/10.1007/3-540-63623-4_71; cite that if the 2001 paper cannot be found; re-searched on Crossref 2026-11-16, still no 2001 paper, left unverified)
 - [Christensen1995] Christensen, J., Marks, J., Shieber, S. "An empirical study of algorithms for point-feature label placement." ACM Transactions on Graphics 14(3):203-232, 1995.
 - [DP1973] Douglas, D., Peucker, T. "Algorithms for the reduction of the number of points required to represent a digitized line or its caricature." The Canadian Cartographer 10(2):112-122, 1973.
 - [Edmondson1996] Edmondson, S., Christensen, J., Marks, J., Shieber, S. "A general cartographic labelling algorithm." Cartographica 33(4):13-24, 1996.
@@ -349,12 +349,12 @@ All accessed 2026-11-14 unless marked unverified (cited from memory, not opened 
 - [GDAL] GDAL, "gdaldem" documentation. https://gdal.org/programs/gdaldem.html
 - [Hirsch1982] Hirsch, S. "An algorithm for automatic name placement around point data." The American Cartographer 9(1):5-17, 1982.
 - [Horn1981] Horn, B.K.P. "Hill shading and the reflectance map." Proceedings of the IEEE 69(1):14-47, 1981.
-- [Imhof1975] Imhof, E. "Positioning names on maps." The American Cartographer 2(2):128-144, 1975.
+- [Imhof1975] Imhof, E. "Positioning names on maps." The American Cartographer 2(2):128-144, 1975. https://doi.org/10.1559/152304075784313304 (citation checked via Crossref 2026-11-16)
 - [Imhof1982] Imhof, E. Cartographic Relief Presentation. Ed. H.J. Steward. de Gruyter, 1982; Esri Press reprint 2007.
 - [Jenny2001] Jenny, B. "An interactive approach to analytical relief shading." Cartographica 38(1-2):67-75, 2001.
 - [Jenny-Patterson2007] Jenny, B., Patterson, T. "Introducing plan oblique relief." Cartographic Perspectives 57, 2007, pp. 21-40, https://doi.org/10.14714/cp57.279 (citation checked via Crossref 2026-11-16; that it holds the aerial perspective discussion is still unverified).
 - [Jenny2021] Jenny, B., Heitzler, M., Singh, D., Farmakis-Serebryakova, M., Liu, J.C., Hurni, L. "Cartographic relief shading with neural networks." IEEE TVCG 27(2):1225-1235, 2021.
-- [Jones1998] Jones, K.H. "A comparison of algorithms used to compute hill slope as a property of the DEM." Computers & Geosciences 24(4):315-323, 1998.
+- [Jones1998] Jones, K.H. "A comparison of algorithms used to compute hill slope as a property of the DEM." Computers & Geosciences 24(4):315-323, 1998. https://doi.org/10.1016/S0098-3004(98)00032-6 (citation checked via Crossref 2026-11-16)
 - [Kennelly2008] Kennelly, P. "Terrain maps displaying hill-shading with curvature." Geomorphology 102(3-4), 2008, pp. 567-577, https://doi.org/10.1016/j.geomorph.2008.05.046 (citation checked via Crossref 2026-11-16; "his hachure reviews" not identified, unverified).
 - [Kennelly-Kimerling2001] Kennelly, P., Kimerling, A.J. "Modifications of Tanaka's illuminated contour method." Cartography and Geographic Information Science 28(2):111-123, 2001.
 - [Leonowicz2010] Leonowicz, A., Jenny, B., Hurni, L. "Terrain Sculptor: generalizing terrain models for relief shading." Cartographic Perspectives 67, 2010.
@@ -371,5 +371,5 @@ All accessed 2026-11-14 unless marked unverified (cited from memory, not opened 
 - [Tanaka1950] Tanaka, K. "The relief contour method of representing topography on maps." Geographical Review 40(3):444-456, 1950.
 - [USGS-Topo] USGS, "Topographic Map Symbols" booklet and US Topo standards. https://pubs.usgs.gov/gip/TopographicMapSymbols/topomapsymbols.pdf
 - [Wagner-Wolff1997] Wagner, F., Wolff, A. "A practical map labeling algorithm." Computational Geometry 7:387-404, 1997.
-- [Yoeli1972] Yoeli, P. "The logic of automated map lettering." The Cartographic Journal 9(2):99-108, 1972.
+- [Yoeli1972] Yoeli, P. "The logic of automated map lettering." The Cartographic Journal 9(2):99-108, 1972. https://doi.org/10.1179/caj.1972.9.2.99 (citation checked via Crossref 2026-11-16)
 - [ZT1987] Zevenbergen, L.W., Thorne, C.R. "Quantitative analysis of land surface topography." Earth Surface Processes and Landforms 12(1):47-56, 1987.
