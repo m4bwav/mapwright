@@ -18,14 +18,14 @@ House rules that apply:
 
 ### 2.1 Text
 
-Diffusion models trained before 2024 render text as letter-like shapes, not words. Place names come out garbled or invented [Kang2023] (unverified exact wording). Newer models (FLUX.1, Qwen-Image, Z-Image) render short prompted text much better; Qwen-Image's report puts text rendering as a headline feature, including Chinese [QwenImage]. That does not help a map: the model still chooses where the label goes, may misspell long names, and has no idea which feature a label belongs to. Labels set in code are exact, searchable, translatable and placed by rules. Keep them out of the pass.
+Diffusion models trained before 2024 render text as letter-like shapes, not words. Place names come out garbled or invented [Kang2023] (abstract checked 2026-11-16, https://arxiv.org/abs/2304.10743: it names "inaccuracies, misleading information, unanticipated features"; garbled text specifically is not in the abstract, blocked: full-text wording not rechecked). Newer models (FLUX.1, Qwen-Image, Z-Image) render short prompted text much better; Qwen-Image's report puts text rendering as a headline feature, including Chinese [QwenImage]. That does not help a map: the model still chooses where the label goes, may misspell long names, and has no idea which feature a label belongs to. Labels set in code are exact, searchable, translatable and placed by rules. Keep them out of the pass.
 
 ### 2.2 Geography and physics
 
 Image models learn what maps look like, not how terrain works. Known failure classes:
 
-- Rivers that branch downstream, end in nowhere, or cross ridges (rivers flowing uphill). No published benchmark measures this directly that I found (unverified gap); it follows from the model having no elevation model.
-- Coastlines that drift, islands that appear or vanish, roads that end, when the model is not held by a control image [Kang2023] (unverified detail).
+- Rivers that branch downstream, end in nowhere, or cross ridges (rivers flowing uphill). No published benchmark measures this directly that I found (searched 2026-11-16, none found; practice figure, no single source); it follows from the model having no elevation model.
+- Coastlines that drift, islands that appear or vanish, roads that end, when the model is not held by a control image [Kang2023] ("inaccuracies ... unanticipated features", abstract checked 2026-11-16, https://arxiv.org/abs/2304.10743).
 - No scale and no projection. A generated "map" has no consistent scale bar, grid or north arrow that means anything; any scale bar drawn by the model is decoration.
 - Invented features: the model adds towns, legends, compass roses and borders it was never asked for, because training maps had them.
 
@@ -33,7 +33,7 @@ Studies:
 
 - Kang, Zhang and Roth, "The ethics of AI-generated maps: A study of DALLE 2 and implications for cartography" (2023) generated maps with DALL-E 2 and catalogued inaccuracy, fake features and the risk of misleading maps [Kang2023].
 - Map-to-aerial translation work (pix2pix and MapGAN, section 6) is the closest thing to a benchmark: it scores how well generated images match ground truth, but on satellite tiles, not cartographic accuracy [pix2pix][MapGAN].
-- I found no standard benchmark for "cartographic correctness" of diffusion output as of this date (unverified; worth a repeat search).
+- I found no standard benchmark for "cartographic correctness" of diffusion output as of this date (still none found 2026-11-16; worth a repeat search).
 
 Conclusion: the model may only change surface appearance. Topology, positions, elevation logic and text all come from code.
 
@@ -45,7 +45,7 @@ Three families, from loosest to tightest hold.
 
 img2img starts sampling from a noised copy of the input. Denoise (strength) sets how much noise: low keeps structure, high allows the model to repaint. SDEdit formalised this trade-off between faithfulness and realism [SDEdit].
 
-Working ranges (community practice, unverified as numbers; tune per model):
+Working ranges (practice figure, no single source; tunable default):
 
 | Denoise | Effect on a clean map render |
 |---|---|
@@ -79,16 +79,16 @@ ControlNet adds a trainable copy of the encoder that takes a condition image (ed
 | Lineart | Same lines, anti-aliased, varied width | Edges, softer | Suits hand-drawn and ink styles |
 | Depth | Heightmap rendered as greyscale | Relief, mountains | Good for painted terrain; coastline only as a depth step |
 | Segmentation | Flat colour per class (sea, land, forest, urban) | Regions | Tightest region hold; original SD1.5 seg used ADE20K colours [ControlNet] |
-| Tile | Low-res copy of the render | Overall layout | Good for upscale passes (unverified for all bases) |
+| Tile | Low-res copy of the render | Overall layout | Good for upscale passes (practice figure, no single source; tunable default; check per base model) |
 
 Availability per base model:
 
 - SDXL: many ControlNets (canny, depth, lineart, union models such as xinsir's ControlNet-union-sdxl) xinsir/controlnet-union-sdxl-1.0 is Apache-2.0 and not gated (Hugging Face model API, checked 2026-11-16); check other repos one by one.
-- FLUX.1: official BFL "FLUX.1 Canny/Depth [dev]" control models exist, under the FLUX dev non-commercial licence [FluxTools]; on Hugging Face both repos are tagged `license:other` and gated (black-forest-labs/FLUX.1-Canny-dev, FLUX.1-Depth-dev, checked 2026-11-16); third-party union ControlNets exist (licence per repo unverified).
+- FLUX.1: official BFL "FLUX.1 Canny/Depth [dev]" control models exist, under the FLUX dev non-commercial licence [FluxTools]; on Hugging Face both repos are tagged `license:other` and gated (black-forest-labs/FLUX.1-Canny-dev, FLUX.1-Depth-dev, checked 2026-11-16); third-party union ControlNets exist (licence per repo: e.g. Shakker-Labs/FLUX.1-dev-ControlNet-Union-Pro is under the FLUX.1-dev non-commercial licence, https://huggingface.co/Shakker-Labs/FLUX.1-dev-ControlNet-Union-Pro, checked 2026-11-16).
 - Qwen-Image: InstantX Qwen-Image-ControlNet-Union, Apache 2.0, canny, soft edge, depth, pose; no segmentation (checked 2026-11-14, https://huggingface.co/InstantX/Qwen-Image-ControlNet-Union).
 - Z-Image: alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union, Apache 2.0, canny, HED, depth, pose, MLSD; no segmentation; a 2.0 version adds control blocks and inpaint (checked 2026-11-14, https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union). Neither Apache union ControlNet has a segmentation mode, so the seg route needs SDXL, or canny plus depth on the Apache bases.
 
-Strength: start with ControlNet strength 0.8-1.0 and end percent near 1.0 when coastlines must hold; lower end percent lets the model add detail late (unverified numbers; community practice).
+Strength: start with ControlNet strength 0.8-1.0 and end percent near 1.0 when coastlines must hold; lower end percent lets the model add detail late (practice figure, no single source; tunable default).
 
 Stack two controls when needed: segmentation (regions) plus canny (coast edge). Both come from the same geometry, so they agree.
 
@@ -97,11 +97,11 @@ Stack two controls when needed: segmentation (regions) plus canny (coast edge). 
 Edit models take an input image and a text instruction and change the image while keeping what the instruction does not mention.
 
 - FLUX.1 Kontext [dev]: in-context image editing; BFL reports character and layout consistency across edits [Kontext]. Weights under the FLUX non-commercial licence [FluxDevLicence].
-- Qwen-Image-Edit (and 2509, 2511): Apache 2.0, supports semantic and appearance editing, with appearance edits meant to keep untouched regions [QwenImage][InVideo2026]. The newest Qwen-Image 2.0 line is reported as API-only [InVideo2026]; The Decoder agrees (Alibaba Cloud API and Qwen Chat only, https://the-decoder.com/qwen-image-2-0-renders-ancient-chinese-calligraphy-and-powerpoint-slides-with-near-perfect-text-accuracy/). A secondary report says Qwen-Image 2.1 shipped open weights in Sept 2026 (unverified: no official Qwen or Hugging Face page checked).
+- Qwen-Image-Edit (and 2509, 2511): Apache 2.0, supports semantic and appearance editing, with appearance edits meant to keep untouched regions [QwenImage][InVideo2026]. The newest Qwen-Image 2.0 line is reported as API-only [InVideo2026]; The Decoder agrees (Alibaba Cloud API and Qwen Chat only, https://the-decoder.com/qwen-image-2-0-renders-ancient-chinese-calligraphy-and-powerpoint-slides-with-near-perfect-text-accuracy/). Qwen-Image 2.1 does have open weights on Hugging Face (Qwen/Qwen-Image-2.1, -2.1-Turbo, checked 2026-11-16, https://huggingface.co/Qwen); re-read its model card for the licence.
 - FLUX.2 [klein] 4B: Apache 2.0; the 9B is FLUX Non-Commercial [Klein]. BFL says klein unifies generation and editing: 4B does image-to-image editing and multi-reference, 9B single-reference editing (checked 2026-11-14, [Klein]); edit quality on maps is untested.
-- Z-Image-Edit: announced; downloadable weights not confirmed [InVideo2026] (unverified).
+- Z-Image-Edit: announced; downloadable weights not confirmed [InVideo2026] (still no Z-Image-Edit repo under https://huggingface.co/Tongyi-MAI, checked 2026-11-16; only Z-Image and Z-Image-Turbo).
 
-Edit models are attractive because an "appearance edit" ("restyle as an old parchment map, keep every coastline") needs no control image. They still drift: small islands and thin rivers move or disappear (unverified for maps; consistent with general reports of edit drift). Always measure (section 4). A safe recipe: edit model at full strength, then reject the output if land IoU falls below the threshold, or composite the original edges back.
+Edit models are attractive because an "appearance edit" ("restyle as an old parchment map, keep every coastline") needs no control image. They still drift: small islands and thin rivers move or disappear (practice figure, no single source; tunable default; consistent with general reports of edit drift). Always measure (section 4). A safe recipe: edit model at full strength, then reject the output if land IoU falls below the threshold, or composite the original edges back.
 
 ### 3.4 Recommended order for mapwright
 
@@ -191,11 +191,11 @@ None were verified in this pass. Public-domain historical maps (Library of Congr
 
 ## 6. Satellite and aerial looks
 
-- pix2pix (Isola et al., 2017) trained conditional GANs on paired Google Maps tiles and aerial photos, both directions; map-to-aerial results were judged in an AMT "real vs fake" study where generated aerials fooled participants about 18.9% of the time (unverified figure) [pix2pix].
+- pix2pix (Isola et al., 2017) trained conditional GANs on paired Google Maps tiles and aerial photos, both directions; map-to-aerial results were judged in an AMT "real vs fake" study where generated aerials fooled participants 18.9% ± 2.5% of the time with L1+cGAN (Table 4, https://arxiv.org/pdf/1611.07004, checked 2026-11-16) [pix2pix].
 - CycleGAN did the same unpaired [CycleGAN].
-- MapGAN (Li et al., 2020) generates web map tiles from remote sensing images with an added map-specific loss and reports gains over pix2pix and CycleGAN on its dataset [MapGAN] (unverified detail).
+- MapGAN (Li et al., 2020) generates web map tiles from remote sensing images with an added map-specific loss and reports gains over pix2pix and CycleGAN on its dataset [MapGAN] (blocked: mdpi.com answered 403 on 2026-11-16).
 - For mapwright the direction is map-to-aerial. A modern route: segmentation ControlNet (water, forest, field, urban classes from geometry) plus an aerial LoRA, at moderate denoise. Expect plausible texture, not real places; buildings will be invented. Label the result as illustrative.
-- Real imagery (Sentinel-2, CC BY-SA-like Copernicus terms; NAIP public domain in the US) beats generation when a real place is mapped (unverified licence detail per source).
+- Real imagery (Sentinel-2 under the Copernicus Sentinel Data Legal Notice: free, full and open use, credit "Contains modified Copernicus Sentinel data [Year]", not a CC licence, https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice, checked 2026-11-16; NAIP public domain in the US, not rechecked) beats generation when a real place is mapped.
 
 ## 7. Keeping text out of the pass
 
@@ -204,7 +204,7 @@ None were verified in this pass. Public-domain historical maps (Library of Congr
 3. Reserve label areas: mapwright knows where labels will go. Make a mask of label boxes and either:
    - composite the clean render back into those boxes after the pass (no inpainting needed, cheapest), or
    - use a soft "calm" mask so the style there is flat (feather 4-8 px), giving labels a quiet ground (common cartographic halo practice).
-4. Differential diffusion / inpaint masks in ComfyUI let the pass change only masked regions; use the inverse of the label mask (unverified node names per ComfyUI version).
+4. Differential diffusion / inpaint masks in ComfyUI let the pass change only masked regions; use the inverse of the label mask (core node `DifferentialDiffusion`, https://github.com/comfyanonymous/ComfyUI/blob/master/comfy_extras/nodes_differential_diffusion.py, checked 2026-11-16).
 5. After the pass, run the OCR check (4.4). Reject or composite on any hit.
 6. Set labels with a real text engine (vector SVG or PIL with a licensed font), with halos for legibility.
 
@@ -220,7 +220,7 @@ None were verified in this pass. Public-domain historical maps (Library of Congr
 ## Sources (accessed 2026-11-14)
 
 - [BSDS] Arbelaez et al., "Contour Detection and Hierarchical Image Segmentation", TPAMI 2011. https://www2.eecs.berkeley.edu/Research/Projects/CS/vision/grouping/resources.html
-- [CivitaiLicence] Civitai model licence permissions. https://civitai.com/content/tos (unverified page for icons)
+- [CivitaiLicence] Civitai model licence permissions. https://civitai.com/content/tos (blocked: icon permissions page not located; re-check per model page)
 - [ControlNet] Zhang, Rao, Agrawala, "Adding Conditional Control to Text-to-Image Diffusion Models", 2023. https://arxiv.org/abs/2302.05543
 - [CycleGAN] Zhu et al., "Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks", 2017. https://arxiv.org/abs/1703.10593
 - [FluxDevLicence] FLUX.1 [dev] model card and licence. https://huggingface.co/black-forest-labs/FLUX.1-dev
@@ -230,7 +230,7 @@ None were verified in this pass. Public-domain historical maps (Library of Congr
 - [Kang2023] Kang, Zhang, Roth, "The ethics of AI-generated maps: A study of DALLE 2 and implications for cartography", 2023. https://arxiv.org/abs/2304.10743 (checked 2026-11-14)
 - [Klein] BFL, "FLUX.2 [klein]: Towards Interactive Visual Intelligence". https://bfl.ai/blog/flux2-klein-towards-interactive-visual-intelligence
 - [Kontext] BFL, "FLUX.1 Kontext: Flow Matching for In-Context Image Generation and Editing in Latent Space", 2025. https://arxiv.org/abs/2506.15742
-- [MapGAN] Li et al., "MapGAN: An Intelligent Generation Model for Network Tile Maps", Sensors 20(11), 2020. https://www.mdpi.com/1424-8220/20/11/3119 (unverified URL)
+- [MapGAN] Li et al., "MapGAN: An Intelligent Generation Model for Network Tile Maps", Sensors 20(11), 2020. https://www.mdpi.com/1424-8220/20/11/3119 (blocked: mdpi.com answered 403 on 2026-11-16)
 - [pix2pix] Isola et al., "Image-to-Image Translation with Conditional Adversarial Networks", 2017. https://arxiv.org/abs/1611.07004
 - [QwenImage] Qwen team, "Qwen-Image Technical Report", 2025. https://arxiv.org/abs/2508.02324
 - [Schnell] FLUX.1 [schnell] model card (Apache 2.0). https://huggingface.co/black-forest-labs/FLUX.1-schnell
