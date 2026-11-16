@@ -153,6 +153,14 @@ Most engines build navmeshes with Recast-style voxelisation [S18]. Parameters th
 
 mapwright does not need to bake navmeshes; engines bake from geometry. What helps is exporting clean collision geometry and walkability/area masks (water, road with lower cost) that the engine can turn into navmesh areas or modifiers [S19]. A tile export carries a blocking layer for anything that stops movement, apart from the ordered draw layers (Watkins, Procedural Content Generation for Unity Game Development, ch. 3).
 
+### 4.1 mapwright nav export
+
+`mpw.py export DIR --nav -o map.nav.json` (or `--to nav`) works on dungeon and square battle recipes; hex maps, decks and worlds are refused. It merges walkable squares into axis-aligned rectangles (greedy: grow right, then down, row by row) and lists the shared edges between them as portals. Rectangles never mix floor and door squares, so a door is its own rectangle.
+
+Fields: `w`, `h`, `units` (squares, origin top-left, y down), `moves` (8 neighbours, diagonal cost 1.414213562, no corner cutting, no diagonal through a door), `rects` (`id`, `x`, `y`, `w`, `h`, `area` floor or door; a locked door carries `lock` with the key id, a one-way door `enter_from` as the [dx, dy] side it is entered from), `portals` (`a`, `b`, `seg` as two square-corner points), and `entrance`, `goal` and `keys` when the recipe has them. Keys are sorted and the file is byte-identical for the same recipe.
+
+Bars printed on every export: every walkable square covered exactly once, no wall covered, and the portal graph has the same connected components as the 4-way square grid (8-way without corner cutting joins the same squares). An engine can load the rectangles as convex navmesh polygons and the portals as their links, or run A* over rectangle centres and the funnel algorithm through the portal segments.
+
 ## 5. Film: animated routes and zoom shots
 
 ### 5.1 Frame rates and delivery
