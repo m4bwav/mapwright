@@ -840,9 +840,12 @@ def cyclic_graph(cw, ch, rng):
                 cycles=cycles)
 
 
-def cyclic_dungeon(w, h, seed, rng, branches=0):
+def cyclic_dungeon(w, h, seed, rng, branches=0, corridor=1):
     """Graph first on a grid of CELL x CELL squares, then raised to squares: a room per node, a one-square
-    corridor with a door per edge. Returns (grid, rooms, graph); graph carries the re-roll count."""
+    corridor with a door per edge. corridor > 1 carves each edge N squares wide from room centre to room
+    centre with an open gap and no door square; the edge keeps its lock or one-way flag and records the gap
+    squares, which door_dist treats as one wide gate. Returns (grid, rooms, graph); graph carries the re-roll
+    count."""
     cw, ch = (w - 1) // CELL, (h - 1) // CELL
     if cw < 3 or ch < 3:
         raise ValueError("a cyclic dungeon needs at least %dx%d squares (3x3 cells of %d)"
@@ -860,9 +863,9 @@ def cyclic_dungeon(w, h, seed, rng, branches=0):
     for cx, cy in graph["cells"]:
         rooms.append(_carve_room(g, cx, cy, rng))
     for e in graph["edges"]:
-        _carve_edge(g, graph, rooms, e)
+        _carve_edge(g, graph, rooms, e, corridor)
     if branches:
-        add_branches(g, graph, rooms, cw, ch, branches, Rng(seed, BRANCH_STREAM))
+        add_branches(g, graph, rooms, cw, ch, branches, Rng(seed, BRANCH_STREAM), corridor)
     return g, rooms, graph
 
 
@@ -990,10 +993,24 @@ def _carve_room(g, cx, cy, rng):
     return r
 
 
-def _carve_edge(g, graph, rooms, e):
+def _carve_edge(g, graph, rooms, e, corridor=1):
     a, b = sorted((e["a"], e["b"]), key=lambda n: graph["cells"][n])
     (ax, ay), (bx, by) = graph["cells"][a], graph["cells"][b]
     ra, rb = rooms[a], rooms[b]
+    if corridor > 1:        # centre to centre, N wide around the cell's middle line, open gap
+        m, off = CELL // 2, range(-((corridor - 1) // 2), corridor // 2 + 1)
+        if ay == by:
+            y, door = ay * CELL + m, (bx * CELL - 1, ay * CELL + m)
+            sq = [(x, y + o) for x in range(ax * CELL + m, bx * CELL + m + 1) for o in off]
+            gap = [(door[0], y + o) for o in off]
+        else:
+            x, door = ax * CELL + m, (ax * CELL + m, by * CELL - 1)
+            sq = [(x + o, y) for y in range(ay * CELL + m, by * CELL + m + 1) for o in off]
+            gap = [(x + o, door[1]) for o in off]
+        for x, y in sq:
+            g[y][x] = FLOOR
+        e["door"], e["gap"] = list(door), [list(c) for c in gap]
+        return
     if ay == by:
         y = ay * CELL + CELL // 2
         run = [(x, y) for x in range(ra[0] + ra[2], rb[0])]
@@ -1008,7 +1025,7 @@ def _carve_edge(g, graph, rooms, e):
     e["door"] = list(door)
 
 
-def add_branches(g, graph, rooms, cw, ch, count, rng):
+def add_branches(g, graph, rooms, cw, ch, count, rng, corridor=1):
     """Dead-end side branches on a cyclic graph: up to `count` chains of 1 or 2 new cells, each hanging off one
     existing node by a plain edge (no lock, no one-way), so the cycle rank stays the same and no key moves.
     A branch's first door is secret 40% of the time; its last room holds treasure (always behind a secret door,
@@ -1045,7 +1062,7 @@ def add_branches(g, graph, rooms, cw, ch, count, rng):
             if k == 0 and secret:
                 e["secret"] = True
             graph["edges"].append(e)
-            _carve_edge(g, graph, rooms, e)
+            _carve_edge(g, graph, rooms, e, corridor)
             nodes.append(n)
             prev = n
         out.append(dict(nodes=nodes, base=base, secret=secret, treasure=treasure))
@@ -1525,7 +1542,7 @@ def build_dungeon(seed, w, h, method="bsp", cave=None, legacy=False, branches=0,
     legacy=True rebuilds a recipe written before 0.9.0 exactly: no wall cleanup, no goal, the old entrance.
     A bsp or cave map whose path is under min_path is drawn again from stream 3000 + k (k = re-roll)."""
     if legacy or method == "cyclic":
-        return _build_once(seed, w, h, method, cave, legacy, Rng(seed, 2), branches)
+        return _build_once(seed, w, h, method, cave, legacy, Rng(seed, 2), branches, corridor)
     if method == "blocks":     # one restart counter for both causes: too few placements, path too short
         k0 = 0
         while True:
@@ -1551,7 +1568,7 @@ def _build_once(seed, w, h, method, cave, legacy, rng, branches=0, corridor=1):
     elif method == "cave":
         g, _ = cave_dungeon(w, h, rng, stats=stats, **dict(CAVE_DEFAULTS, **(cave or {})))
     elif method == "cyclic" and not legacy:
-        g, rr, graph = cyclic_dungeon(w, h, seed, rng, branches)
+        g, rr, graph = cyclic_dungeon(w, h, seed, rng, branches, corridor)
         rooms = [dict(id=i, x=r[0], y=r[1], w=r[2], h=r[3]) for i, r in enumerate(rr)]
     elif method == "blocks" and not legacy:
         g, rooms, stats["blocks"] = blocks_dungeon(w, h, seed, rng)    # rng: first restart index
@@ -1612,8 +1629,8 @@ def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style
             raise ValueError("--branches works with --method cyclic")
         if branches is not None and not 0 <= branches <= 8:
             raise ValueError("--branches must be 0 to 8")
-        if corridor is not None and (method != "bsp" or not 1 <= corridor <= 3):
-            raise ValueError("--corridor works with --method bsp and must be 1 to 3")
+        if corridor is not None and (method not in ("bsp", "cyclic") or not 1 <= corridor <= 3):
+            raise ValueError("--corridor works with --method bsp or cyclic and must be 1 to 3")
         D = build_dungeon(seed, w, h, method, cave, legacy, branches or 0, corridor or 1)
         g, rooms, lights, entrance, goal, graph = D["g"], D["rooms"], D["lights"], D["entrance"], D["goal"], D["graph"]
         nb = nbrs4
@@ -1977,12 +1994,15 @@ def door_dist(gj, start, keys):
     rule = {}
     for e in gr["edges"]:
         dx, dy = e["door"]
+        gate = [tuple(c) for c in e.get("gap", [e["door"]])]     # a wide corridor's gap is one gate
         if "lock" in e:
-            rule[(dx, dy)] = ("lock", e["lock"])
+            for c in gate:
+                rule[c] = ("lock", e["lock"])
         elif "oneway" in e:
             sx, sy = gr["cells"][e["oneway"][0]]
             cx, cy = sx * CELL + CELL // 2, sy * CELL + CELL // 2
-            rule[(dx, dy)] = ("from", ((cx > dx) - (cx < dx), (cy > dy) - (cy < dy)))
+            for c in gate:
+                rule[c] = ("from", ((cx > dx) - (cx < dx), (cy > dy) - (cy < dy)))
     dist = {tuple(start): 0}
     q = [tuple(start)]
     i = 0

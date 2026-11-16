@@ -489,5 +489,25 @@ class CorridorWidth(unittest.TestCase):
                 M.P.gen_grid("dungeon", 3, os.path.join(d, "x"), 48, 36, "cave", corridor=2)
             with self.assertRaises(ValueError):
                 M.P.gen_grid("dungeon", 3, os.path.join(d, "y"), 48, 36, "bsp", corridor=4)
+            with self.assertRaises(ValueError):
+                M.P.gen_grid("dungeon", 3, os.path.join(d, "z"), 48, 36, "cyclic", corridor=4)
         finally:
             shutil.rmtree(d, ignore_errors=True)
+
+    def test_cyclic_wide_corridors_keep_the_gate(self):
+        P = M.P
+        for seed in range(1, 11):
+            self.assertEqual(P.build_dungeon(seed, 48, 36, "cyclic")["g"],
+                             P.build_dungeon(seed, 48, 36, "cyclic", corridor=1)["g"])
+            D = P.build_dungeon(seed, 48, 36, "cyclic", corridor=2)
+            self.assertFalse(any(P.DOOR in r for r in D["g"]), seed)
+            gj = dict(w=48, h=36, cells=D["g"], graph=D["graph"], entrance=D["entrance"], goal=D["goal"])
+            self.assertNotIn(tuple(D["goal"]), P.door_dist(gj, tuple(D["entrance"]), set()), seed)
+            self.assertGreater(P.completion_path(gj), 0, seed)
+            e = M.erode(D["g"], 48, 36, 2)
+            regs = P.flood_regions([[c if c in P.PASS else "#" for c in r] for r in e], 48, 36)
+            self.assertEqual(len(regs), 1, seed)
+            reg = set(regs[0])
+            for r in D["rooms"]:
+                self.assertTrue(any((x, y) in reg for y in range(r["y"], r["y"] + r["h"])
+                                    for x in range(r["x"], r["x"] + r["w"])), (seed, r))
