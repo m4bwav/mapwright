@@ -252,7 +252,7 @@ Conventions [Imhof1975][Imhof1982][USGS-Topo]:
 `<textPath href="#id">` renders text along a `<path>` [SVG11][SVG2]. Key attributes:
 - `startOffset="50%"` with `text-anchor="middle"` centres the label on the path.
 - `side="right"` flips text to the other side (SVG 2, experimental; MDN marks it "limited availability", not Baseline, as of 2026-11-14: https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/side). Instead, reverse the path's point order in Python when it runs right to left.
-- `method="stretch"` and `spacing="auto"` are in the spec but poorly supported (unverified); do letter spacing with `letter-spacing` or by computing glyph positions yourself.
+- `method="stretch"` and `spacing="auto"` are in the spec; MDN browser-compat-data lists both attributes as supported in Chrome, Firefox and Safari but does not record whether `stretch` renders differently from `align`, and `side` and `path` are Firefox-only or Firefox and Safari 27.3 (https://github.com/mdn/browser-compat-data/blob/main/svg/elements/textPath.json, checked 2026-11-16), so test output in the target viewer; do letter spacing with `letter-spacing` or by computing glyph positions yourself.
 - Glyphs falling off the path end are not rendered [SVG11]; so the path must be longer than the text.
 
 Text width without a font engine: stdlib Python cannot measure glyphs. Options: ship a per-font advance-width table (parse the TTF `hmtx` table with `struct`; the format is documented in the OpenType spec [OpenType]) or use an average width factor (about 0.5-0.6 em per character for typical sans; unverified). Collision tests depend on this, so prefer the `hmtx` table.
@@ -336,13 +336,13 @@ Each is a pure function over the rendered geometry:
 
 All accessed 2026-11-14 unless marked unverified (cited from memory, not opened this session).
 
-- [Barrault2001] Barrault, M. "An automated system for linear feature name placement which complies with cartographic quality criteria." AutoCarto, 2001. (unverified)
+- [Barrault2001] Barrault, M. "An automated system for linear feature name placement which complies with cartographic quality criteria." AutoCarto, 2001. (unverified: Crossref finds only Barrault, "An automated system for name placement which complies with cartographic quality criteria: The hydrographic network", COSIT 1997, LNCS, pp. 499-500, https://doi.org/10.1007/3-540-63623-4_71; cite that if the 2001 paper cannot be found)
 - [Christensen1995] Christensen, J., Marks, J., Shieber, S. "An empirical study of algorithms for point-feature label placement." ACM Transactions on Graphics 14(3):203-232, 1995.
 - [DP1973] Douglas, D., Peucker, T. "Algorithms for the reduction of the number of points required to represent a digitized line or its caricature." The Canadian Cartographer 10(2):112-122, 1973.
 - [Edmondson1996] Edmondson, S., Christensen, J., Marks, J., Shieber, S. "A general cartographic labelling algorithm." Cartographica 33(4):13-24, 1996.
 - [EsriHS] Esri, "How Hillshade works", ArcGIS Pro documentation. https://pro.arcgis.com/en/pro-app/latest/tool-reference/3d-analyst/how-hillshade-works.htm
 - [EsriSlope] Esri, "How Slope works", ArcGIS Pro documentation. https://pro.arcgis.com/en/pro-app/latest/tool-reference/3d-analyst/how-slope-works.htm
-- [EsriZ] Esri, "Setting the z-factor parameter correctly" (ArcGIS blog and help table of z-factors by latitude). (unverified URL)
+- [EsriZ] Esri, "Setting the z-factor parameter correctly" (ArcGIS blog and help table of z-factors by latitude). Table checked 2026-11-16 at https://desktop.arcgis.com/en/arcmap/latest/tools/spatial-analyst-toolbox/applying-a-z-factor.htm (0.00000898 at 0°, 0.00001792 at 60°, metres); the blog itself answered 403.
 - [EsriMaplex] Esri, Maplex Label Engine documentation, ArcGIS Pro. (unverified)
 - [Formann-Wagner1991] Formann, M., Wagner, F. "A packing problem with applications to lettering of maps." Proc. 7th ACM Symposium on Computational Geometry, 281-288, 1991.
 - [Freeman1995] Freeman, H. "On the automated labeling of maps." In Shape, Structure and Pattern Recognition, 1995. (unverified)
@@ -352,10 +352,10 @@ All accessed 2026-11-14 unless marked unverified (cited from memory, not opened 
 - [Imhof1975] Imhof, E. "Positioning names on maps." The American Cartographer 2(2):128-144, 1975.
 - [Imhof1982] Imhof, E. Cartographic Relief Presentation. Ed. H.J. Steward. de Gruyter, 1982; Esri Press reprint 2007.
 - [Jenny2001] Jenny, B. "An interactive approach to analytical relief shading." Cartographica 38(1-2):67-75, 2001.
-- [Jenny-Patterson2007] Jenny, B., Patterson, T. "Introducing plan oblique relief." Cartographic Perspectives 57, 2007 (aerial perspective discussion; unverified that it is this paper).
+- [Jenny-Patterson2007] Jenny, B., Patterson, T. "Introducing plan oblique relief." Cartographic Perspectives 57, 2007, pp. 21-40, https://doi.org/10.14714/cp57.279 (citation checked via Crossref 2026-11-16; that it holds the aerial perspective discussion is still unverified).
 - [Jenny2021] Jenny, B., Heitzler, M., Singh, D., Farmakis-Serebryakova, M., Liu, J.C., Hurni, L. "Cartographic relief shading with neural networks." IEEE TVCG 27(2):1225-1235, 2021.
 - [Jones1998] Jones, K.H. "A comparison of algorithms used to compute hill slope as a property of the DEM." Computers & Geosciences 24(4):315-323, 1998.
-- [Kennelly2008] Kennelly, P. "Terrain maps displaying hill-shading with curvature." Geomorphology 102, 2008 (and his hachure reviews). (unverified)
+- [Kennelly2008] Kennelly, P. "Terrain maps displaying hill-shading with curvature." Geomorphology 102(3-4), 2008, pp. 567-577, https://doi.org/10.1016/j.geomorph.2008.05.046 (citation checked via Crossref 2026-11-16; "his hachure reviews" not identified, unverified).
 - [Kennelly-Kimerling2001] Kennelly, P., Kimerling, A.J. "Modifications of Tanaka's illuminated contour method." Cartography and Geographic Information Science 28(2):111-123, 2001.
 - [Leonowicz2010] Leonowicz, A., Jenny, B., Hurni, L. "Terrain Sculptor: generalizing terrain models for relief shading." Cartographic Perspectives 67, 2010.
 - [Lorensen1987] Lorensen, W., Cline, H. "Marching cubes: a high resolution 3D surface construction algorithm." SIGGRAPH 1987.
