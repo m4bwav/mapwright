@@ -4,6 +4,12 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261116-7 · 2026-11-16 · 0.14.0: harbour ranking caps ports
+- because: L-058 (port share 0.889 on 24 worlds), T-20261116-14
+- files: scripts/mpw_gen.py, tests/, LEARNINGS.md, TESTS.md
+- Open-coast settlements are port candidates ranked by harbour score (shelter, depth, river mouth, rank); the best ceil(settlements/4) become ports; bar 14 also fails over the cap. Share 0.889 -> 0.261.
+- Tests: 252 pass, 2 skip.
+
 ### C-20261116-6 · 2026-11-16 · 0.13.0: block dungeons, ports on open coast
 - because: build backlog rows 7 and 21 (L-052..L-057)
 - files: scripts/mpw_places.py, scripts/mpw_gen.py, scripts/mpw_human.py, tests/, references/cli-generate.md, LEARNINGS.md, TESTS.md
