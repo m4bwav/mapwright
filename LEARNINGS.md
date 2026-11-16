@@ -6,6 +6,20 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 
 ## Active
 
+### L-047 · 2026-11-16 · `landlocked-window-drains-at-edge`: a window with no sea drains through the edge cells where the parent's flow leaves it
+- Trigger: L-009; grandchild g2_0 (seed 2) failed bar 1 on all 60 river cells; all-land g1_0 and g1_1 passed only with 0 rivers.
+- Hypothesis: Priority-Flood seeded only from sea, so with no sea every cell kept its raw height and water had no outlet.
+- Rule: when a region holds no sea, `edge_outlets` marks the border cell nearest each point where a parent flow edge leaves the window (the biggest exit always, others at a tenth of its area or more; the lowest border cell if none), hydrology seeds Priority-Flood and the lift from them, mesh.json stores `outlets`, and bar 1 accepts a path ending at one. Windows with any sea are unchanged byte for byte.
+- Evidence: T-20261116-8, T-20261116-9
+- Scope: skill
+
+### L-048 · 2026-11-16 · `bar7-arid-floor`: bar 7 does not judge the rain shadow when the windward side is under 50 cm/yr
+- Trigger: L-009; an arid child at exactly 20 samples failed on 4.9 vs 5.2 cm/yr.
+- Hypothesis: in a desert there is no moisture to shadow; a difference of tenths of a cm/yr is noise.
+- Rule: `SHADOW_MIN_WET = 50` cm/yr windward mean, measured first (T-20261116-8: judged maps had windward 136.6 or more and differences 115.3 or more, so no judged map changes). The detail line says "too arid to judge".
+- Evidence: T-20261116-8
+- Scope: skill
+
 ### L-050 · 2026-11-16 · `trees-block-on-battle-maps`: tree cells are not passable, so scattered trees can seal pockets
 - Trigger: s17 density sweep: dense battle maps failed "every door reached" on 14 of 30 seeds and one map reached 0.64 feature share.
 - Hypothesis: PASS is (FLOOR, DOOR); TREE blocks. Tree clumps closed off doors and pockets, and fill_pockets then turned the pockets to rock.
@@ -32,10 +46,10 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 - Evidence: T-20261116-2 (1/3 before), T-20261116-4 (3/3 after, decoys 0/4 fired)
 - Scope: skill
 
-### L-009 · 2026-11-14 · `landlocked-window-no-drain`: Open: grandchild of a landlocked window fails bar 1; arid windows sit on bar 7's sample limit
+### L-009 · 2026-11-14 · `landlocked-window-no-drain`: Closed: grandchild of a landlocked window fails bar 1; arid windows sit on bar 7's sample limit
 - Trigger: sweep: a grandchild whose window holds no sea fails bar 1 for every river cell (origin/main does the same, so it predates D.3). One arid child had exactly 20 windward samples after the causeway lift, so bar 7 judged a 4.9 vs 5.2 cm/yr desert and failed; before, it had 19 and was skipped.
 - Hypothesis: Priority-Flood in a region seeds only from sea cells, so with no sea nothing drains; bar 7 has no margin at its 20-sample floor.
-- Rule: open. Fix region hydrology to drain through the window edge, and give bar 7 a minimum precipitation difference or sample size measured on a sweep, written in TESTS.md before changing it.
+- Rule: closed 2026-11-16 by L-047 `landlocked-window-drains-at-edge` (edge outlets) and L-048 `bar7-arid-floor` (50 cm/yr windward floor, measured in T-20261116-8).
 - Evidence: scratch sweep 2026-11-14
 - Scope: skill
 

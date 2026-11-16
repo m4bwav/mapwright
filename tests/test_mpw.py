@@ -401,6 +401,52 @@ class TestGen(unittest.TestCase):
         self.assertEqual(out.count("FAIL"), 0, out)
         self.assertEqual(run_cli("check", self.world, "--no-labels").count("PASS"), 13)
 
+    def test_bar7_arid_not_judged(self):
+        bars = mpw_gen.check(self.world, determinism=False)
+        self.assertNotIn("arid", bars[6][3])
+        old = mpw_gen.SHADOW_MIN_WET
+        mpw_gen.SHADOW_MIN_WET = 10000
+        try:
+            bars = mpw_gen.check(self.world, determinism=False)
+        finally:
+            mpw_gen.SHADOW_MIN_WET = old
+        self.assertTrue(bars[6][2])
+        self.assertIn("too arid to judge", bars[6][3])
+
+    def test_priority_flood_drains_to_outlet(self):
+        # a 1-D valley with no sea: the edge outlet takes all water
+        H = [0.5, 0.3, 0.4, 0.2, 0.1]
+        nb = [[1], [0, 2], [1, 3], [2, 4], [3]]
+        hyd = mpw_gen.hydrology(H, nb, 2.0, None, [4])
+        self.assertEqual(hyd["rcv"], [1, 2, 3, 4, -1])
+        self.assertEqual(hyd["outlets"], [4])
+        self.assertTrue(all(hyd["F"][c] > hyd["F"][hyd["rcv"][c]] for c in range(4)))
+        # with sea present the outlets are ignored
+        hyd2 = mpw_gen.hydrology([0.5, 0.3, 0.4, 0.2, -0.1], nb, 2.0, None, [0])
+        self.assertEqual(hyd2["outlets"], [])
+
+    def test_landlocked_grandchild_drains_through_edge(self):
+        w = os.path.join(self.tmp, "lw")
+        c = os.path.join(self.tmp, "lc")
+        g = os.path.join(self.tmp, "lg")
+        mpw_gen.gen_world(2, 1600, w, raster_px=64)
+        mpw_gen.gen_region(w, None, 1600, c, raster_px=64)
+        rc = json.load(open(os.path.join(c, "recipe.json")))
+        m = json.load(open(os.path.join(c, "mesh.json")))
+        x0, y0, x1, y1 = rc["extent"]
+        win = (x0, y0, x0 + (x1 - x0) / 4, y0 + (y1 - y0) / 4)   # all land in the seed 2 sweep (T-20261116-8)
+        cs = [i for i in range(len(m["x"])) if win[0] <= m["x"][i] <= win[2] and win[1] <= m["y"][i] <= win[3]]
+        self.assertFalse(any(m["ocean"][i] for i in cs))
+        mpw_gen.gen_region(c, win, 1600, g, raster_px=64)
+        gm = json.load(open(os.path.join(g, "mesh.json")))
+        self.assertTrue(gm["outlets"])
+        nx, ny = gm["nx"], gm["ny"]
+        for i in gm["outlets"]:
+            self.assertTrue(i % nx in (0, nx - 1) or i // nx in (0, ny - 1))
+        self.assertGreater(sum(gm["river"]), 0)
+        bars = mpw_gen.check(g)
+        self.assertTrue(all(b[2] for b in bars), [b for b in bars if not b[2]])
+
     def test_child_bars_pass(self):
         bars = mpw_gen.check(self.child)
         self.assertTrue(all(b[2] for b in bars), bars)
