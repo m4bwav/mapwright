@@ -8,6 +8,9 @@ Entry shape: `### T-YYYYMMDD-n · date · harness · env · passed/total`, then 
 
 ## Runs
 
+### T-20261116-5 · 2026-11-16 · skill evals after shortening the description to 1,007 characters · 10/10 runs
+- `python evals/run.py`: trigger-find-place 3/3; trigger-read-gpx, trigger-path, trigger-export 1/1 each; four decoys 0 fired (1 run each). Pytest 233 pass, 2 skip on the merged branch.
+
 ### T-20261116-4 · 2026-11-16 · skill evals, `python evals/run.py` (`claude -p --plugin-dir`, sonnet, other installed plugins present) · Windows · 38/38 runs passed
 - L-042 description edit (find phrase names OpenStreetMap or Overpass data with its licence; example 'which projection for a world map' swapped for 'find OpenStreetMap data for this area and its licence'; 'projects points' dropped from the list): trigger-find-place 3/3, then decoys 4/4 not fired (one run each).
 - Body trim (SKILL.md 24,508 -> 8,748 bytes; per-verb detail moved verbatim to references/cli-read-write.md, cli-find.md, cli-generate.md, cli-render.md, cli-export.md), then the whole suite with each case's run count: triggers 8/8 at 3 of 3 (find-place 3/3 again, so 6/6 after the edit); decoys 4/4 at 0 of 3 (evergreen-map, chartwright, polywright-capture, pixelwright fired or nothing); action-gen-dungeon evidence exit 0; action-export-vtt evidence exit 0.

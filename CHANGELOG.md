@@ -14,7 +14,9 @@ Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `f
 - `gen dungeon --method cyclic --branches N` (0 to 8): dead-end side rooms with treasure and secret doors, never keys; without the flag old seeds are byte-identical.
 - Fixed: the system diagram's habitable-zone legend entry appears exactly when the zone is drawn (L-041 closed).
 - References: source pass 4 cleared 36 marks and corrected 10 (spin-gravity limit 1 rpm, Dungeon Alchemist licence, TouchTerrain tile width, package sizes); note in ai-docs/notes/2026-11-16-source-pass-4.md.
-- Tests: 233 pass, 2 skip.
+- Description names OpenStreetMap and Overpass data with its licence and is back under 1,024 characters (1,007); L-042 closed: find trigger 1/3 before, 3/3 after in T-20261116-4 and 3/3 again on the shortened text (T-20261116-5).
+- SKILL.md body trimmed from 24.5 KB to 8.7 KB; per-verb detail moved word for word to references/cli-read-write.md, cli-find.md, cli-generate.md, cli-render.md and cli-export.md, read on demand. evals/run.py is the kept eval runner (standard library).
+- Tests: 233 pass, 2 skip. Evals 38/38 runs (T-20261116-4).
 
 ### C-20261116-3 · 2026-11-16 · Evals rerun, learnings consolidated, test runs archived
 - The dd2vtt action case now needs a gen-battle recipe (seed 3, 20x16) that passes `mpw.py check`; a lone .dd2vtt fails it. Rerun: 13/14 (T-20261116-2), find-place undertriggers (L-042).
