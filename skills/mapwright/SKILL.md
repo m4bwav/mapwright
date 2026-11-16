@@ -140,4 +140,4 @@ There are no ferries yet: islands get their own road networks. Cities and dungeo
 
 ## Maintenance
 
-Lessons go in [LEARNINGS.md](../../LEARNINGS.md), changes in [CHANGELOG.md](../../CHANGELOG.md), test runs in [TESTS.md](../../TESTS.md). The evergreen layer (evergreen.json, research refresh) is added by evergreen-convert in a later step.
+Lessons go in [LEARNINGS.md](../../LEARNINGS.md), changes in [CHANGELOG.md](../../CHANGELOG.md), test runs in [TESTS.md](../../TESTS.md). Research and schedule: [RESEARCH.md](../../RESEARCH.md) and `evergreen.json` at the plugin root; protocol in [MAINTENANCE.md](../../MAINTENANCE.md). Refresh with evergreen-refresh when due.

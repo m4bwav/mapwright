@@ -1,5 +1,7 @@
 # Learnings: mapwright
 
+Research: [RESEARCH.md](RESEARCH.md).
+
 Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). Changes are logged in [CHANGELOG.md](CHANGELOG.md); test runs in [TESTS.md](TESTS.md). Trigger and Hypothesis are required.
 
 ## Active
