@@ -49,6 +49,17 @@ class SpaceBase(unittest.TestCase):
 
 
 class TestSector(SpaceBase):
+    def test_rendered_extra_file_does_not_fail_determinism(self):
+        # Step E 2026-11-15: `render DIR -o DIR/map.png` left a PNG the gen never
+        # writes, and the byte-identical bar failed on it.
+        out = self.d("extra")
+        S.gen_sector(5, out)
+        with open(os.path.join(out, "map.png"), "wb") as f:
+            f.write(b"not from gen")
+        self.assertTrue(named(S.check(out, labels=False), "byte-identical")[-2])
+        os.remove(os.path.join(out, "sources.json"))
+        self.assertFalse(named(S.check(out, labels=False), "byte-identical")[-2])
+
     def test_subsector_bars_pass_and_regen(self):
         out = self.d("sub")
         r = S.gen_sector(3, out)

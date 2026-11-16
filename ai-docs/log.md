@@ -71,3 +71,4 @@ Newest last. One dated line per fact another session would need.
 - 2026-11-15: traps: Tobler flat speed is 5.036742 km/h, not 5.037 (L-037); world road costs are directed, so A-to-B equals B-to-A only on grids (L-038); `git fetch --tags` in a worktree failed with 'cannot lock ref' while another fetch ran, ls-remote confirmed tags.
 - 2026-11-15: session 13 handed over. Wrap-up minimal (lessons already in L-024..L-038 and the log).
 - 2026-11-15: converted to an evergreen unit (evergreen.json pointer mode, tier moderate, next due 2026-12-14; RESEARCH.md, MAINTENANCE.md added); harvest.json listed by `evergreen.py harvest targets`.
+- 2026-11-15: Step E: one example map per kind in Ai/mapwright-lab/step-e (world/region seed 4242, dungeon 77 cyclic + battle 31, sector/system 2077), all checks pass; fixed render --title on grid maps and the space determinism bar (0.10.1, L-039..L-041); decision set ask/mapwright-step-e-1. Note: notes/2026-11-15-step-e-maps.md.

@@ -233,6 +233,10 @@ class TestPlaceLabelsAndCli(PlacesBase):
         run_cli("render", out, "-o", svg, "--style", "blueprint")
         with open(svg, encoding="utf-8") as f:
             self.assertIn("#1d4e89", f.read())
+        # Step E 2026-11-15: --title was silently ignored on battle, dungeon and city maps.
+        run_cli("render", out, "-o", svg, "--title", "Ruined Watchpost")
+        with open(svg, encoding="utf-8") as f:
+            self.assertIn(">Ruined Watchpost<", f.read())
 
 
 FIX = os.path.join(HERE, "fixtures")

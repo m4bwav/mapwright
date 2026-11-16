@@ -1,0 +1,141 @@
+{
+  "askwright": 1,
+  "id": "mapwright-step-e-1",
+  "title": "mapwright: keep or redo the three example maps",
+  "context": "",
+  "asked_by": "mapwright subagent",
+  "product": "Claude Code",
+  "session": "mapwright step e",
+  "working_dir": "D:\\m4bwa\\Claude\\Projects\\Ai\\mapwright-stepe",
+  "media_roots": [
+    "D:/m4bwa/Claude/Projects/Ai/mapwright-lab/step-e/life-like",
+    "D:/m4bwa/Claude/Projects/Ai/mapwright-lab/step-e/fantasy",
+    "D:/m4bwa/Claude/Projects/Ai/mapwright-lab/step-e/sci-fi"
+  ],
+  "questions": [
+    {
+      "id": "life-like",
+      "kind": "choice",
+      "title": "Life-like map: Belisa coast",
+      "question": "Should the Belisa coast map stay as the life-like example for a studyquest overworld?",
+      "background": "An invented world (seed 4242) and a zoomed child region of it, drawn in the topographic style. Every check passed (15 pass, OCR skipped: no tesseract). Files: D:/m4bwa/Claude/Projects/Ai/mapwright-lab/step-e/life-like/region-life-like.png and .svg, the whole world D:/m4bwa/Claude/Projects/Ai/mapwright-lab/step-e/life-like/world-life-like.png (atlas style), recipes in D:/m4bwa/Claude/Projects/Ai/mapwright-lab/step-e/life-like/world and D:/m4bwa/Claude/Projects/Ai/mapwright-lab/step-e/life-like/region.",
+      "why": "This becomes the example the docs and the studyquest plugin point to for a realistic overworld.",
+      "look_for": [
+        "Does the coast, the mountain block and the rivers look believable?",
+        "Are the town names readable at this size?",
+        "Is a long thin peninsula a good overworld for a kid's game?"
+      ],
+      "media": [
+        {
+          "src": "region-life-like.png",
+          "alt": "Topographic map of the Belisa coast"
+        },
+        {
+          "src": "world-life-like.png",
+          "alt": "Atlas map of the whole world, seed 4242"
+        }
+      ],
+      "options": [
+        {
+          "id": "keep",
+          "label": "Keep it as the example map"
+        },
+        {
+          "id": "redo",
+          "label": "Redo it (say what to change in the note)"
+        }
+      ],
+      "guess": {
+        "option": "keep",
+        "why": "Passes every bar and reads clearly; the narrow peninsula gives a natural travel line.",
+        "confidence": "low"
+      },
+      "created": "2026-11-15T23:21:15-06:00",
+      "updated": "2026-11-15T23:21:15-06:00"
+    },
+    {
+      "id": "fantasy",
+      "kind": "choice",
+      "title": "Fantasy maps: dungeon and battle map",
+      "question": "Should the Sunken Vault dungeon and the Ruined Watchpost battle map stay as the fantasy examples?",
+      "background": "A lock-and-key dungeon (seed 77, cyclic method: 16 rooms, one locked door, one-way doors) and a square-grid battle map (seed 31), both ink-and-parchment. All checks passed (dungeon 20, battle 12; OCR skipped). A route from the entrance to the goal is in D:/m4bwa/Claude/Projects/Ai/mapwright-lab/step-e/fantasy/dungeon-path/path.svg (27 steps). Files: D:/m4bwa/Claude/Projects/Ai/mapwright-lab/step-e/fantasy/dungeon-fantasy.png, D:/m4bwa/Claude/Projects/Ai/mapwright-lab/step-e/fantasy/battle-fantasy.png (and .svg); the plain grid images for virtual tabletops are map.png in D:/m4bwa/Claude/Projects/Ai/mapwright-lab/step-e/fantasy/dungeon and D:/m4bwa/Claude/Projects/Ai/mapwright-lab/step-e/fantasy/battle.",
+      "why": "These become the examples for ludowright level design and the engine plugins (Universal VTT export works on both).",
+      "look_for": [
+        "Dungeon: are the key, lock and goal symbols clear without a legend?",
+        "Battle map: it is sparse (two ruins, rocks, trees); is that enough to fight over?"
+      ],
+      "media": [
+        {
+          "src": "dungeon-fantasy.png",
+          "alt": "Dungeon map, The Sunken Vault"
+        },
+        {
+          "src": "battle-fantasy.png",
+          "alt": "Battle map, Ruined Watchpost"
+        }
+      ],
+      "options": [
+        {
+          "id": "keep",
+          "label": "Keep it as the example map"
+        },
+        {
+          "id": "redo",
+          "label": "Redo it (say what to change in the note)"
+        }
+      ],
+      "guess": {
+        "option": "redo",
+        "why": "The dungeon is good but the battle map looks thin and has no legend; I would keep the dungeon and redo the battle map with more cover.",
+        "confidence": "low"
+      },
+      "created": "2026-11-15T23:21:15-06:00",
+      "updated": "2026-11-15T23:21:15-06:00"
+    },
+    {
+      "id": "sci-fi",
+      "kind": "choice",
+      "title": "Sci-fi maps: Khura subsector and Raakhiki system",
+      "question": "Should the Khura subsector and the Raakhiki star system stay as the sci-fi examples?",
+      "background": "A hex subsector (seed 2077: 42 worlds, 58 jump-2 routes, one connected network) and a G-star system (seed 2077: 5 planets, 3 moons), star-chart style. All checks passed (sector 7, system 9; OCR skipped). Files: D:/m4bwa/Claude/Projects/Ai/mapwright-lab/step-e/sci-fi/sector-sci-fi.png, D:/m4bwa/Claude/Projects/Ai/mapwright-lab/step-e/sci-fi/system-sci-fi.png (and .svg); recipes and the T5 tab file in D:/m4bwa/Claude/Projects/Ai/mapwright-lab/step-e/sci-fi/sector and D:/m4bwa/Claude/Projects/Ai/mapwright-lab/step-e/sci-fi/system.",
+      "why": "These become the examples for a sci-fi game's star map.",
+      "look_for": [
+        "Sector: are names and routes readable?",
+        "System: the legend mentions a green habitable zone that the schematic view does not draw, and no planet sits inside the zone; does that matter for an example?"
+      ],
+      "media": [
+        {
+          "src": "sector-sci-fi.png",
+          "alt": "Khura subsector hex map"
+        },
+        {
+          "src": "system-sci-fi.png",
+          "alt": "Raakhiki system schematic"
+        }
+      ],
+      "options": [
+        {
+          "id": "keep",
+          "label": "Keep it as the example map"
+        },
+        {
+          "id": "redo",
+          "label": "Redo it (say what to change in the note)"
+        }
+      ],
+      "guess": {
+        "option": "keep",
+        "why": "Both read well; the habitable-zone legend gap is a code fix, not a reason to redo the map.",
+        "confidence": "low"
+      },
+      "created": "2026-11-15T23:21:15-06:00",
+      "updated": "2026-11-15T23:21:15-06:00"
+    }
+  ],
+  "created": "2026-11-15T23:21:09-06:00",
+  "updated": "2026-11-15T23:21:15-06:00",
+  "project": {
+    "name": "mapwright",
+    "path": "D:/m4bwa/Claude/Projects/Ai/mapwright"
+  }
+}

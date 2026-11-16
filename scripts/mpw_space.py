@@ -1291,7 +1291,10 @@ def check(d, determinism=True, labels=True):
         try:
             regenerate(d, tmp)
             a, b = sorted(os.listdir(d)), sorted(os.listdir(tmp))
-            diff = sorted(set(a) ^ set(b)) + [n for n in a if n in b and _bytes(os.path.join(d, n)) != _bytes(os.path.join(tmp, n))]
+            # Files the gen writes must exist and match; extra files (a render the
+            # user saved into the folder) are not the gen's and are ignored.
+            diff = sorted(set(b) - set(a)) + [n for n in b if n in a and _bytes(os.path.join(d, n)) != _bytes(os.path.join(tmp, n))]
+            a = b
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
         bars.append(("same seed gives byte-identical files", not diff,

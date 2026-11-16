@@ -4,6 +4,10 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261115-9 · 2026-11-15 · 0.10.1: Step E example maps; render --title on grid maps; space determinism bar ignores extra files
+- because: Step E (one keepable map per kind), L-039, L-040, L-041
+- files: scripts/mpw.py, scripts/mpw_places.py, scripts/mpw_space.py, tests/test_places.py, tests/test_space.py, LEARNINGS.md, plugin.json, .claude-plugin/plugin.json, ask/mapwright-step-e-1, ai-docs/notes/2026-11-15-step-e-maps.md
+- `render --title` now names city, dungeon and battle maps (space maps warn that it is unused). The sector/system/planet/deck byte-identical bar compares only the files the gen writes, so a render saved in the folder no longer fails it.
 ### C-20261115-8 · 2026-11-15 · Converted to an evergreen unit
 because: the plugin had companions but no schedule or research log.
 files: evergreen.json, RESEARCH.md, MAINTENANCE.md, skills/mapwright/SKILL.md
