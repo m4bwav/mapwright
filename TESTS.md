@@ -12,6 +12,9 @@ Entry shape: `### T-20261116-14 · 2026-11-16 · pytest (tests/) + port-share sw
 
 ## Runs
 
+### T-20261116-17 · 2026-11-16 · pytest (python -m pytest -q tests) after row 4, per-place seeds · Windows · 258 passed, 2 skipped (live) in 81 s
+New TestPlaceSeeds: `place_seed` pinned and stable; `gen system --sector-seed 7 --hex H` byte-identical to `gen sector --seed 7 --systems` systems/H for three hexes (system.json, names.json, recipe.json, map.svg, orbits.svg); default sector writes no systems/. No existing expectation changed.
+
 ### T-20261116-16 · 2026-11-16 · pytest (python -m pytest -q tests) after ink-and-parchment period 1600 · Windows · 255 passed, 2 skipped (live) in 78 s
 - New: test_builtin_style_period (ink-and-parchment carries 1600, topographic none; `check --style ink-and-parchment` on a world adds a passing period 1600 bar without --period).
 - led to: none

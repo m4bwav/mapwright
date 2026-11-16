@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.16.0"
+VERSION = "0.17.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -1303,9 +1303,10 @@ def cmd_gen_space(a):
     S = _space()
     try:
         if a.what == "sector":
-            r = S.gen_sector(a.seed, a.out, a.size, a.density, a.jump, a.real, a.radius_pc, VERSION, a.name_style)
+            r = S.gen_sector(a.seed, a.out, a.size, a.density, a.jump, a.real, a.radius_pc, VERSION, a.name_style,
+                             a.systems)
         elif a.what == "system":
-            r = S.gen_system(a.seed, a.out, a.star, a.planets, VERSION, a.name_style)
+            r = S.gen_system(a.seed, a.out, a.star, a.planets, VERSION, a.name_style, a.sector_seed, a.hex)
         elif a.what == "planet":
             r = S.gen_planet(a.seed, a.out, a.kind, a.width, VERSION)
         else:
@@ -2057,8 +2058,11 @@ def build_parser():
     sc.add_argument("--jump", type=float, default=2, help="jump range: hexes, or parsecs with --real")
     sc.add_argument("--real", action="store_true", help="bundled near stars (scripts/data/near-stars.csv) by parallax")
     sc.add_argument("--radius-pc", type=float, default=6.0, help="with --real: stars within this distance")
+    sc.add_argument("--systems", action="store_true", help="also write systems/<hex>/ per world from per-place seeds")
     sy = gs.add_parser("system", help="star, planets on stable orbits, moons; schematic and to-scale diagrams")
-    sy.add_argument("--seed", type=int, required=True)
+    sy.add_argument("--seed", type=int, help="system seed; or use --sector-seed with --hex")
+    sy.add_argument("--sector-seed", type=int, help="with --hex: the system at that hex of this sector's seed")
+    sy.add_argument("--hex", help="with --sector-seed: four-digit hex such as 0118")
     sy.add_argument("--star", choices=("M", "K", "G", "F"))
     sy.add_argument("--planets", type=int)
     pl = gs.add_parser("planet", help="equirectangular sphere texture with no seam or pole pinch")

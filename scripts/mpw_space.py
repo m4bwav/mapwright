@@ -271,8 +271,16 @@ def load_near_stars(path=NEAR_STARS):
     return out
 
 
+def place_seed(world_seed, kind, ident):
+    """Per-place seed: a stable 63-bit hash of the world seed and the place's identity (kind plus hex,
+    chunk or name), so one place regenerates alone without being stored. blake2b, never built-in hash()."""
+    import hashlib
+    key = ("%d|%s|%s" % (int(world_seed), kind, ident)).encode("utf-8")
+    return int.from_bytes(hashlib.blake2b(key, digest_size=8).digest(), "big") >> 1
+
+
 def gen_sector(seed, out, size="subsector", density=0.5, jump=2, real=False, radius_pc=6.0, version="0.6.0",
-               name_style=None):
+               name_style=None, systems=False):
     t0 = time.perf_counter()
     r = P.Rng(seed, 101)
     lang = mpw_names.make_language(seed, name_style)
@@ -339,6 +347,11 @@ def gen_sector(seed, out, size="subsector", density=0.5, jump=2, real=False, rad
     P.dump(os.path.join(out, "sources.json"), srcs)
     P.dump(os.path.join(out, "recipe.json"), recipe)
     _write(out, "map.svg", render_sector_svg(recipe, sec))
+    if systems and not real:
+        # each world's system from its own place seed; gen system --sector-seed S --hex H makes the same files
+        for w in worlds:
+            gen_system(None, os.path.join(out, "systems", w["hex"]), version=version, name_style=name_style,
+                       sector_seed=seed, hex_id=w["hex"])
     t = dict(generate=_r(t1 - t0, 3), total=_r(time.perf_counter() - t0, 3))
     return dict(out=out, kind="sector", name=name, worlds=len(worlds), routes=len(routes),
                 long=sum(1 for x in routes if x["kind"] == "long"), times=t)
@@ -510,8 +523,18 @@ BODY_COL = {"rocky": "#b08a64", "ocean": "#4f8fd6", "gas": "#d9b07a", "ice-giant
             "dwarf": "#9a9a9a", "moon": "#c8c8c8"}
 
 
-def gen_system(seed, out, star=None, planets=None, version="0.6.0", name_style=None):
+def gen_system(seed, out, star=None, planets=None, version="0.6.0", name_style=None, sector_seed=None,
+               hex_id=None):
     t0 = time.perf_counter()
+    if (sector_seed is None) != (hex_id is None):
+        raise ValueError("--sector-seed and --hex go together")
+    if hex_id is not None:
+        hex_id = str(hex_id)
+        if len(hex_id) != 4 or not hex_id.isdigit():
+            raise ValueError("--hex is four digits, column then row, e.g. 0118")
+        seed = place_seed(sector_seed, "system", hex_id)
+    elif seed is None:
+        raise ValueError("give --seed, or --sector-seed with --hex")
     r = P.Rng(seed, 202)
     lang = mpw_names.make_language(seed, name_style)
     namer = mpw_names.Namer(lang)
@@ -592,6 +615,8 @@ def gen_system(seed, out, star=None, planets=None, version="0.6.0", name_style=N
                 notes="schematic: equal spacing, not to scale; orbits.svg: orbits to scale, body markers not")
     recipe = dict(kind="system", seed=int(seed), tool_version=version, space_version=SPACE_VERSION,
                   params=dict(star=star, planets=planets, name_style=name_style), language=lang)
+    if hex_id is not None:
+        recipe["place"] = dict(sector_seed=int(sector_seed), hex=hex_id)
     t1 = time.perf_counter()
     os.makedirs(out, exist_ok=True)
     P.dump(os.path.join(out, "system.json"), sysd)

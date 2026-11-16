@@ -261,3 +261,31 @@ class TestSystemHzLegend(SpaceBase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestPlaceSeeds(SpaceBase):
+    """Backlog row 4: a system made alone from sector seed + hex equals the one made inside the sector."""
+
+    def test_place_seed_stable(self):
+        self.assertEqual(S.place_seed(7, "system", "0118"), S.place_seed(7, "system", "0118"))
+        self.assertNotEqual(S.place_seed(7, "system", "0118"), S.place_seed(7, "system", "0117"))
+        self.assertNotEqual(S.place_seed(7, "system", "0118"), S.place_seed(8, "system", "0118"))
+        # pinned: the hash must not drift between runs, Pythons or machines
+        self.assertEqual(S.place_seed(7, "system", "0118"), 4689945048436341793)
+
+    def test_alone_equals_inside_sector(self):
+        sec = self.d("secsys")
+        run_cli("gen", "sector", "--seed", "7", "--systems", "--out", sec)
+        hexes = sorted(w["hex"] for w in P.load(sec, "sector.json")["worlds"])
+        for hx in [h for h in hexes if h.startswith("01")][:2] + [hexes[-1]]:
+            alone = self.d("alone" + hx)
+            run_cli("gen", "system", "--sector-seed", "7", "--hex", hx, "--out", alone)
+            inside = os.path.join(sec, "systems", hx)
+            for f in ("system.json", "names.json", "recipe.json", "map.svg", "orbits.svg"):
+                with open(os.path.join(alone, f), "rb") as a, open(os.path.join(inside, f), "rb") as b:
+                    self.assertEqual(a.read(), b.read(), "%s %s" % (hx, f))
+
+    def test_default_sector_unchanged(self):
+        out = self.d("secplain")
+        S.gen_sector(7, out)
+        self.assertFalse(os.path.exists(os.path.join(out, "systems")))
