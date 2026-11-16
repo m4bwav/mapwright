@@ -82,7 +82,8 @@ class TestPortsGenerated(unittest.TestCase):
             for s in sets:
                 self.assertIn("port", s)
                 touch = any(sea[q] for q in nb[s["cell"]])
-                self.assertEqual(s["port"], touch)
+                if s["port"]:
+                    self.assertTrue(touch)
             lake_only = [s for s in sets if any(m["lake"][q] >= 0 for q in nb[s["cell"]])
                          and not any(sea[q] for q in nb[s["cell"]])]
             self.assertTrue(all(not s["port"] for s in lake_only))
@@ -116,6 +117,51 @@ class TestPortsGenerated(unittest.TestCase):
             json.dump(rc, fh)
         b = {x[0]: x for x in mpw_gen.check(bad, determinism=False)}
         self.assertFalse(b[14][2])
+
+    def test_port_cap_and_harbour_rank(self):
+        for d in (self.world, self.child):
+            m = mpw_gen.load(d, "mesh.json")
+            nb = mpw_gen._neighbours(m)
+            sea = mpw_gen.open_sea_dir(d)
+            sets = self._sets(d)
+            ports = [s for s in sets if s["port"]]
+            coast = [s for s in sets if any(sea[q] for q in nb[s["cell"]])]
+            cap = mpw_gen.port_cap(len(sets))
+            self.assertLessEqual(len(ports), cap)
+            self.assertEqual(len(ports), min(cap, len(coast)))
+            sc = {s["id"]: mpw_gen.harbour_score(m, nb, sea, s["cell"], s["rank"]) for s in coast}
+            if ports and len(coast) > len(ports):
+                worst_port = min(sc[s["id"]] for s in ports)
+                best_left = max(sc[s["id"]] for s in coast if not s["port"])
+                self.assertGreaterEqual(worst_port, best_left)
+
+    def test_cap_values(self):
+        self.assertEqual(mpw_gen.port_cap(0), 0)
+        self.assertEqual(mpw_gen.port_cap(1), 1)
+        self.assertEqual(mpw_gen.port_cap(8), 2)
+        self.assertEqual(mpw_gen.port_cap(9), 3)
+
+    def test_bar14_catches_too_many_ports(self):
+        bad = os.path.join(self.tmp, "many")
+        shutil.copytree(self.world, bad)
+        m = mpw_gen.load(bad, "mesh.json")
+        nb = mpw_gen._neighbours(m)
+        sea = mpw_gen.open_sea_dir(bad)
+        fc = mpw_gen.load(bad, "features.geojson")
+        ids = []
+        for f in fc["features"]:
+            pr = f["properties"]
+            if pr["kind"] == "settlement" and any(sea[q] for q in nb[pr["cell"]]):
+                pr["port"] = True
+                ids.append(pr["id"])
+        with open(os.path.join(bad, "features.geojson"), "w", encoding="utf-8") as fh:
+            json.dump(fc, fh)
+        rc = mpw_gen.load(bad, "recipe.json")
+        rc["ports"] = sorted(ids)
+        with open(os.path.join(bad, "recipe.json"), "w", encoding="utf-8") as fh:
+            json.dump(rc, fh)
+        b = {x[0]: x for x in mpw_gen.check(bad, determinism=False)}
+        self.assertFalse(b[14][2], b[14][3])
 
     def test_deterministic(self):
         again = os.path.join(self.tmp, "w2")
