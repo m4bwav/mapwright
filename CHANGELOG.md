@@ -4,6 +4,18 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261116-4 · 2026-11-16 · 0.11.0: lock-aware paths, jump point search, nav export, battle density and legend, dungeon branches
+- because: backlog items from Step D and the Step E review; L-041; source pass 4
+- files: scripts/mpw.py, scripts/mpw_path.py, scripts/mpw_export.py, scripts/mpw_places.py, scripts/mpw_space.py, scripts/mpw_render.py, tests/, references/, LEARNINGS.md
+- `path` on a cyclic dungeon fetches each key before its lock, honours one-way doors and reports the pickups; `--ignore-locks` keeps the old search (30 seeds: every path exists, none crosses a lock early).
+- `path --jps`: jump point search on square dungeon and battle grids, same cost as A* on 1,200 pairs with 37,932 expansions against 130,239; slower than A* in pure Python (L-043), and it refuses hex maps, decks, worlds and 4-way moves.
+- `export --nav`: walkable squares merged into rectangles with a portal list, as JSON for an engine.
+- `gen battle --density sparse|normal|dense` (default normal, 0.22 of cells hold a feature; sparse is the old map) and a legend that lists only what is on the map (L-050, L-051).
+- `gen dungeon --method cyclic --branches N` (0 to 8): dead-end side rooms with treasure and secret doors, never keys; without the flag old seeds are byte-identical.
+- Fixed: the system diagram's habitable-zone legend entry appears exactly when the zone is drawn (L-041 closed).
+- References: source pass 4 cleared 36 marks and corrected 10 (spin-gravity limit 1 rpm, Dungeon Alchemist licence, TouchTerrain tile width, package sizes); note in ai-docs/notes/2026-11-16-source-pass-4.md.
+- Tests: 233 pass, 2 skip.
+
 ### C-20261116-3 · 2026-11-16 · Evals rerun, learnings consolidated, test runs archived
 - The dd2vtt action case now needs a gen-battle recipe (seed 3, 20x16) that passes `mpw.py check`; a lone .dd2vtt fails it. Rerun: 13/14 (T-20261116-2), find-place undertriggers (L-042).
 - LEARNINGS consolidated (41 to 17 active): merged L-022 into L-021, L-031 into L-010, L-033 into L-020; archived L-001..L-008, L-011, L-013..L-019, L-023, L-025, L-027, L-036, L-037, L-040 to LEARNINGS-ARCHIVE.md as enforced by tests or code; code names added to L-009, L-010, L-012, L-020.
