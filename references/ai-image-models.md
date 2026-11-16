@@ -83,8 +83,8 @@ ControlNet adds a trainable copy of the encoder that takes a condition image (ed
 
 Availability per base model:
 
-- SDXL: many ControlNets (canny, depth, lineart, union models such as xinsir's ControlNet-union-sdxl) (unverified exact repos; check licence per repo).
-- FLUX.1: official BFL "FLUX.1 Canny/Depth [dev]" control models exist, under the FLUX dev non-commercial licence [FluxTools]; third-party union ControlNets exist (unverified licence per repo).
+- SDXL: many ControlNets (canny, depth, lineart, union models such as xinsir's ControlNet-union-sdxl) xinsir/controlnet-union-sdxl-1.0 is Apache-2.0 and not gated (Hugging Face model API, checked 2026-11-16); check other repos one by one.
+- FLUX.1: official BFL "FLUX.1 Canny/Depth [dev]" control models exist, under the FLUX dev non-commercial licence [FluxTools]; on Hugging Face both repos are tagged `license:other` and gated (black-forest-labs/FLUX.1-Canny-dev, FLUX.1-Depth-dev, checked 2026-11-16); third-party union ControlNets exist (licence per repo unverified).
 - Qwen-Image: InstantX Qwen-Image-ControlNet-Union, Apache 2.0, canny, soft edge, depth, pose; no segmentation (checked 2026-11-14, https://huggingface.co/InstantX/Qwen-Image-ControlNet-Union).
 - Z-Image: alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union, Apache 2.0, canny, HED, depth, pose, MLSD; no segmentation; a 2.0 version adds control blocks and inpaint (checked 2026-11-14, https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union). Neither Apache union ControlNet has a segmentation mode, so the seg route needs SDXL, or canny plus depth on the Apache bases.
 
@@ -160,7 +160,7 @@ Run OCR (Tesseract, Apache 2.0) on the styled image before labels go on. Any con
 | Krea 2 | House rule: never in sellable projects | Private only | Mark's rule |
 | Meta-gated (SAM 3 etc.) | Gated | Not used | Mark's rule |
 
-Default for mapwright: Z-Image-Turbo or Qwen-Image for generation, Qwen-Image-Edit for edits. Both Apache 2.0, both run locally, both fit 16 GB with quantisation (unverified for Qwen-Image at full precision; it is a 20B model [QwenImage]).
+Default for mapwright: Z-Image-Turbo or Qwen-Image for generation, Qwen-Image-Edit for edits. Both Apache 2.0, both run locally, both fit 16 GB with quantisation (Qwen-Image has 20.4 B parameters, about 41 GB at bf16, so it does not fit 16 GB without quantisation; Z-Image-Turbo has 6.2 B; both Apache-2.0, Hugging Face model API, checked 2026-11-16) [QwenImage].
 
 ### 5.1 LoRA licence classes
 
@@ -187,7 +187,7 @@ Map style LoRAs that exist (found 2026-11-14; uploader permissions not read, che
 - Satellite/aerial LoRAs for SDXL and FLUX.
 - Watercolour and ink cartography LoRAs.
 
-None were verified in this pass. Public-domain historical maps (Library of Congress, David Rumsey under CC BY-NC-SA, which is non-commercial) make clean training sets for a house LoRA; note David Rumsey's NC terms (unverified current terms).
+None were verified in this pass. Public-domain historical maps (Library of Congress, David Rumsey under CC BY-NC-SA, which is non-commercial) make clean training sets for a house LoRA; David Rumsey images are CC BY-NC-SA 3.0; selling reproductions counts as commercial use and needs permission from carto@davidrumsey.com; credit "David Rumsey Map Collection, David Rumsey Map Center, Stanford Libraries" (https://www.davidrumsey.com/about, checked 2026-11-16).
 
 ## 6. Satellite and aerial looks
 
