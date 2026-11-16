@@ -76,8 +76,8 @@ Rules:
 
 ### 4.2 mapKurator
 - mapKurator is a pipeline from USC's Knowledge Computing Lab for text on historical maps: detect text (including curved), recognise it, link phrases, and match names to a gazetteer such as OpenStreetMap or GeoNames (Li et al., 2020; Kim et al., 2023, "The mapKurator System").
-- It was run on the David Rumsey Map Collection, tens of thousands of maps, producing searchable text (Kim et al., 2023; about 57,000 maps, unverified).
-- Detection and recognition models it has used include TESTR and later spotter models trained on synthetic map text (Kim et al., 2023; model names unverified for the current release).
+- It was run on the David Rumsey Map Collection, tens of thousands of maps, producing searchable text (Kim et al., 2023: the current arXiv abstract says "over 60,000 maps and over 100 million text/place names", https://arxiv.org/abs/2306.17059, checked 2026-11-16; earlier versions said 57,000 maps).
+- Detection and recognition models it has used include TESTR and later spotter models trained on synthetic map text (checked 2026-11-16: the deployed Spotter-v2 "is built upon Deformable-DETR and TESTR", and PALETTE is the other listed spotter, https://github.com/knowledge-computing/mapkurator-spotter and https://github.com/knowledge-computing/mapkurator-system).
 - Its post-processing step corrects OCR with a gazetteer lookup, which raises word accuracy but can "correct" a real but unlisted name into a known one (Kim et al., 2023; failure mode noted by the authors, wording unverified).
 
 ### 4.3 Recommended approach for mapwright
@@ -104,7 +104,7 @@ A GCP pairs a pixel (column, row) with a world coordinate (longitude, latitude o
 | Projective | perspective (a photo of a map) | 4 | Allmaps transformation docs |
 
 - The polynomial minimum is (n+1)(n+2)/2 coefficients per axis: 3, 6, 10 (standard result; GDAL picks the order from the number of GCPs when `-order` is not given, per the gdalwarp docs).
-- Map Warper uses GDAL underneath, needs at least 3 control points to rectify, and offers polynomial and thin-plate transforms (Map Warper help pages; unverified for the current release).
+- Map Warper uses GDAL underneath, needs at least 3 control points to rectify, and offers polynomial and thin-plate transforms (checked 2026-11-16 in https://github.com/timwaters/mapwarper: `app/models/map.rb` returns nothing below 3 hard control points and runs `gdalwarp`; `maps_controller.rb` offers `-order 1`, `-order 2`, `-order 3` and `-tps`).
 - Allmaps works on IIIF images and stores GCPs as a Georeference Annotation (a W3C Web Annotation profile) so the georeference is a shareable file; it supports Helmert, polynomial of orders 1-3, projective and TPS (Allmaps docs, @allmaps/transform).
 
 ### 5.3 Errors
