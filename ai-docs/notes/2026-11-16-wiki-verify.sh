@@ -1,11 +1,11 @@
 #!/bin/sh
 # Runs every example on the mapwright wiki in a scratch copy of the tagged release and prints each output.
-# Usage: sh ai-docs/notes/2026-11-16-wiki-verify.sh [TAG] > out.txt   (from the repository root; TAG defaults to v0.11.0)
+# Usage: sh ai-docs/notes/2026-11-16-wiki-verify.sh [TAG] > out.txt   (from the repository root; TAG defaults to v0.25.0)
 # mapwright is not on a registry: the scripts/ and tests/fixtures/ of the tag are copied out with git archive.
 # Network commands (find --online, fetch) are not run; their page examples carry an outputs: skip marker.
 set -e
 export PYTHONIOENCODING=utf-8
-TAG=${1:-v0.11.0}
+TAG=${1:-v0.25.0}
 REPO=$(pwd)
 W=$(mktemp -d)
 git -C "$REPO" archive "$TAG" scripts tests/fixtures | tar -x -C "$W"
@@ -125,9 +125,18 @@ run $M find --list
 run $M find "Iceland elevation"
 run $M aistyle --list
 run $M aistyle isles.map --look painted-atlas --dry-run
+run $M sky scripts/data/sky-sample.csv -o orion.svg
+run $M gen system --seed 5 --star G --lock physics --companion 1,30,0.1 --out bin.map
+run $M check bin.map
+run $M sky scripts/data/sky-sample.csv -o orion2.svg --period 1600
+run $M gen world --seed 7 --out w.map
+run $M check w.map --period 1600 --uses mercator,greenwich
+run $M check w.map --style ink-and-parchment
+run $M gen system --sector-seed 5 --hex 0102 --tab spin.map/sector.tab --out pin.map
+run $M gen system --sector-seed 5 --hex 0102 --out nopin.map
 echo "=== serve"
 python scripts/mpw.py serve isles.map --port 8765 > serve.log 2>&1 &
 P=$!; sleep 3
 curl -s -o /dev/null -w "GET / -> %{http_code}\n" http://127.0.0.1:8765/ || true
-kill $P; sleep 1; head -3 serve.log
+kill $P || true; sleep 1; head -3 serve.log
 cd /; rm -rf "$W"
