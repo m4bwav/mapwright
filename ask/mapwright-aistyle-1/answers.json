@@ -1,0 +1,18 @@
+{
+  "askwright": 1,
+  "rev": 1,
+  "answers": {
+    "denoise": {
+      "choice": "keep045",
+      "note": "",
+      "attachments": [],
+      "timecodes": [],
+      "guess_revealed": false,
+      "guess_revealed_before_pick": false,
+      "q_rev": 1,
+      "rev": 1,
+      "updated": "2026-11-16T17:21:13-06:00",
+      "state": "answered"
+    }
+  }
+}
