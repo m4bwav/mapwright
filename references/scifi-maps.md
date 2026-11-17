@@ -65,6 +65,9 @@ A 2D chart of 3D stars lies in some way. The goal is to say which way.
 - Two-view charts: a plan (X, Y) plus an elevation (X, Z), like an engineering drawing. Nothing is hidden, at the cost of cross-referencing.
 - Distance-preserving lie checks: nearest-neighbour pairs in 2D can be far apart in 3D. Print 3D distances on route lines, never the 2D lengths.
 - Sky maps (what you see from a point) are a different thing: use RA/Dec with a projection (stereographic for constellations, Hammer-Aitoff or Mollweide for the whole sky) [8].
+- Sky charts in mapwright: `MPW sky STARS.csv` (columns ra,dec,mag,name in degrees). Stereographic suits a hemisphere or a constellation; sinusoidal, conic and trapezoidal were the atlas choices for strips of sky. Seen from Earth with north up, east (higher RA) lies to the left; a celestial globe shows the mirror image, so the chart names which one it draws (`--orientation sky|globe`).
+- Every sky chart states five things: the area of sky, the orientation, the projection, the epoch and the faintest magnitude drawn. Dot sizes step by whole magnitudes with a legend. `check --period YEAR --period-kind sky` dates the conventions (Bayer letters 1603, IAU list 1922 against IAU boundaries 1930, NGC 1888 and so on); years that are a famous atlas rather than a first use only warn. Source: Nick Kanas, Star Maps (3rd ed., 2019), book rule, cross-checked on Wikipedia 2026-11-16 for Flamsteed numbers and the Bonner Durchmusterung (see LEARNINGS L-067, L-068).
+- The `star-chart` render style draws decorative dots from no catalogue; `check` warns about it.
 
 Proof rules:
 - `catalogue-distance`: for each charted star, the distance recomputed from x, y, z equals the catalogue `dist` within 0.1 percent.

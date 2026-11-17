@@ -6,6 +6,39 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 
 ## Active
 
+### L-071 · 2026-11-16 · `figures-boundaries-dial-skipped`: no figure or boundary drawing on sky charts yet
+- Trigger: book track "sky" proposal 4 (figures full|faint|lines|none, boundaries none|wavy|iau).
+- Hypothesis: drawing figures or boundaries needs line data per constellation, and the only boundary set worth using is the IAU one, too large to ship by hand.
+- Rule: skipped as not cheap. The period lint already dates `stick-figures`, `constellation-boundaries` and `iau-boundaries` through `--uses`, so a chart drawn elsewhere can still be linted.
+- Evidence: T-20261116-30
+- Scope: skill
+
+### L-070 · 2026-11-16 · `star-chart-style-is-decorative`: the star-chart style's dots are not stars
+- Trigger: the style drew 400 seeded dots and its description read "palette only for now".
+- Rule: `check --style star-chart` adds one WARN bar ("decorative star field, not a sky chart"), never a FAIL; real stars go through `mpw.py sky`.
+- Evidence: test_check_star_chart_style_warns; T-20261116-29
+- Scope: skill
+
+### L-069 · 2026-11-16 · `sky-view-east-left`: a sky chart seen from Earth puts higher RA on the left
+- Trigger: building `mpw.py sky` from RA/Dec.
+- Hypothesis: projections give x growing eastward, as a globe seen from outside does; looking up with north at the top, east is on the left.
+- Rule: `--orientation sky` negates x, `globe` keeps it. Test: RA 6h plots left of RA 5h in the sky view and right of it on the globe, for both projections. Name the option sky/globe, not the book's "geocentric", which reads as cosmology.
+- Evidence: test_ra_east_left_in_sky_view; render of the Orion sample (Betelgeuse upper left of Rigel); T-20261116-29
+- Scope: skill
+
+### L-068 · 2026-11-16 · `iau-list-not-boundaries`: the 88 IAU constellations (1922) came eight years before their boundaries (1930)
+- Trigger: book notes warned against one IAU year.
+- Rule: two conventions, `iau-88` (1922) and `iau-boundaries` (1930), both fail. A 1925 chart may carry the list but not the boundaries.
+- Evidence: test_iau_list_and_boundaries_apart; T-20261116-28
+- Scope: skill
+
+### L-067 · 2026-11-16 · `star-dates-disagree-warn`: sky period years the sources dispute are WARN only
+- Trigger: Kanas puts the first print of Flamsteed numbers at 1765, not in Flamsteed's 1729 atlas; Wikipedia (checked 2026-11-16) names an early numbering in Halley's 1712 edition and Lalande's 1783 almanac for today's numbers. Hipparchus as the source of magnitudes is disputed. The book's Bonner Durchmusterung count (324,198) differs from Wikipedia's (342,198, 1859-1863).
+- Hypothesis: a hard fail on a disputed year flags honest charts.
+- Rule: fail only below the earliest defensible year (Flamsteed numbers 1712, magnitudes and ecliptic grid 150 BC, BD 1859); warn up to the later dates (1765 and 1783; Ptolemy c. 150 AD). Years that mark a famous atlas rather than first use (equatorial grid 1729, stereographic 1515, trapezoidal 1603, conic 1801, stick figures 1831, epoch 2000 in 1981) warn only.
+- Evidence: test_flamsteed_numbers_not_1729, test_uncertain_years_warn_only; T-20261116-28
+- Scope: skill
+
 ### L-061 · 2026-11-16 · `canny-from-geometry-doubles-the-denoise`: a coast hint drawn from the recipe lets the repaint run to 0.75
 - Trigger: L-032 capped img2img at denoise 0.45; above it the coast drifted (0 of 4 pictures at 0.75).
 - Hypothesis: a second hold on the coast, independent of the init image, lets the model repaint texture without moving the shore.
