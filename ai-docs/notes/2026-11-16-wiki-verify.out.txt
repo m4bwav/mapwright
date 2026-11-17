@@ -1,7 +1,7 @@
 === python scripts/mpw.py --version
-0.11.0
+0.25.0
 === python scripts/mpw.py doctor
-mapwright 0.11.0
+mapwright 0.25.0
 python        3.14.6 ok
 sqlite        3.50.4
 browser       C:\Program Files\Google\Chrome\Application\chrome.exe
@@ -311,14 +311,14 @@ lon=174.7819664  lat=-41.30844609
  }
 }
 === python scripts/mpw.py gen world --seed 7 --style nordic --out isles.map
-wrote isles.map: 15876 cells, 48 rivers, 22 lakes, 81 settlements, 94 roads, 162 names in 1.90 s
+wrote isles.map: 15876 cells, 48 rivers, 22 lakes, 81 settlements, 92 roads, 162 names in 1.20 s
 === python scripts/mpw.py gen world --seed 7 --style nordic --out isles2.map
-wrote isles2.map: 15876 cells, 48 rivers, 22 lakes, 81 settlements, 94 roads, 162 names in 1.90 s
+wrote isles2.map: 15876 cells, 48 rivers, 22 lakes, 81 settlements, 92 roads, 162 names in 1.18 s
 === cmp isles.map/features.geojson isles2.map/features.geojson
 === python scripts/mpw.py zoom isles.map --out isles-south.map
-wrote isles-south.map: 16002 cells, 8 rivers, 3 lakes, 21 settlements, 27 roads, 37 names in 1.46 s
+wrote isles-south.map: 16002 cells, 8 rivers, 3 lakes, 19 settlements, 22 roads, 35 names in 1.04 s
 === python scripts/mpw.py gen region --parent isles.map --window 100,100,400,350 --cells 8000 --out isles-west.map
-wrote isles-west.map: 8036 cells, 32 rivers, 21 lakes, 31 settlements, 33 roads, 88 names in 1.30 s
+wrote isles-west.map: 8036 cells, 32 rivers, 21 lakes, 36 settlements, 40 roads, 93 names in 0.83 s
 === python scripts/mpw.py check isles-south.map
 bar 1 PASS: every river runs downhill to the sea or through a lake to it (42 river cells, 0 failures)
 bar 2 PASS: no river splits outside a marked delta (0 splits, 0 rivers that stop on land, 0 marked deltas)
@@ -327,15 +327,20 @@ bar 4 PASS: same recipe gives byte-identical files (all 8 files identical)
 bar 5 PASS: child coast within 1 parent spacing of the parent coast (875 child coast segments, max 0.679, mean 0.177 parent spacings)
 bar 6 PASS: parent rivers present in the child within 1 parent spacing (4 parent river points, max 0.128 parent spacings)
 bar 7 PASS: climate: temperature falls poleward; lee of mountains drier (sea-level temp by 10-deg band 25.9/22.7; windward 0 vs leeward 32 cm/yr (too few samples, shadow not judged))
-bar 8 PASS: every settlement on land and not in a lake (21 settlements, 0 in water)
+bar 8 PASS: every settlement on land and not in a lake (19 settlements, 0 in water)
 bar 9 PASS: all settlements of one landmass connected by roads (3 landmasses with settlements, 0 split)
-bar 10 PASS: roads never run through sea or lake cells (no ferries) and step cell to cell (27 roads, 758 road cells, 0 in water, 0 jumps)
-bar 11 PASS: names unique and present for every named feature (37 names, 0 duplicates, 0 features unnamed, 0 feature names missing from names.json)
+bar 10 PASS: roads never run through sea or lake cells (no ferries) and step cell to cell (22 roads, 515 road cells, 0 in water, 0 jumps)
+bar 11 PASS: names unique and present for every named feature (35 names, 0 duplicates, 0 features unnamed, 0 feature names missing from names.json)
 bar 12 PASS: same seed gives byte-identical names.json and features.geojson (identical)
-bar 13 PASS: child keeps parent settlements and roads within 1 parent + 1 child spacing (8 parent settlements in window, 0 missing or renamed, max shift 1.42 km; 141 parent road points, max 1.43 km; tolerance 9.91 km)
-bar 14 PASS: labels: none overlap (23 labels, 0 overlapping pairs)
-bar 15 PASS: labels: none cut by the edge (0 cut)
-bar 16 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
+bar 13 PASS: child keeps parent settlements and roads within 1 parent + 1 child spacing (6 parent settlements in window, 0 missing or renamed, max shift 1.42 km; 95 parent road points, max 1.38 km; tolerance 9.91 km)
+bar 14 PASS: every port touches open sea (a lakeshore town is never a port), at most 25% of settlements (5 ports (cap 5), 0 off open sea)
+bar 15 PASS: currents: lowland east coast 15-35 deg warmer than the west coast, band by band (n/a (0 west, 0 east lowland coastal cells in shared 5-deg bands))
+bar 16 PASS: continentality: annual range 1500+ km inland at least 2x the windward coast's (n/a (no land 1500 km from the sea))
+bar 17 PASS: snowline: no alpine cell more than 300 m below snowline(lat) (0 alpine cells below it)
+bar 18 PASS: Koppen (Peel 2007): every land cell one class (Af 1169, BSh 1116, BWh 957, BSk 366, Aw 204, BWk 203; Cfb 61, Dfc 0)
+bar 19 PASS: labels: none overlap (21 labels, 0 overlapping pairs)
+bar 20 PASS: labels: none cut by the edge (0 cut)
+bar 21 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
 === python scripts/mpw.py names --list
 desert    long vowels, sh/kh/q (C=b d h j k m n q r s sh t z kh; V=a i u aa; S=CV CVF CV)
 harsh     clustered stops, closed syllables (C=k g d t r z kr gr dr th b; V=a o u i; S=CVF CV CVF CCVF)
@@ -360,7 +365,7 @@ atlas              biome colours, soft hillshade, flat sea, serif labels
 blueprint          white line work on blueprint blue, monospace
 ink-and-parchment  parchment land, ink lines, old serif
 satellite          dark natural colour with strong relief, white labels
-star-chart         night palette with a star field (palette only for now)
+star-chart         night palette with a decorative star field (real stars: mpw.py sky)
 topographic        hypsometric tints, hillshade, depth-tinted sea
 === python scripts/mpw.py style ink-and-parchment
 {
@@ -384,21 +389,21 @@ topographic        hypsometric tints, hillshade, depth-tinted sea
  "ink": "#2b1d10",
  "halo": "#ecdcb0",
  "font": "'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif",
- "paper": "#e2d0a0"
+ "paper": "#e2d0a0",
+ "period": 1600
 }
 === python scripts/mpw.py render isles.map -o isles.svg --style atlas
-wrote isles.svg: style atlas, 78 labels (62 dropped), 21 legend entries, 0.87 s
+wrote isles.svg: style atlas, 80 labels (60 dropped), 20 legend entries, 0.66 s
 === python scripts/mpw.py render isles.map -o isles.png --style ink-and-parchment
-wrote isles.png: style ink-and-parchment, 83 labels (57 dropped), 10 legend entries, 0.80 s
+wrote isles.png: style ink-and-parchment, 84 labels (56 dropped), 10 legend entries, 0.61 s
 === python scripts/mpw.py render isles.map -o isles.pdf --style blueprint --title The Isles
-wrote isles.pdf: style blueprint, 83 labels (57 dropped), 10 legend entries, 0.82 s
+wrote isles.pdf: style blueprint, 84 labels (56 dropped), 10 legend entries, 0.61 s
 === python scripts/mpw.py label isles.map
-82 labels placed, 58 dropped (no free spot)
-PASS: labels: none overlap (82 labels, 0 overlapping pairs)
+84 labels placed, 56 dropped (no free spot)
+PASS: labels: none overlap (84 labels, 0 overlapping pairs)
 PASS: labels: none cut by the edge (0 cut)
 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
 === python scripts/mpw.py legend isles.map --style atlas
-swatch ice
 swatch tundra
 swatch boreal forest
 swatch temperate grassland
@@ -441,18 +446,18 @@ wrote pick.png: 3 maps
 === python scripts/mpw.py sheet isles.map --seeds 1,2,3,4 --cols 2 -o seeds.svg
 wrote seeds.svg: 4 maps
 === python scripts/mpw.py render isles.map -o isles-atlas.png --style atlas
-wrote isles-atlas.png: style atlas, 78 labels (62 dropped), 21 legend entries, 0.83 s
+wrote isles-atlas.png: style atlas, 80 labels (60 dropped), 20 legend entries, 0.60 s
 === python scripts/mpw.py trace isles-atlas.png --class water --min-area 50 -o water.geojson
-{"source": "isles-atlas.png", "width": 1000, "height": 1000, "mode": "polygons", "class": "water", "epsilon_px": 1.0, "coordinates": "pixel", "mask_share": 0.5341, "features": 37, "out": "water.geojson"}
+{"source": "isles-atlas.png", "width": 1000, "height": 1000, "mode": "polygons", "class": "water", "epsilon_px": 1.0, "coordinates": "pixel", "mask_share": 0.5373, "features": 34, "out": "water.geojson"}
 === python scripts/mpw.py inspect water.geojson
 format          GeoJSON
-features        37
-geometry_types  {"Polygon": 37}
+features        34
+geometry_types  {"Polygon": 34}
 extent          [1, 1, 999, 999]
 crs             WGS84 lon/lat (RFC 7946)
 properties      ["area_px", "class", "holes"]
 === python scripts/mpw.py gen city --seed 4 --out town.map
-wrote town.map: Ewakake, 114 streets, 49 blocks, 1047 lots, 15 districts, 5 gates, 0 bridges in 0.20 s
+wrote town.map: Ewakake, 114 streets, 49 blocks, 1047 lots, 15 districts, 5 gates, 0 bridges in 0.13 s
 === python scripts/mpw.py check town.map
 bar 1 PASS: city: every street reachable from the market (364 of 364 street nodes reached)
 bar 2 PASS: city: every block fronts a reached street (49 blocks, 0 without a reached street edge)
@@ -464,7 +469,7 @@ bar 7 PASS: labels: none overlap (16 labels, 0 overlapping pairs)
 bar 8 PASS: labels: none cut by the edge (0 cut)
 bar 9 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
 === python scripts/mpw.py gen dungeon --seed 3 --method bsp --out crypt.map
-wrote crypt.map: Koda, 48x36 square squares at 70 px, 14 rooms, 19 doors, 96 wall runs, 14 lights in 0.09 s
+wrote crypt.map: Koda, 48x36 square squares at 70 px, 14 rooms, 19 doors, 96 wall runs, 14 lights in 0.07 s
 === python scripts/mpw.py check crypt.map
 bar 1 PASS: dungeon: every floor square reachable from the entrance (854 of 854 passable squares reached)
 bar 2 PASS: dungeon: every room reached, none overlap (14 rooms, 0 unreached, 0 overlapping pairs)
@@ -484,9 +489,9 @@ bar 15 PASS: labels: none overlap (15 labels, 0 overlapping pairs)
 bar 16 PASS: labels: none cut by the edge (0 cut)
 bar 17 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
 === python scripts/mpw.py gen dungeon --seed 3 --method cave --out cave.map
-wrote cave.map: Koda, 48x36 square squares at 70 px, 0 rooms, 0 doors, 174 wall runs, 9 lights in 0.09 s
+wrote cave.map: Koda, 48x36 square squares at 70 px, 0 rooms, 0 doors, 174 wall runs, 9 lights in 0.08 s
 === python scripts/mpw.py gen dungeon --seed 3 --method cyclic --out keep.map
-wrote keep.map: Koda, 48x36 square squares at 70 px, 20 rooms, 24 doors, 144 wall runs, 20 lights in 0.09 s
+wrote keep.map: Koda, 48x36 square squares at 70 px, 20 rooms, 24 doors, 144 wall runs, 20 lights in 0.07 s
 === python scripts/mpw.py check keep.map --chokepoints
 chokepoints: 0 cells, 0 bridges, 373 passable, min cut entrance to goal 2, equals brute force: True
 === python scripts/mpw.py check crypt.map --fair
@@ -500,19 +505,19 @@ expressive range: gen dungeon --method bsp, 20 seeds, 48x36 -> range-bsp
   loop_share x dead_end_share: 17 of 100 bins used, fullest bin 15.0%, first 10 seeds against all 20 TV 0.450
   path_over_diagonal x open_floor_share: 18 of 100 bins used, fullest bin 15.0%, first 10 seeds against all 20 TV 0.450
 === python scripts/mpw.py gen battle --seed 2 --grid square --out field.map
-wrote field.map: Ninbuqaa, 30x20 square squares at 100 px, 0 rooms, 3 doors, 52 wall runs, 5 lights in 0.07 s
+wrote field.map: Ninbuqaa, 30x20 square squares at 100 px, 0 rooms, 3 doors, 52 wall runs, 5 lights in 0.06 s
 === python scripts/mpw.py gen battle --seed 2 --grid hex --out hexes.map
 wrote hexes.map: Ninbuqaa, 30x20 hex squares at 100 px, 0 rooms, 0 doors, 0 wall runs, 0 lights in 0.04 s
 === python scripts/mpw.py gen battle --seed 2 --grid square --density sparse --out sparse.map
-wrote sparse.map: Ninbuqaa, 30x20 square squares at 100 px, 0 rooms, 3 doors, 48 wall runs, 5 lights in 0.07 s
+wrote sparse.map: Ninbuqaa, 30x20 square squares at 100 px, 0 rooms, 3 doors, 48 wall runs, 5 lights in 0.06 s
 === python scripts/mpw.py gen battle --seed 2 --grid square --density dense --out dense.map
-wrote dense.map: Ninbuqaa, 30x20 square squares at 100 px, 0 rooms, 3 doors, 52 wall runs, 5 lights in 0.09 s
+wrote dense.map: Ninbuqaa, 30x20 square squares at 100 px, 0 rooms, 3 doors, 52 wall runs, 5 lights in 0.10 s
 === python -c import re;[print(m, re.findall('<text x=.2737[^>]*>([^<]*)', open(m+'/map.svg').read())) for m in ('sparse.map','field.map','dense.map')]
 sparse.map ['rock or ruined wall (blocks)', 'trees (block movement, cover)', 'doorway or gap']
 field.map ['rock or ruined wall (blocks)', 'trees (block movement, cover)', 'doorway or gap']
 dense.map ['rock or ruined wall (blocks)', 'trees (block movement, cover)', 'doorway or gap']
 === python scripts/mpw.py gen dungeon --seed 3 --method cyclic --branches 3 --out wings.map
-wrote wings.map: Koda, 48x36 square squares at 70 px, 24 rooms, 28 doors, 174 wall runs, 24 lights in 0.09 s
+wrote wings.map: Koda, 48x36 square squares at 70 px, 24 rooms, 28 doors, 174 wall runs, 24 lights in 0.07 s
 === python scripts/mpw.py check wings.map
 bar 1 PASS: dungeon: every floor square reachable from the entrance (466 of 466 passable squares reached)
 bar 2 PASS: dungeon: every room reached, none overlap (24 rooms, 0 unreached, 0 overlapping pairs)
@@ -538,7 +543,7 @@ bar 21 SKIP: labels: read back by OCR (skipped: tesseract not found (install it 
 === python scripts/mpw.py render crypt.map -o crypt.svg --style blueprint --title The Crypt
 wrote crypt.svg
 === python scripts/mpw.py gen sector --seed 5 --out spin.map
-wrote spin.map: Vovivio, 57 worlds, 90 routes (0 long) in 0.04 s
+wrote spin.map: Vovivio, 57 worlds, 90 routes (0 long) in 0.03 s
 === python scripts/mpw.py check spin.map
 bar 1 PASS: sector: route graph connected (57 worlds, 90 routes, 1 component(s), 6 bridges (chokepoints listed, not failed))
 bar 2 PASS: sector: jump routes within jump 2, longer ones marked long (90 jump, 0 long, 0 mislabelled)
@@ -549,7 +554,7 @@ bar 6 PASS: labels: none overlap (57 labels, 0 overlapping pairs)
 bar 7 PASS: labels: none cut by the edge (0 cut)
 bar 8 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
 === python scripts/mpw.py gen sector --real --radius-pc 4 --out near.map
-wrote near.map: Near stars within 4.0 pc, 12 worlds, 13 routes (7 long) in 0.03 s
+wrote near.map: Near stars within 4.0 pc, 12 worlds, 13 routes (7 long) in 0.02 s
 === python scripts/mpw.py gen system --seed 5 --star G --out sol2.map
 wrote sol2.map: Quusa (G7 V), 5 planets, 0 moons in 0.02 s
 === python scripts/mpw.py check sol2.map
@@ -557,17 +562,19 @@ bar 1 PASS: system: every orbit outside the star (5 planets, 0 too close; star r
 bar 2 PASS: system: neighbours at least 10 mutual Hill radii apart (orbits ascending True, closest pair 35.9 mutual Hill radii)
 bar 3 PASS: system: moons inside their planet's Hill sphere and outside the planet (0 moons, 0 outside the bounds)
 bar 4 PASS: system: habitable zone scales with sqrt(L) and zones match it (1.037-1.823 AU for L = 1.1915, 0 bodies in the wrong zone)
-bar 5 PASS: same seed gives byte-identical files (6 files identical)
-bar 6 PASS: labels: none overlap (10 labels, 0 overlapping pairs)
-bar 7 PASS: labels: none cut by the edge (0 cut)
-bar 8 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
-bar 9 PASS: labels: none overlap (orbits.svg) (5 labels, 0 overlapping pairs)
-bar 10 PASS: labels: none cut by the edge (orbits.svg) (0 cut)
-bar 11 SKIP: labels: read back by OCR (orbits.svg) (skipped: tesseract not found (install it to run this bar))
+bar 5 PASS: system: no orbit crosses its neighbour (apoapsis below the next periapsis) (0 crossing pairs)
+bar 6 PASS: system: years follow Kepler's third law (0 of 5 planets off by more than 0.1%)
+bar 7 PASS: same seed gives byte-identical files (6 files identical)
+bar 8 PASS: labels: none overlap (10 labels, 0 overlapping pairs)
+bar 9 PASS: labels: none cut by the edge (0 cut)
+bar 10 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
+bar 11 PASS: labels: none overlap (orbits.svg) (5 labels, 0 overlapping pairs)
+bar 12 PASS: labels: none cut by the edge (orbits.svg) (0 cut)
+bar 13 SKIP: labels: read back by OCR (orbits.svg) (skipped: tesseract not found (install it to run this bar))
 === python scripts/mpw.py render sol2.map -o sol2-scale.svg --view scale
 wrote sol2-scale.svg
 === python scripts/mpw.py gen planet --seed 5 --kind ocean --width 512 --out blue.map
-wrote blue.map: ocean planet texture 512x256, 0 craters in 1.01 s
+wrote blue.map: ocean planet texture 512x256, 0 craters in 0.71 s
 === python scripts/mpw.py check blue.map
 bar 1 PASS: planet: texture is 2:1 (512x256)
 bar 2 PASS: planet: no seam where the edges meet (mean |col 0 - col 511| 1.29 vs 90th percentile adjacent-column 1.94 (limit x2.5 + 0.5 grey level))
@@ -718,12 +725,12 @@ wrote isles.r16, isles.import.json
 === python scripts/mpw.py export isles.map --to roblox -o isles-roblox.png
 PASS: roblox heightmap: size the engine accepts (512 x 512, 8 bit)
 PASS: roblox heightmap: reads back within one step (worst 16.64706 m, step 33.35294 m, range -2400.0 to 6105.0 m)
-PASS: roblox colormap: every colour is a material, same size (8 materials used, 512 x 512)
+PASS: roblox colormap: every colour is a material, same size (7 materials used, 512 x 512)
 wrote isles-roblox.png, isles-roblox.colormap.png, isles-roblox.import.json
 === python scripts/mpw.py export isles-west.map -o west.obj --print-mm 150
 PASS: mesh: vertex and face counts match the grid (56196 vertices, 112388 faces for 257 x 215 samples with base)
 PASS: mesh: every face index is valid (0 bad faces)
-PASS: mesh: watertight (every edge shared by exactly two faces) (168582 edges, 0 open, 0 shared by more than two, 0 same-way, volume 59778.6 mm3)
+PASS: mesh: watertight (every edge shared by exactly two faces) (168582 edges, 0 open, 0 shared by more than two, 0 same-way, volume 59778.5 mm3)
 wrote west.obj, west.manifest.json
 === python scripts/mpw.py export isles.map --to print -o isles-a4.pdf --bleed 3
 PASS: print pdf: MediaBox is the paper plus bleed within 0.5 pt (612.284 x 858.898 pt, wanted 612.283 x 858.898, difference 0.0000 pt (browser page was 613.92 x 860.88))
@@ -779,7 +786,7 @@ wrote crypt-nav.json
 ['entrance', 'format', 'format_version', 'generator', 'goal', 'h', 'kind', 'moves', 'origin', 'portals', 'rects', 'seed', 'units', 'w']
 {'entrance': 2, 'goal': 2, 'portals': 46, 'rects': 45}
 === python scripts/mpw.py path isles.map --from 200,200 --to 400,300
-path: cost 471.8830 road cost (km x slope x terrain), 39 steps, 927 cells expanded -> isles.map
+path: cost 442.0898 road cost (km x slope x terrain), 39 steps, 898 cells expanded -> isles.map
 === python scripts/mpw.py travel isles.map --from 200,200 --to 400,300 --mode walk
 travel (walk): 6436 cells reached, farthest 224.55 h, bands of 6.0 h: [39, 82, 103, 132, 188, 182, 157, 127, 71, 89, 141, 137, 158, 166, 163, 193, 230, 190, 238, 256, 221, 235, 276, 238, 205, 254, 313, 349, 355, 268, 155, 121, 100, 73, 78, 92, 46, 15] -> isles.map; to goal 64.246561433 h
 === python scripts/mpw.py travel isles.map --from 200,200 --to 400,300 --mode horse
@@ -852,6 +859,93 @@ satellite          over satellite          natural-colour orbital picture: deep 
 watercolour        over topographic        loose washes on cold-press paper
 === python scripts/mpw.py aistyle isles.map --look painted-atlas --dry-run
 dry run: wrote isles.map\aistyle-painted-atlas.control.png and isles.map\aistyle-painted-atlas.workflow.json (1024x1024, painted-atlas, seed 0, denoise 0.45 runs as 0.450); no server contacted
+=== python scripts/mpw.py sky scripts/data/sky-sample.csv -o orion.svg
+wrote orion.svg
+PASS: sky chart states area, orientation, projection, epoch, magnitude limit (all five stated)
+PASS: magnitude legend: one entry per step, radii strictly decreasing in fixed steps (9 entries, ratios 1.30, 1.30, 1.30, 1.30, 1.30, 1.30, 1.30, 1.30)
+PASS: labels: none overlap (15 labels, 0 overlapping pairs)
+PASS: labels: none cut by the edge (0 cut)
+=== python scripts/mpw.py gen system --seed 5 --star G --lock physics --companion 1,30,0.1 --out bin.map
+wrote bin.map: Quusa (G7 V), 5 planets, 0 moons in 0.02 s
+=== python scripts/mpw.py check bin.map
+bar 1 PASS: system: every orbit outside the star (5 planets, 0 too close; star radius 0.00482 AU)
+bar 2 PASS: system: neighbours at least 10 mutual Hill radii apart (orbits ascending True, closest pair 35.9 mutual Hill radii)
+bar 3 PASS: system: moons inside their planet's Hill sphere and outside the planet (0 moons, 0 outside the bounds)
+bar 4 PASS: system: habitable zone scales with sqrt(L) and zones match it (1.037-1.823 AU for L = 1.1915, 0 bodies in the wrong zone)
+bar 5 PASS: system: no orbit crosses its neighbour (apoapsis below the next periapsis) (0 crossing pairs)
+bar 6 PASS: system: years follow Kepler's third law (0 of 5 planets off by more than 0.1%)
+bar 7 PASS: system: planets inside the companion's stable limit (Holman-Wiegert) (limit 7.221 AU (mu 0.500, binary a 30.00 AU, e 0.10); 0 planets beyond it)
+bar 8 PASS: same seed gives byte-identical files (6 files identical)
+bar 9 PASS: labels: none overlap (10 labels, 0 overlapping pairs)
+bar 10 PASS: labels: none cut by the edge (0 cut)
+bar 11 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
+bar 12 PASS: labels: none overlap (orbits.svg) (5 labels, 0 overlapping pairs)
+bar 13 PASS: labels: none cut by the edge (orbits.svg) (0 cut)
+bar 14 SKIP: labels: read back by OCR (orbits.svg) (skipped: tesseract not found (install it to run this bar))
+=== python scripts/mpw.py sky scripts/data/sky-sample.csv -o orion2.svg --period 1600
+wrote orion2.svg
+PASS: sky chart states area, orientation, projection, epoch, magnitude limit (all five stated)
+PASS: magnitude legend: one entry per step, radii strictly decreasing in fixed steps (9 entries, ratios 1.30, 1.30, 1.30, 1.30, 1.30, 1.30, 1.30, 1.30)
+PASS: labels: none overlap (15 labels, 0 overlapping pairs)
+PASS: labels: none cut by the edge (0 cut)
+PASS: period 1600 (sky): nothing younger than the year (4 conventions checked)
+PASS: period 1600: warnings (WARN equatorial grid as the main grid (Flamsteed's atlas, 1729; earlier atlases exist); a chart plotted for epoch 2000.0 (Tirion, 1981))
+=== python scripts/mpw.py gen world --seed 7 --out w.map
+wrote w.map: 15876 cells, 48 rivers, 22 lakes, 81 settlements, 92 roads, 162 names in 1.25 s
+=== python scripts/mpw.py check w.map --period 1600 --uses mercator,greenwich
+bar 1 PASS: every river runs downhill to the sea or through a lake to it (317 river cells, 0 failures)
+bar 2 PASS: no river splits outside a marked delta (0 splits, 0 rivers that stop on land, 0 marked deltas)
+bar 3 PASS: each lake has at most one outlet (22 lakes, max outlets 1)
+bar 4 PASS: same recipe gives byte-identical files (all 8 files identical)
+bar 5 PASS: child coast within 1 parent spacing of the parent coast (n/a (not a child map))
+bar 6 PASS: parent rivers present in the child within 1 parent spacing (n/a (not a child map))
+bar 7 PASS: climate: temperature falls poleward; lee of mountains drier (sea-level temp by 10-deg band 24.9/21.3/15.7/10.6/5.6/2.2; windward 82 vs leeward 19 cm/yr)
+bar 8 PASS: every settlement on land and not in a lake (81 settlements, 0 in water)
+bar 9 PASS: all settlements of one landmass connected by roads (2 landmasses with settlements, 0 split)
+bar 10 PASS: roads never run through sea or lake cells (no ferries) and step cell to cell (92 roads, 1442 road cells, 0 in water, 0 jumps)
+bar 11 PASS: names unique and present for every named feature (162 names, 0 duplicates, 0 features unnamed, 0 feature names missing from names.json)
+bar 12 PASS: same seed gives byte-identical names.json and features.geojson (identical)
+bar 13 PASS: child keeps parent settlements and roads within 1 parent + 1 child spacing (n/a (not a child map))
+bar 14 PASS: every port touches open sea (a lakeshore town is never a port), at most 25% of settlements (21 ports (cap 21), 0 off open sea)
+bar 15 PASS: currents: lowland east coast 15-35 deg warmer than the west coast, band by band (rain east 200 / west 49 cm/yr (x4.08, reported); east warmer by 3.4 C (fails under 1.0; 194/167 cells, 4 bands))
+bar 16 PASS: continentality: annual range 1500+ km inland at least 2x the windward coast's (10-15: x2.83; 15-20: x2.33; 30-35: x2.22; 35-40: x2.75; 40-45: x2.65; 45-50: x2.67; 50-55: x2.39)
+bar 17 PASS: snowline: no alpine cell more than 300 m below snowline(lat) (0 alpine cells below it)
+bar 18 PASS: Koppen (Peel 2007): every land cell one class (BWk 1861, BSk 1002, Dfc 679, EF 561, Dfb 481, Cfb 457; Cfb 457, Dfc 679)
+bar 19 PASS: labels: none overlap (84 labels, 0 overlapping pairs)
+bar 20 PASS: labels: none cut by the edge (0 cut)
+bar 21 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
+bar 22 FAIL: period 1600 (map): nothing younger than the year (elevation by tone or tint (1804))
+bar 23 PASS: period 1600: warnings (WARN Greenwich as prime meridian (1884))
+[exit 1]
+=== python scripts/mpw.py check w.map --style ink-and-parchment
+bar 1 PASS: every river runs downhill to the sea or through a lake to it (317 river cells, 0 failures)
+bar 2 PASS: no river splits outside a marked delta (0 splits, 0 rivers that stop on land, 0 marked deltas)
+bar 3 PASS: each lake has at most one outlet (22 lakes, max outlets 1)
+bar 4 PASS: same recipe gives byte-identical files (all 8 files identical)
+bar 5 PASS: child coast within 1 parent spacing of the parent coast (n/a (not a child map))
+bar 6 PASS: parent rivers present in the child within 1 parent spacing (n/a (not a child map))
+bar 7 PASS: climate: temperature falls poleward; lee of mountains drier (sea-level temp by 10-deg band 24.9/21.3/15.7/10.6/5.6/2.2; windward 82 vs leeward 19 cm/yr)
+bar 8 PASS: every settlement on land and not in a lake (81 settlements, 0 in water)
+bar 9 PASS: all settlements of one landmass connected by roads (2 landmasses with settlements, 0 split)
+bar 10 PASS: roads never run through sea or lake cells (no ferries) and step cell to cell (92 roads, 1442 road cells, 0 in water, 0 jumps)
+bar 11 PASS: names unique and present for every named feature (162 names, 0 duplicates, 0 features unnamed, 0 feature names missing from names.json)
+bar 12 PASS: same seed gives byte-identical names.json and features.geojson (identical)
+bar 13 PASS: child keeps parent settlements and roads within 1 parent + 1 child spacing (n/a (not a child map))
+bar 14 PASS: every port touches open sea (a lakeshore town is never a port), at most 25% of settlements (21 ports (cap 21), 0 off open sea)
+bar 15 PASS: currents: lowland east coast 15-35 deg warmer than the west coast, band by band (rain east 200 / west 49 cm/yr (x4.08, reported); east warmer by 3.4 C (fails under 1.0; 194/167 cells, 4 bands))
+bar 16 PASS: continentality: annual range 1500+ km inland at least 2x the windward coast's (10-15: x2.83; 15-20: x2.33; 30-35: x2.22; 35-40: x2.75; 40-45: x2.65; 45-50: x2.67; 50-55: x2.39)
+bar 17 PASS: snowline: no alpine cell more than 300 m below snowline(lat) (0 alpine cells below it)
+bar 18 PASS: Koppen (Peel 2007): every land cell one class (BWk 1861, BSk 1002, Dfc 679, EF 561, Dfb 481, Cfb 457; Cfb 457, Dfc 679)
+bar 19 PASS: labels: none overlap (84 labels, 0 overlapping pairs)
+bar 20 PASS: labels: none cut by the edge (0 cut)
+bar 21 SKIP: labels: read back by OCR (skipped: tesseract not found (install it to run this bar))
+bar 22 PASS: period 1600 (map): nothing younger than the year (2 conventions checked)
+=== python scripts/mpw.py gen system --sector-seed 5 --hex 0102 --tab spin.map/sector.tab --out pin.map
+wrote pin.map: Saeha (G5 V), 8 planets, 14 moons in 0.02 s
+=== python scripts/mpw.py gen system --sector-seed 5 --hex 0102 --out nopin.map
+wrote nopin.map: Saeha (M8 V), 7 planets, 10 moons in 0.02 s
 === serve
 GET / -> 200
-serving http://127.0.0.1:<port>/ (127.0.0.1 only; Ctrl+C stops)
+Traceback (most recent call last):
+  File "C:\Users\m4bwa\AppData\Local\Temp\tmp.agUl9BUldy\scripts\mpw.py", line 2385, in <module>
+    main()
