@@ -12,6 +12,16 @@ Entry shape: `### T-20261116-14 · 2026-11-16 · pytest (tests/) + port-share sw
 
 ## Runs
 
+### T-20261116-33 · 2026-11-16 · gen system --tab (T5 row pins)
+- tests/test_space.py test_tab_row_pins_star_and_giants: sector seed 11 (density 0.6), first 20 rows of sector.tab: gas-giant count equals the PBG digit 20/20, star class equals the Stars column where it is M, K, G or F, all bars pass.
+
+### T-20261116-32 · 2026-11-16 · gen system --companion (Holman-Wiegert)
+- Formula check: mu 0.5, e 0, a_b 20 AU gives 5.48 AU (the notes' 9.2 AU was the mu = 0 term). test_companion_limit: q 1, 20 AU, e 0 keeps every apoapsis within 5.48 AU and passes; a planet moved to 6 AU fails the bar; random companions on seeds 1-10 pass. Seeds 1-200 random: 1147 of 1311 planets kept.
+
+### T-20261116-31 · 2026-11-16 · gen system orbit record, temperature, lock, eccentricity
+- pytest -q full suite: 277 passed, 2 skipped (before: 272 passed, 2 skipped). New TestOrbitPhysics: Kepler 4 AU / 1 sun 8.0 yr, 1 AU / 0.25 sun 2.0 yr; solar day 23.934 h with 365.256 d gives 24.00 h; T_eq Earth 254.6 K, +33 K about 288 K; lock time Earth 1 AU over 10 Gyr, 0.05 AU / 0.2 sun under 1 Gyr; physics lock flag equals the locked texture on seeds 1-10 (M star).
+- Default bytes: seeds 1-3 before and after, map.svg, orbits.svg, names.json, recipe.json identical; old system.json fields equal.
+- Sweep seeds 1-200 (default, --lock physics, --companion random): 0 bar failures; rocky planets locked 142 (distance) vs 415 (physics), agree 489/792; largest e 0.18; 11 systems with no HZ planet; HZ planets' mean temperature 218-317 K, median 263 K.
 ### T-20261116-30 · 2026-11-16 · full suite (python -m pytest -q) after the sky track · Windows · 284 passed, 2 skipped in 88 s
 - Before the track: 272 passed, 2 skipped on origin/main; new: 11 in tests/test_sky.py and 1 in test_mpw.py. Figures and boundaries dial skipped (L-071).
 - led to: L-071

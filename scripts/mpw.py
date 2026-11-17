@@ -1306,7 +1306,13 @@ def cmd_gen_space(a):
             r = S.gen_sector(a.seed, a.out, a.size, a.density, a.jump, a.real, a.radius_pc, VERSION, a.name_style,
                              a.systems)
         elif a.what == "system":
-            r = S.gen_system(a.seed, a.out, a.star, a.planets, VERSION, a.name_style, a.sector_seed, a.hex)
+            comp = a.companion
+            if comp and comp != "random":
+                comp = [float(x) for x in comp.split(",")]
+                if len(comp) != 3:
+                    raise ValueError("--companion is random or q,a_au,e such as 1,20,0")
+            r = S.gen_system(a.seed, a.out, a.star, a.planets, VERSION, a.name_style, a.sector_seed, a.hex,
+                             a.lock, comp, a.tab)
         elif a.what == "planet":
             r = S.gen_planet(a.seed, a.out, a.kind, a.width, VERSION)
         else:
@@ -2114,6 +2120,11 @@ def build_parser():
     sy.add_argument("--hex", help="with --sector-seed: four-digit hex such as 0118")
     sy.add_argument("--star", choices=("M", "K", "G", "F"))
     sy.add_argument("--planets", type=int)
+    sy.add_argument("--lock", choices=("distance", "physics"), default="distance",
+                    help="tidal lock: distance rule (default) or the Gladman despin time against system age")
+    sy.add_argument("--companion", nargs="?", const="random",
+                    help="add a companion star: random, or q,a_au,e; planets stay inside the Holman-Wiegert limit")
+    sy.add_argument("--tab", help="with --sector-seed and --hex: T5 tab file whose row pins star class and gas giants")
     pl = gs.add_parser("planet", help="equirectangular sphere texture with no seam or pole pinch")
     pl.add_argument("--seed", type=int, required=True)
     pl.add_argument("--kind", choices=("rocky", "ice", "ocean", "gas", "moon", "locked"), default="rocky")
