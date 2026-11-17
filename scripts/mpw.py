@@ -1584,6 +1584,10 @@ def cmd_check(a):
             die(str(e))
         nxt = max(b[0] for b in bars) + 1
         bars += [(nxt + i, name, ok, detail) for i, (name, ok, detail) in enumerate(lb)]
+    if _kind(a.dir) not in ("city", "dungeon", "battle") + SPACE and a.style in _render().STYLES:
+        sb = _render().style_bars(a.style)
+        nxt = max(b[0] for b in bars) + 1
+        bars += [(nxt + i, name, ok, detail) for i, (name, ok, detail) in enumerate(sb)]
     if not a.no_aistyle and _kind(a.dir) not in ("city", "dungeon", "battle") + SPACE:
         # optional: one bar per styled picture with a sidecar in the folder; none there, no bar
         ab = _aistyle().bars(a.dir)
@@ -1611,6 +1615,33 @@ def cmd_check(a):
         for num, name, ok, detail in bars:
             print("bar %d %s: %s (%s)" % (num, "SKIP" if ok is None else ("PASS" if ok else "FAIL"), name, detail))
     if any(b[2] is False for b in bars):
+        sys.exit(1)
+
+
+def cmd_sky(a):
+    sky = importlib.import_module("mpw_sky")
+    try:
+        stars = sky.read_stars(a.csv)
+        centre = tuple(float(v) for v in a.centre.split(",")) if a.centre else None
+        svg, desc = sky.render(stars, a.projection, a.orientation, a.epoch, a.mag_limit, centre, a.title)
+        bars = sky.check(desc, svg)
+        if a.period is not None:
+            used = sky.sky_conventions(desc) | {u.strip() for u in (a.uses or "").split(",") if u.strip()}
+            bars += _render().period_lint(used, a.period, "sky")
+    except ValueError as e:
+        die(str(e))
+    with open(a.out, "w", encoding="utf-8", newline="\n") as f:
+        f.write(svg)
+    with open(os.path.splitext(a.out)[0] + ".sky.json", "w", encoding="utf-8", newline="\n") as f:
+        json.dump(desc, f, indent=1, sort_keys=True)
+    if a.json:
+        print(json.dumps(dict(out=a.out, descriptor=desc,
+                              bars=[dict(name=n, ok=ok, detail=d) for n, ok, d in bars]), indent=1))
+    else:
+        print("wrote %s" % a.out)
+        for n, ok, d in bars:
+            print("%s: %s (%s)" % ("SKIP" if ok is None else ("PASS" if ok else "FAIL"), n, d))
+    if any(b[1] is False for b in bars):
         sys.exit(1)
 
 
@@ -2162,8 +2193,8 @@ def build_parser():
     s.add_argument("--no-aistyle", action="store_true", help="skip the bars on styled pictures (*.aistyle.json) in the folder")
     s.add_argument("--period", type=int, help="period lint: fail every convention on the map younger than YEAR "
                    "(first-use tables, book dates; a style may carry a 'period' year)")
-    s.add_argument("--period-kind", choices=("map", "chart", "mappa"), default="map",
-                   help="--period: land map, sea chart or mappa mundi (their rules differ)")
+    s.add_argument("--period-kind", choices=("map", "chart", "mappa", "sky"), default="map",
+                   help="--period: land map, sea chart, mappa mundi or sky chart (their rules differ)")
     s.add_argument("--uses", help="--period: more conventions the map carries, comma separated (e.g. "
                    "mercator,land-contours,dot-map,greenwich)")
     s.add_argument("--chokepoints", action="store_true", help="grid recipes: cells whose loss cuts the map, what each "
@@ -2231,6 +2262,22 @@ def build_parser():
     s.add_argument("--list", action="store_true", help="list the built-in styles")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_names)
+
+    s = sub.add_parser("sky", help="sky chart from a ra,dec,mag,name CSV (degrees): stereographic or sinusoidal, "
+                       "equatorial grid, magnitude legend, the five statements; prints its bars")
+    s.add_argument("csv")
+    s.add_argument("-o", "--out", default="sky.svg", help="SVG out; the descriptor goes beside it as NAME.sky.json")
+    s.add_argument("--projection", choices=("stereographic", "sinusoidal"), default="stereographic")
+    s.add_argument("--orientation", choices=("sky", "globe"), default="sky",
+                   help="sky: as seen from Earth (east left, north up); globe: mirrored, as on a celestial globe")
+    s.add_argument("--epoch", default="J2000", help="epoch of the input coordinates (stated, not converted)")
+    s.add_argument("--mag-limit", type=float, default=6.0, help="faintest magnitude drawn")
+    s.add_argument("--centre", help="chart centre RA,DEC in degrees (default: middle of the stars)")
+    s.add_argument("--title")
+    s.add_argument("--period", type=int, help="period lint the chart against YEAR (kind sky)")
+    s.add_argument("--uses", help="--period: more conventions, e.g. bayer-letters,iau-boundaries,stick-figures")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_sky)
 
     s = sub.add_parser("render", help="recipe folder to a print map (.svg, or .png/.pdf via headless Chrome or Edge)")
     s.add_argument("dir")
