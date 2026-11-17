@@ -45,7 +45,7 @@ Dropped: On the Map (Simon Garfield) - popular anecdotes, nothing Brotton and th
 
 | Title | Author | Status | Why |
 |---|---|---|---|
-| Geosystems (11th ed., Pearson, 2022) | Robert Christopherson, Ginger Birkeland and others | wanted | Climate, landforms, rivers, biomes in one textbook |
+| Geosystems (11th ed., Pearson, 2022) | Robert Christopherson, Ginger Birkeland and others | notes 2026-11-16 from the 10th ed. on disk | Climate, landforms, rivers, biomes in one textbook |
 | Fundamentals of Geomorphology (5th ed., Routledge, 2022) | Richard Huggett | wanted | How terrain forms and erodes |
 
 ## Procedural generation
@@ -65,7 +65,7 @@ Dropped: On the Map (Simon Garfield) - popular anecdotes, nothing Brotton and th
 | The Writer's Map: An Atlas of Imaginary Lands (2018) | Huw Lewis-Jones (ed.) | wanted | How authors and illustrators use maps in stories |
 | The Atlas of Middle-earth (rev. ed. 1991) | Karen Wynn Fonstad | wanted | A trained cartographer mapping an invented world |
 | An Atlas of Fantasy (rev. ed. 1979) | J. B. Post | wanted | Survey of published imaginary maps and styles |
-| The Planet Construction Kit (2010) | Mark Rosenfelder | wanted | Worldbuilding with geography, climate and maps |
+| The Planet Construction Kit (2010) | Mark Rosenfelder | notes 2026-11-16 | Worldbuilding with geography, climate and maps |
 
 ## Science fiction and space
 
@@ -73,8 +73,8 @@ Dropped: On the Map (Simon Garfield) - popular anecdotes, nothing Brotton and th
 |---|---|---|---|
 | World-Building (Writer's Digest, 1996) | Stephen L. Gillett | wanted | Designing believable planets and systems |
 | GURPS Space (4th ed., 2006) | Jon F. Zeigler, James L. Cambias | wanted | A worked star system and planet generator |
-| Traveller World Builder's Handbook (Mongoose, 2023) | Mongoose Traveller line | wanted | Sector, system and world generation rules and formats |
-| Star Maps: History, Artistry, and Cartography (3rd ed., Springer, 2019) | Nick Kanas | wanted | How the sky has been mapped |
+| Traveller World Builder's Handbook (Mongoose, 2023) | Mongoose Traveller line | notes 2026-11-16 (tables private use only) | Sector, system and world generation rules and formats |
+| Star Maps: History, Artistry, and Cartography (3rd ed., Springer, 2019) | Nick Kanas | notes 2026-11-16 | How the sky has been mapped |
 | Planetary Mapping (Cambridge, 1990) | Ronald Greeley, Raymond Batson (eds.) | wanted | Mapping bodies that are not Earth |
 | Habitable Planets for Man (RAND, 1964) | Stephen H. Dole | free online: https://www.rand.org/pubs/commercial_books/CB179-1.html | The classic on which planets could hold people |
 
