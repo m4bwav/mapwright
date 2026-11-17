@@ -246,6 +246,8 @@ Conventions [Imhof1975][Imhof1982][USGS-Topo]:
 - Hierarchy shown by size, weight, case (capitals for larger regions) and spacing, with no more than a few size steps.
 - Minimum legible size: about 6-7 pt for print on paper; 5 pt is a hard floor for high-quality print (practice figure, no single source; tunable default; 2026-11-16 the US Topo spec sets contour labels at 6 pt, consistent with the 6 pt floor). For screen output use 10-11 px minimum (practice figure, no single source; tunable default).
 - Halos (a thin background-coloured stroke behind text) improve legibility over relief; keep them narrow (about 1-1.5 px or 0.3 mm; 2026-11-16 the US Topo spec uses a 0.70 pt, about 0.25 mm, halo on 6 pt contour labels) and use `paint-order: stroke` in SVG [SVG2].
+- Tactile labels: braille plus large print (the book's example is 16 pt sans with Marburg Medium braille), horizontal and straight unless following a line, repeated along long lines, never over key detail; names too long for braille become codes keyed in the legend (van Altena and Wabinski, Tactile Mapping, 2025, ch. 5-6).
+- Pale icons on a pale ground get a knock-out (paper-coloured) outline so they do not merge into it, the icon form of a halo (Hancock et al., The Art of Map Illustration, 2017, sec. 16) (book rule, unverified).
 
 ## 8. Curved text in SVG
 
