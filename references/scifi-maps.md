@@ -151,6 +151,20 @@ Stdlib-friendly route: RNG by brute force is O(n^3), fine up to a few thousand s
 
 Proof rule: every orbit in a system is outside the star's radius, inside its Hill sphere if a moon, and adjacent planets are separated by several mutual Hill radii (about 10 is a common stability rule of thumb; practice figure, no single source; tunable default, not a hard limit) [23].
 
+### 6.1 Orbit and climate record per planet (`gen system`)
+
+Fresh rules from public physics; added 2026-11-16 after comparing with a world-building handbook (whose tables and numbers are not used). Physics fields come from their own random stream, so the orbits, masses, moons and SVGs of a seed do not change.
+
+- Year: Kepler's third law in solar units, P(yr) = sqrt(a^3 / M), M the enclosed mass (4 AU around 1 sun gives 8.0 yr).
+- Days: solar day from 1/solar = 1/sidereal - 1/year (prograde) or + (retrograde, tilt above 90 degrees); 23.934 h and 365.256 d give 24.00 h. A locked world has sidereal day = year and no solar day (written null).
+- Temperature: T_eq = 278.3 K x L^1/4 x (1 - A)^1/4 / sqrt(a), a fast rotator; Earth (A 0.3) gives 254.6 K, and a greenhouse term (about 33 K for Earth) gives about 288 K. Highs and lows scale by (1 -/+ e)^-1/2 at periapsis and apoapsis. Albedo and greenhouse ranges per kind are tunable defaults, not measurements.
+- Tidal lock: despin time t = w a^6 I Q / (3 G M*^2 k2 R^5), I = 0.4 m R^2 [35], compared with the system age (drawn below the main-sequence life, about 10 M^-2.5 Gyr). Q, k2 and the initial 12 h spin are stated assumptions, good to an order of magnitude. `--lock physics` uses it (and needs e below 0.1); the default keeps the older distance rule (rocky, inside half the HZ inner edge, M or K star) so default textures do not change. Over seeds 1-200 the physics rule locks 415 of 792 rocky planets, the distance rule 142.
+- Eccentricity: Rayleigh with sigma 0.05, capped at 0.3 (multi-planet systems are nearly circular [36]); halved for any neighbour pair whose inner apoapsis reaches the outer periapsis. Proof bar: no crossing.
+- Companion star (`--companion`, random or q,a,e): S-type planets stay inside the Holman and Wiegert (1999) limit a_c/a_b = 0.464 - 0.380 mu - 0.631 e + 0.586 mu e + 0.150 e^2 - 0.198 mu e^2 [37]. An equal-mass pair 20 AU apart on a circular orbit allows 5.48 AU (0.274 a_b), not 0.46 a_b: 0.464 is the limit for a massless companion. About 45 percent of Sun-like stars have companions [38]; mapwright adds one only when asked. Planets past the limit are dropped. Circumbinary (P-type) systems are not generated.
+- Pins from a sector row (`--tab sector.tab` with `--sector-seed` and `--hex`): the Stars column's class (M, K, G, F) and the PBG gas-giant digit are pinned; belts are recorded but not generated.
+
+Proof bars: no orbit crossing; years match Kepler within 0.1 percent; planets inside the companion's stable limit.
+
 ## 7. Planet generation for non-Earth worlds
 
 - Tidally locked worlds: one hemisphere faces the star. Climate models show a hot substellar point, a cold night side, and often a habitable "terminator" band or an "eyeball" ocean around the substellar point [24]. Render with the substellar point as the texture's focus, not the equator.
@@ -260,3 +274,7 @@ Proof rule: `deck-reachability`. Model each deck as a grid graph (floor cells, d
 32. O'Neill, G. K. 1974, "The Colonization of Space", Physics Today 27(9), 32. https://doi.org/10.1063/1.3128863
 33. do Carmo, M. P., Differential Geometry of Curves and Surfaces (developable surfaces; Gauss's Theorema Egregium: a sphere cannot be flattened without distortion).
 34. Newton's shell theorem; see Wikipedia "Dyson sphere" (stability of a rigid shell). https://en.wikipedia.org/wiki/Dyson_sphere
+35. Gladman, B. et al. 1996, "Synchronous Locking of Tidally Evolving Satellites", Icarus 122, 166. https://doi.org/10.1006/icar.1996.0117
+36. Van Eylen, V., Albrecht, S. 2015, "Eccentricity from transit photometry: small planets in Kepler multi-planet systems have low eccentricities", ApJ 808, 126. https://arxiv.org/abs/1505.02814
+37. Holman, M. J., Wiegert, P. A. 1999, "Long-Term Stability of Planets in Binary Systems", AJ 117, 621. https://arxiv.org/abs/astro-ph/9809315
+38. Raghavan, D. et al. 2010, "A Survey of Stellar Families: Multiplicity of Solar-type Stars", ApJS 190, 1. https://arxiv.org/abs/1007.0414

@@ -6,6 +6,40 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 
 ## Active
 
+### L-076 · 2026-11-16 · `hw-limit-equal-mass-is-0274`: the Holman-Wiegert S-type limit for an equal-mass binary is 0.274 a_b, not 0.46
+- Trigger: the book notes for the companion star item said an equal-mass pair 20 AU apart allows no planet beyond about 9.2 AU.
+- Hypothesis: 0.464 is the constant term of the fit, which is the limit for a massless companion (mu = 0).
+- Rule: use the full fit a_c/a_b = 0.464 - 0.380 mu - 0.631 e + 0.586 mu e + 0.150 e^2 - 0.198 mu e^2 (Holman and Wiegert 1999, eq. 1). Equal mass, e = 0, 20 AU gives 5.48 AU. Check quoted limits against the formula, never against a remembered fraction.
+- Evidence: tests/test_space.py TestOrbitPhysics.test_formulas and test_companion_limit; T-20261116-32
+- Scope: skill
+
+### L-075 · 2026-11-16 · `physics-on-its-own-stream`: add derived fields from a new Rng stream so old seeds keep their bytes
+- Trigger: adding eccentricity, days, tilt and albedo draws to `gen system` inside the orbit loop would shift every later draw on stream 202 and change every seed's orbits, moons and SVGs.
+- Hypothesis: drawing the new fields after the loop on stream 203 (age on 205, companion on 204) leaves stream 202 untouched.
+- Rule: new random fields in a generator go on a new P.Rng stream, drawn a fixed number of times per body. Seeds 1-3 before and after: map.svg, orbits.svg, names.json and recipe.json byte-identical; every old field in system.json equal; only new keys added.
+- Evidence: T-20261116-31
+- Scope: skill
+
+### L-074 · 2026-11-16 · `despin-time-locks-three-times-more`: the Gladman despin time locks 415 rocky planets where the distance rule locks 142
+- Trigger: verdict 3, tidal lock from physics instead of "rocky inside half the HZ inner edge around M or K".
+- Hypothesis: the timescale grows as a^6 and falls as M*^-2, so close-in planets around G and F stars lock too, which the distance rule never allowed.
+- Rule: keep the distance rule as default (default textures unchanged) and offer `--lock physics` (Gladman 1996, Q 100, k2 0.3, 12 h initial spin, e below 0.1, against the drawn system age). The two rules agree on 489 of 792 rocky planets over seeds 1-200.
+- Evidence: T-20261116-31 sweep; Earth at 1 AU around the Sun 20 Gyr (no lock), Earth-mass at 0.05 AU around 0.2 suns under 1 Gyr.
+- Scope: skill
+
+### L-073 · 2026-11-16 · `halve-e-until-no-crossing`: Rayleigh e with sigma 0.05 on Hill-spaced orbits rarely crosses; halve the pair when it does
+- Trigger: verdict 4, eccentricity with a peri/apo crossing bar.
+- Rule: draw e from a Rayleigh law (sigma 0.05, cap 0.3), then halve both e of any pair whose inner apoapsis reaches the outer periapsis, up to 40 passes. Over 600 systems (seeds 1-200, three variants) no crossing bar failed; largest e 0.18.
+- Evidence: T-20261116-31; tests/test_space.py test_crossing_orbits_fail (a 1.0 e 0.3 against a 1.5 e 0.2: apo 1.3 above peri 1.2 fails).
+- Scope: skill
+
+### L-072 · 2026-11-16 · `tab-pin-grows-outward`: pinning a gas-giant count needs slots past the snow line
+- Trigger: verdict 6, `gen system --hex` pinning counts from the sector's T5 row.
+- Hypothesis: a drawn planet count can end before the snow line, so forcing gas into the remaining slots is not enough.
+- Rule: with `--tab`, forbid gas past the pinned count, force gas when the remaining slots equal the giants still owed (only past the snow line), and add planets outward until the count is met. Star class pins from the Stars column only for M, K, G, F; belts are recorded, not generated. 20 of 20 rows of a seed-11 sector matched giants and class.
+- Evidence: tests/test_space.py test_tab_row_pins_star_and_giants; T-20261116-33
+- Scope: skill
+
 ### L-061 · 2026-11-16 · `canny-from-geometry-doubles-the-denoise`: a coast hint drawn from the recipe lets the repaint run to 0.75
 - Trigger: L-032 capped img2img at denoise 0.45; above it the coast drifted (0 of 4 pictures at 0.75).
 - Hypothesis: a second hold on the coast, independent of the init image, lets the model repaint texture without moving the shore.
