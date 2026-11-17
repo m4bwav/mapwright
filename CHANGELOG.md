@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261116-18 · 2026-11-16 · 0.25.0: four books built in (climate, sky, star systems)
+- because: books Geosystems 10th ed., The Planet Construction Kit, Kanas Star Maps, Traveller World Builder's Handbook (notes in Ai/technique-harvest/ai-docs/books); PRs #70-#72; T-20261116-25..33, L-062..L-076
+- files: scripts/mpw_gen.py, scripts/mpw_sky.py (new), scripts/mpw_render.py, scripts/mpw_space.py, scripts/mpw.py, tests, references/realistic-land.md, fantasy-maps.md, scifi-maps.md, cli-*.md, skills/mapwright/SKILL.md, README.md
+- New `sky` command (stereographic or sinusoidal, sky or globe orientation, magnitude legend, five-statement bars) and `check --period-kind sky`. New worlds use climate model 2: currents (east coast warmer, wetter at 15-35 deg), Cfb on west coasts at 45-60 deg instead of ET/Dfc, continentality, snowline by latitude, `--upwind`, `--hadley/--ferrel`, Peel Koppen classes; old recipes and `--climate-model 1` are byte-identical. `gen system` writes year, days, tilt, lock, temperatures and eccentricity, with `--lock physics`, `--companion` (Holman-Wiegert limit; 0.274 a_b for equal masses, not the notes' 9.2 AU) and `--tab` pinning from a sector row. Tests: 301 pass, 2 skip.
+
 ### C-20261116-17 · 2026-11-16 · 0.24.0: ControlNet hold for aistyle
 - because: HANDOFF next item "ControlNet aistyle", T-20261116-24, L-061
 - files: scripts/mpw_aistyle.py, scripts/mpw.py, scripts/data/aistyle-zimage-cnet.json, tests, references/ai-image-models.md, skills/mapwright/SKILL.md, README.md
