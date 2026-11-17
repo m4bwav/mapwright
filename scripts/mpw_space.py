@@ -522,12 +522,78 @@ RSUN_AU = 0.00465047
 BODY_COL = {"rocky": "#b08a64", "ocean": "#4f8fd6", "gas": "#d9b07a", "ice-giant": "#8fd3e0", "ice": "#e6eef5",
             "dwarf": "#9a9a9a", "moon": "#c8c8c8"}
 
+# orbit and climate physics (references/scifi-maps.md section 6.1); SI constants
+G_SI = 6.674e-11
+AU_M = 1.495978707e11
+MSUN_KG = 1.98847e30
+MEARTH_KG = 5.9722e24
+REARTH_M = 6.371e6
+YEAR_S = 3.15576e7     # Julian year
+T_EQ_1AU = (3.828e26 / (16 * math.pi * 5.670374419e-8 * AU_M ** 2)) ** 0.25   # 278.3 K: L = 1, A = 0, a = 1 AU
+# per kind: albedo range, greenhouse range (K), sidereal day range (h), tidal Q, Love number k2 (stated assumptions)
+PHYS = {"rocky": ((0.10, 0.35), (0, 60), (10, 40), 100, 0.3), "ocean": ((0.25, 0.35), (20, 45), (12, 36), 100, 0.3),
+        "dwarf": ((0.50, 0.70), (0, 0), (6, 30), 100, 0.1), "gas": ((0.34, 0.50), (0, 0), (9, 16), 1e5, 0.4),
+        "ice-giant": ((0.29, 0.35), (0, 0), (15, 19), 1e4, 0.1)}
+LOCK_RULES = ("distance", "physics")
+
+
+def kepler_years(a_au, mass_sun):
+    """Kepler's third law in solar units: P(yr) = sqrt(a^3 / M), M the enclosed mass in suns."""
+    return math.sqrt(a_au ** 3 / mass_sun)
+
+
+def solar_day_h(sidereal_h, year_d, retrograde=False):
+    """Mean solar day from the sidereal day and the year; None for a locked world (sidereal = year)."""
+    inv = 1.0 / sidereal_h + (1 if retrograde else -1) / (year_d * 24.0)
+    return None if abs(inv) < 1e-12 else 1.0 / abs(inv)
+
+
+def t_equilibrium(lum, albedo, a_au):
+    """Planet equilibrium temperature in K, fast rotator: 278.3 L^1/4 (1-A)^1/4 / sqrt(a)."""
+    return T_EQ_1AU * lum ** 0.25 * (1 - albedo) ** 0.25 / math.sqrt(a_au)
+
+
+def lock_time_yr(a_au, m_star_sun, m_earth, r_earth, q=100, k2=0.3, spin_h=12.0):
+    """Gladman et al. 1996 despin time t = w a^6 I Q / (3 G Mstar^2 k2 R^5), I = 0.4 m R^2."""
+    a, m, r, ms = a_au * AU_M, m_earth * MEARTH_KG, r_earth * REARTH_M, m_star_sun * MSUN_KG
+    w = 2 * math.pi / (spin_h * 3600.0)
+    return w * a ** 6 * 0.4 * m * q / (3 * G_SI * ms ** 2 * k2 * r ** 3) / YEAR_S
+
+
+def hw_s_limit(mu, e):
+    """Holman and Wiegert 1999 eq. 1: largest stable S-type orbit as a fraction of the binary semi-major axis;
+    mu = m_companion / (m_host + m_companion), e the binary eccentricity."""
+    return 0.464 - 0.380 * mu - 0.631 * e + 0.586 * mu * e + 0.150 * e ** 2 - 0.198 * mu * e ** 2
+
+
+def ms_life_gyr(mass_sun):
+    return 10.0 * mass_sun ** -2.5
+
+
+def _pin_from_tab(path, hex_id):
+    """Star class and gas-giant count from one hex's row of a T5 tab file (Stars and PBG columns)."""
+    with open(path, encoding="utf-8") as f:
+        rows = [w for w in read_t5_tab(f.read()) if w.get("Hex") == hex_id]
+    if not rows:
+        raise ValueError("hex %s not in %s" % (hex_id, path))
+    w = rows[0]
+    st = (w.get("Stars") or "").strip()[:1]
+    pbg = (w.get("PBG") or "").strip()
+    gg = int(pbg[2]) if len(pbg) == 3 and pbg[2].isdigit() else None
+    belts = int(pbg[1]) if len(pbg) == 3 and pbg[1].isdigit() else None
+    return dict(star=st if st in MS else None, star_raw=w.get("Stars"), giants=gg, belts=belts, uwp=w.get("UWP"))
+
 
 def gen_system(seed, out, star=None, planets=None, version="0.6.0", name_style=None, sector_seed=None,
-               hex_id=None):
+               hex_id=None, lock="distance", companion=None, tab=None):
+    """companion: None, "random" or (mass_ratio, a_au, e); tab: a T5 tab file whose --hex row pins star and giants."""
     t0 = time.perf_counter()
     if (sector_seed is None) != (hex_id is None):
         raise ValueError("--sector-seed and --hex go together")
+    if lock not in LOCK_RULES:
+        raise ValueError("--lock is distance or physics")
+    if tab is not None and hex_id is None:
+        raise ValueError("--tab needs --sector-seed and --hex")
     if hex_id is not None:
         hex_id = str(hex_id)
         if len(hex_id) != 4 or not hex_id.isdigit():
@@ -535,6 +601,10 @@ def gen_system(seed, out, star=None, planets=None, version="0.6.0", name_style=N
         seed = place_seed(sector_seed, "system", hex_id)
     elif seed is None:
         raise ValueError("give --seed, or --sector-seed with --hex")
+    pin = _pin_from_tab(tab, hex_id) if tab is not None else None
+    pin_giants = pin["giants"] if pin else None
+    if pin and pin["star"] and not star:
+        star = pin["star"]
     r = P.Rng(seed, 202)
     lang = mpw_names.make_language(seed, name_style)
     namer = mpw_names.Namer(lang)
@@ -547,6 +617,8 @@ def gen_system(seed, out, star=None, planets=None, version="0.6.0", name_style=N
     hz = (0.95 * math.sqrt(lum), 1.67 * math.sqrt(lum))
     snow = 2.7 * math.sqrt(lum)
     n = planets or r.randint(4, 9)
+    if pin_giants is not None:
+        n = max(n, pin_giants)
     sname = namer.name("star", (seed,))
     bodies = []
     a = max(r.uniform(0.2, 0.45) * math.sqrt(lum), 20 * srad)
@@ -566,11 +638,25 @@ def gen_system(seed, out, star=None, planets=None, version="0.6.0", name_style=N
             return "ice-giant", 10 + 15 * u[1]
         return "dwarf", 0.002 + 0.048 * u[1]
 
+    def pinned(a, u, gd, ng, left):
+        """body() with the gas-giant count pinned: no gas past the pin, gas forced when the slots run out."""
+        k, m = body(a, u, gd)
+        if pin_giants is None:
+            return k, m
+        if k == "gas" and ng >= pin_giants:
+            return ("ice-giant", 10 + 15 * u[1]) if a < 8 * snow else ("dwarf", 0.002 + 0.048 * u[1])
+        if k != "gas" and a >= snow and ng < pin_giants and pin_giants - ng >= left:
+            return "gas", 60 + 340 * u[1]
+        return k, m
+
     draws = [(r.random(), r.random()) for _ in range(n)]
-    for i in range(n):
-        kind, m = body(a, draws[i], giant_done)
+    ngas = 0
+    i = 0
+    while i < n:
+        kind, m = pinned(a, draws[i], giant_done, ngas, n - i)
         if kind == "gas":
             giant_done = True
+            ngas += 1
         rad_e = m ** 0.27
         if kind == "gas":
             rad_e = min(11.2, max(6.0, m ** 0.5))
@@ -589,8 +675,7 @@ def gen_system(seed, out, star=None, planets=None, version="0.6.0", name_style=N
                                   a_planet_radii=_r(ma / (rad_e * RE_AU), 2), kind="moon",
                                   texture="moon" if kind != "ocean" else "ice"))
                 ma *= r.uniform(1.5, 2.4)
-        letter = "bcdefghijk"[i]
-        nm_ = "%s %s" % (sname, letter)
+        nm_ = "%s %s" % (sname, LETTERS[i])
         for mo in moons:
             mo["name"] = nm_ + mo["name"]
         tex = {"rocky": "rocky", "ocean": "ocean", "gas": "gas", "ice-giant": "gas", "dwarf": "ice"}[kind]
@@ -599,22 +684,42 @@ def gen_system(seed, out, star=None, planets=None, version="0.6.0", name_style=N
         bodies.append(dict(name=nm_, kind=kind, a_au=_r(a, 6), mass_earth=_r(m, 4), radius_earth=_r(rad_e, 3),
                            hill_au=_r(hill, 7), zone="inner" if a < hz[0] else "habitable" if a <= hz[1] else
                            "outer" if a < snow else "beyond snow line", texture=tex, moons=moons))
+        if pin_giants is not None and i + 1 == n and ngas < pin_giants and n < len(LETTERS):
+            n += 1      # the pinned giants did not fit in the drawn count: grow outward until they do
+            draws.append((r.random(), r.random()))
         # next orbit: geometric step, then pushed out to at least 12 mutual Hill radii
         nxt = a * r.uniform(1.4, 2.0)
         if i + 1 < n:
             for _ in range(12):
-                m_next = body(nxt, draws[i + 1], giant_done)[1]
+                m_next = pinned(nxt, draws[i + 1], giant_done, ngas, n - i - 1)[1]
                 rh = ((m + m_next) * ME / (3 * mass)) ** (1 / 3.0) * (a + nxt) / 2
                 if nxt - a >= 12.5 * rh:
                     break
                 nxt = a + 13.0 * rh
         a = nxt
+        i += 1
+    comp = _companion(seed, mass, companion)
+    age = _system_age(seed, mass)
+    bodies = _orbit_physics(seed, bodies, mass, lum, lock, comp, age)
     sysd = dict(star=dict(name=sname, cls=cls, spectral="%s%d V" % (cls, r.randint(0, 9)), mass_sun=_r(mass, 4),
-                          luminosity_sun=_r(lum, 5), radius_au=_r(srad, 7)),
+                          luminosity_sun=_r(lum, 5), radius_au=_r(srad, 7), age_gyr=age),
                 habitable_zone_au=[_r(hz[0], 4), _r(hz[1], 4)], snow_line_au=_r(snow, 4), bodies=bodies,
+                lock_rule=lock,
                 notes="schematic: equal spacing, not to scale; orbits.svg: orbits to scale, body markers not")
+    if comp:
+        sysd["companion"] = comp
+    if pin:
+        sysd["pinned"] = dict(hex=hex_id, star=pin["star"], stars_column=pin["star_raw"], gas_giants=pin_giants,
+                              belts_not_generated=pin["belts"], uwp=pin["uwp"])
+    params = dict(star=star, planets=planets, name_style=name_style)
+    if lock != "distance":
+        params["lock"] = lock
+    if companion is not None:
+        params["companion"] = companion if isinstance(companion, str) else [float(x) for x in companion]
+    if tab is not None:
+        params["tab"] = os.path.abspath(tab)
     recipe = dict(kind="system", seed=int(seed), tool_version=version, space_version=SPACE_VERSION,
-                  params=dict(star=star, planets=planets, name_style=name_style), language=lang)
+                  params=params, language=lang)
     if hex_id is not None:
         recipe["place"] = dict(sector_seed=int(sector_seed), hex=hex_id)
     t1 = time.perf_counter()
@@ -630,6 +735,84 @@ def gen_system(seed, out, star=None, planets=None, version="0.6.0", name_style=N
     t = dict(generate=_r(t1 - t0, 3), total=_r(time.perf_counter() - t0, 3))
     return dict(out=out, kind="system", name=sname, star=sysd["star"]["spectral"], planets=len(bodies),
                 moons=sum(len(b["moons"]) for b in bodies), times=t)
+
+
+LETTERS = "bcdefghijklmnopqrstuvwxyz"
+
+
+def _system_age(seed, mass):
+    """System age in Gyr from its own stream, below the main-sequence lifetime 10 M^-2.5 Gyr."""
+    r = P.Rng(seed, 205)
+    return _r(r.uniform(0.5, min(10.0, ms_life_gyr(mass) * 0.95)), 3)
+
+
+def _companion(seed, mass, spec):
+    """A bound companion star on its own stream; the S-type stable limit follows Holman and Wiegert (1999)."""
+    if spec is None:
+        return None
+    if spec == "random":
+        r = P.Rng(seed, 204)
+        q, ab, e = r.uniform(0.2, 1.0), math.exp(r.uniform(math.log(8.0), math.log(300.0))), r.uniform(0.0, 0.5)
+    else:
+        q, ab, e = (float(x) for x in spec)
+    if not (0 < q <= 1 and ab > 0 and 0 <= e < 0.8):
+        raise ValueError("--companion is mass ratio (0..1], separation AU > 0 and eccentricity [0..0.8)")
+    m2 = mass * q
+    mu = m2 / (mass + m2)
+    return dict(mass_sun=_r(m2, 4), mass_ratio=_r(q, 4), a_au=_r(ab, 4), e=_r(e, 4), mu=_r(mu, 4),
+                stable_limit_au=_r(hw_s_limit(mu, e) * ab, 4),
+                criterion="Holman and Wiegert 1999 S-type fit; planets orbit the primary only")
+
+
+def _orbit_physics(seed, bodies, mass, lum, lock, comp, age):
+    """Eccentricity, year, days, tilt, lock and temperature per planet on stream 203, so the orbits, masses and
+    moons drawn on stream 202 never shift. Drops planets past a companion's stable limit."""
+    r = P.Rng(seed, 203)
+    draws = [[r.random() for _ in range(6)] for _ in bodies]
+    keep = []
+    for b, u in zip(bodies, draws):
+        e = min(0.3, 0.05 * math.sqrt(-2 * math.log(1 - u[0] * 0.999999)))   # Rayleigh, sigma 0.05
+        if comp and b["a_au"] * (1 + e) > comp["stable_limit_au"]:
+            continue
+        keep.append([b, u, e])
+    for _ in range(40):     # no crossing: inner apoapsis below outer periapsis
+        bad = False
+        for p1, p2 in zip(keep, keep[1:]):
+            if p1[0]["a_au"] * (1 + p1[2]) >= p2[0]["a_au"] * (1 - p2[2]):
+                p1[2] *= 0.5
+                p2[2] *= 0.5
+                bad = True
+        if not bad:
+            break
+    out = []
+    for j, (b, u, e) in enumerate(keep):
+        a, k = b["a_au"], b["kind"]
+        alb, gh, sid, q, k2 = PHYS[k]
+        yr = kepler_years(a, mass + b["mass_earth"] * ME)
+        tl = lock_time_yr(a, mass, b["mass_earth"], b["radius_earth"], q, k2)
+        if lock == "physics":
+            locked = tl < age * 1e9 and e < 0.1
+            if k == "rocky":
+                b["texture"] = "locked" if locked else "rocky"
+        else:
+            locked = b["texture"] == "locked"
+        tilt = 0.0 if locked else (150 + 30 * u[2] if u[3] < 0.08 else 40 * u[2] ** 1.5)
+        side = yr * 365.25 * 24 if locked else sid[0] + (sid[1] - sid[0]) * u[1]
+        A = alb[0] + (alb[1] - alb[0]) * u[4]
+        teq = t_equilibrium(lum, A, a)
+        g = gh[0] + (gh[1] - gh[0]) * u[5]
+        b.update(e=_r(e, 4), periapsis_au=_r(a * (1 - e), 6), apoapsis_au=_r(a * (1 + e), 6), year_yr=_r(yr, 5),
+                 year_days=_r(yr * 365.25, 3), sidereal_day_h=_r(side, 3), tilt_deg=_r(tilt, 2),
+                 solar_day_h=None if locked else _r(solar_day_h(side, yr * 365.25, tilt > 90), 3),
+                 tidally_locked=locked, lock_time_gyr=_r(tl / 1e9, 4), albedo=_r(A, 3), t_eq_k=_r(teq, 1),
+                 greenhouse_k=_r(g, 1), t_mean_k=_r(teq + g, 1),
+                 t_peri_k=_r((teq + g) * (1 - e) ** -0.5, 1), t_apo_k=_r((teq + g) * (1 + e) ** -0.5, 1))
+        if len(keep) != len(bodies):    # renumber after a companion removed planets
+            b["name"] = "%s %s" % (b["name"].rsplit(" ", 1)[0], LETTERS[j])
+            for jj, mo in enumerate(b["moons"]):
+                mo["name"] = "%s %s" % (b["name"], ["I", "II", "III", "IV", "V", "VI"][jj])
+        out.append(b)
+    return out
 
 
 def _body_px(b):
@@ -729,6 +912,22 @@ def _system_bars(d):
     zbad = sum(1 for b in B if (b["zone"] == "habitable") != (hz[0] <= b["a_au"] <= hz[1]))
     bars.append(("system: habitable zone scales with sqrt(L) and zones match it", ok and zbad == 0,
                  "%.3f-%.3f AU for L = %.4f, %d bodies in the wrong zone" % (hz[0], hz[1], lum, zbad)))
+    # orbit record (scifi-maps.md 6.1); recipes made before 0.24 have no e and pass as circular
+    cross = [(b1["name"], b2["name"]) for b1, b2 in zip(B, B[1:])
+             if b1["a_au"] * (1 + b1.get("e", 0)) >= b2["a_au"] * (1 - b2.get("e", 0))]
+    bars.append(("system: no orbit crosses its neighbour (apoapsis below the next periapsis)", not cross,
+                 "%d crossing pairs%s" % (len(cross), (": " + ", ".join("%s/%s" % c for c in cross[:3])) if cross else "")))
+    kbad = [b["name"] for b in B if "year_yr" in b and
+            abs(b["year_yr"] - kepler_years(b["a_au"], st["mass_sun"] + b["mass_earth"] * ME)) > 1e-3 * b["year_yr"] + 1e-5]
+    bars.append(("system: years follow Kepler's third law", not kbad,
+                 "%d of %d planets off by more than 0.1%%" % (len(kbad), sum(1 for b in B if "year_yr" in b))))
+    c = s.get("companion")
+    if c:
+        lim = hw_s_limit(c["mu"], c["e"]) * c["a_au"]
+        out_ = [b["name"] for b in B if b["a_au"] * (1 + b.get("e", 0)) > lim]
+        bars.append(("system: planets inside the companion's stable limit (Holman-Wiegert)", not out_,
+                     "limit %.3f AU (mu %.3f, binary a %.2f AU, e %.2f); %d planets beyond it"
+                     % (lim, c["mu"], c["a_au"], c["e"], len(out_))))
     return bars
 
 
@@ -1299,7 +1498,10 @@ def regenerate(d, tmp):
     if k == "sector":
         gen_sector(rc["seed"], tmp, p["size"], p["density"], p["jump"], p["real"], p["radius_pc"], v, p["name_style"])
     elif k == "system":
-        gen_system(rc["seed"], tmp, p["star"], p["planets"], v, p["name_style"])
+        pl = rc.get("place") if p.get("tab") else None
+        gen_system(None if pl else rc["seed"], tmp, p["star"], p["planets"], v, p["name_style"],
+                   pl and pl["sector_seed"], pl and pl["hex"], p.get("lock", "distance"), p.get("companion"),
+                   p.get("tab"))
     elif k == "planet":
         gen_planet(rc["seed"], tmp, p["kind"], p["width"], v, p.get("sampling", "sphere"))
     else:

@@ -146,6 +146,79 @@ class TestSystem(SpaceBase):
         self.assertFalse(named(S.check(out, False, False), "Hill sphere")[-2])
 
 
+class TestOrbitPhysics(SpaceBase):
+    """Year, days, temperature, tidal lock, eccentricity, companion and T5 pins (scifi-maps.md 6.1)."""
+
+    def test_formulas(self):
+        self.assertAlmostEqual(S.kepler_years(4, 1), 8.0, 6)
+        self.assertAlmostEqual(S.kepler_years(1, 0.25), 2.0, 6)
+        self.assertAlmostEqual(S.solar_day_h(23.934, 365.256), 24.00, 2)
+        self.assertIsNone(S.solar_day_h(365.256 * 24, 365.256))
+        self.assertAlmostEqual(S.t_equilibrium(1, 0.3, 1), 254.6, 1)
+        self.assertAlmostEqual(S.t_equilibrium(1, 0.3, 1) + 33, 288, 0)
+        self.assertGreater(S.lock_time_yr(1, 1, 1, 1), 10e9)
+        self.assertLess(S.lock_time_yr(0.05, 0.2, 1, 1), 1e9)
+        self.assertAlmostEqual(S.hw_s_limit(0.5, 0) * 20, 5.48, 2)   # not 9.2: 0.464 is the mu -> 0 term
+
+    def test_defaults_keep_lock_rule_and_physics_flag_agrees(self):
+        for seed in range(1, 11):
+            out = self.d("lk%d" % seed)
+            S.gen_system(seed, out, "M", lock="physics")
+            s = P.load(out, "system.json")
+            for b in s["bodies"]:
+                if b["kind"] == "rocky":
+                    self.assertEqual(b["texture"] == "locked", b["tidally_locked"], (seed, b["name"]))
+                if b["tidally_locked"]:
+                    self.assertIsNone(b["solar_day_h"])
+            self.assertEqual(failed(S.check(out, determinism=seed == 1, labels=False)), [])
+            S.gen_system(seed, out, "M")
+            self.assertTrue(all(b["tidally_locked"] == (b["texture"] == "locked")
+                                for b in P.load(out, "system.json")["bodies"]))
+
+    def test_crossing_orbits_fail(self):
+        out = self.d("ecc")
+        S.gen_system(3, out, "G", 6)
+
+        def cross(s):
+            s["bodies"][0].update(a_au=1.0, e=0.3)
+            s["bodies"][1].update(a_au=1.5, e=0.2)
+        self.edit(out, "system.json", cross)
+        self.assertFalse(named(S.check(out, False, False), "crosses its neighbour")[-2])
+
+    def test_companion_limit(self):
+        out = self.d("bin")
+        S.gen_system(5, out, "G", 8, companion=(1, 20, 0))
+        s = P.load(out, "system.json")
+        self.assertAlmostEqual(s["companion"]["stable_limit_au"], 5.48, 2)
+        self.assertTrue(all(b["apoapsis_au"] <= 5.48 for b in s["bodies"]))
+        self.assertEqual(failed(S.check(out, True, False)), [])
+
+        def fling(s):
+            s["bodies"][-1]["a_au"] = 6.0
+            s["bodies"][-1]["e"] = 0.0
+        self.edit(out, "system.json", fling)
+        self.assertFalse(named(S.check(out, False, False), "Holman-Wiegert")[-2])
+        for seed in range(1, 11):
+            out = self.d("binr%d" % seed)
+            S.gen_system(seed, out, companion="random", lock="physics")
+            self.assertEqual(failed(S.check(out, seed == 1, False)), [], seed)
+
+    def test_tab_row_pins_star_and_giants(self):
+        sec = self.d("pinsec")
+        S.gen_sector(11, sec, density=0.6)
+        tab = os.path.join(sec, "sector.tab")
+        with open(tab, encoding="utf-8") as f:
+            rows = S.read_t5_tab(f.read())[:20]
+        for w in rows:
+            out = self.d("pin" + w["Hex"])
+            S.gen_system(None, out, sector_seed=11, hex_id=w["Hex"], tab=tab)
+            s = P.load(out, "system.json")
+            self.assertEqual(sum(1 for b in s["bodies"] if b["kind"] == "gas"), int(w["PBG"][2]), w)
+            if w["Stars"][:1] in S.MS:
+                self.assertEqual(s["star"]["cls"], w["Stars"][:1])
+            self.assertEqual(failed(S.check(out, w is rows[0], False)), [], w["Hex"])
+
+
 class TestPlanet(SpaceBase):
     def test_every_kind_passes(self):
         for i, kind in enumerate(S.PLANET_KINDS):

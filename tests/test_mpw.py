@@ -821,6 +821,14 @@ class TestRender(unittest.TestCase):
                       "--period", "1500", "--period-kind", "chart")
         self.assertIn("PASS: period 1500 (chart)", out)
 
+    def test_check_star_chart_style_warns(self):
+        j = json.loads(run_cli("check", self.world, "--no-regen", "--style", "star-chart", "--json"))
+        warn = [b for b in j if "decorative star field, not a sky chart" in b["detail"]]
+        self.assertEqual(len(warn), 1)
+        self.assertFalse([b for b in j if b["ok"] is False], j)
+        j = json.loads(run_cli("check", self.world, "--no-regen", "--json"))
+        self.assertFalse([b for b in j if "decorative" in b["detail"]])
+
     def test_river_width_by_flow(self):
         svg, _ = self.R.render_svg(self.world)
         g = svg.split('class="rivers"')[1].split("</g>")[0]
