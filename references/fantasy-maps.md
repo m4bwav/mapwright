@@ -70,6 +70,8 @@ Mappa mundi colour varies, but water is blue or green and the Red Sea red (HW ch
 - Sea serpents, whales and ships fill empty sea and signal danger or trade routes; Chet Van Duzer's *Sea Monsters on Medieval and Renaissance Maps* (2013) is the standard survey [S8].
 - "Here be dragons" as an actual map phrase is rare; the Hunt-Lenox Globe (c. 1508) carries "HIC SVNT DRACONES" (transcribed "Hc Svnt Dracones" by De Costa, 1879) and is the usual cited example (https://en.wikipedia.org/wiki/Hunt%E2%80%93Lenox_Globe, checked 2026-11-16).
 
+- Gap fill is not only for the sea: on land and on real-place maps, fill large empty areas with small regional flavour items (food, wildlife, transport) or terrain marks, and draw things too small to show one by one (flowers, crowds) as a repeat pattern (Hancock et al., The Art of Map Illustration, 2017, sec. 10-11) (book rule, unverified).
+
 ### 3.6 Settlements and features
 - Cities: small walled cluster or a circle with towers; towns: a few houses or a dot in a ring; villages: a dot [S5].
 - Roads: dashed or thin solid lines; bridges where they cross rivers.

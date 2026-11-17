@@ -88,7 +88,7 @@ Found in `D:/RawStorage/BigDownloads/Unorganized` on 2026-11-14. Notes are writt
 
 Being read (started 2026-11-14): Tyner *Principles of Map Design*; Brewer *Designing Better Maps*; *Map Use* vol. 1; Longley et al. *GIS&S* 4th ed.; Huggett *Fundamentals of Geomorphology*; Kanas *Solar System Maps*; Brotton *Twelve Maps*; Blando *Fantasy Mapmaker*; Lewis-Jones *The Writer's Map*; Fonstad *Atlas of Middle-earth* (method only); Gillett *World-Building*; Mongoose *Traveller World Builder's Handbook*; Pitt *Procedural Generation in Godot*; Green *PCG for C++*; *Cartographic Cinema*.
 
-Skipped (no plugin use, or memoir, politics or fiction): Piechocki *Cartographic Humanism*, *Politics of Maps* (Israel/Palestine), Harvey *Island of Lost Maps*, Norment *In the Memory of the Map*, Berman *Lost Subways*, Volić *Making Democracy Count*, Monmonier *Patents and Cartographic Inventions*, Berry *Making Art from Maps*, *Map It* (training design), Dodd *Writer's Compass*, the *You Are Here* anthology, Dodecahedron Cartographic Review 2014/15. Published-setting map books (Star Wars, Star Trek, Fonstad's Dragonlance and Forgotten Realms atlases) are for private reference only and are never distilled into the plugin. Rosenfelder's *Language Construction Kit* (and his other kits, plus the *Conlanger's Lexipedia*) are held back for the `names` command step.
+Skipped (no plugin use, or memoir, politics or fiction): Piechocki *Cartographic Humanism*, *Politics of Maps* (Israel/Palestine), Harvey *Island of Lost Maps*, Norment *In the Memory of the Map*, Berman *Lost Subways*, Volić *Making Democracy Count*, Monmonier *Patents and Cartographic Inventions*, Berry *Making Art from Maps*, *Map It* (training design), Dodd *Writer's Compass*, the *You Are Here* anthology, Dodecahedron Cartographic Review 2014/15. Akerman *Decolonizing the Map*. Published-setting map books (*Infinity Suite Maps*, Star Wars, Star Trek, Fonstad's Dragonlance and Forgotten Realms atlases) are for private reference only and are never distilled into the plugin. Rosenfelder's *Language Construction Kit* (and his other kits, plus the *Conlanger's Lexipedia*) are held back for the `names` command step.
 
 ## Distilled 2026-11-15
 
@@ -110,3 +110,13 @@ Notes:
 - The Monmonier file is named for a December 2014 printing, but its title page is copyright 1991: it is the first edition, eleven chapters. The later editions' chapters are not on disk. References cite it as "1991 ed.".
 - Dates taken from Thrower, Harley and Woodward, and Goffart are marked "(book fact, not cross-checked)" in the references.
 - No book on disk covers wave function collapse. The four procedural-generation books above each say so in their notes, and the two read on 2026-11-14 (Pitt, Green) added nothing on it. A book or paper on it is still wanted; until then `references/cities-and-dungeons.md` 5.4 rests on web sources.
+
+## Distilled 2026-11-17 (round 3)
+
+Verdicts in [book-verdicts.md](book-verdicts.md), round 3; builds in [book-build-backlog.md](book-build-backlog.md), rows R3-1 to R3-12.
+
+| Book | Verdict | ADOPT / ALREADY / BUILD / REJECT |
+|---|---|---|
+| van Altena and Wabinski (eds.) *Tactile Mapping* (2025) | adopted (numbers defer to BANA/CBA 2022, not cross-checked) | 7 / 3 / 3 / 2 |
+| Stott *Starfinder* (DK, 2007) | adopted | 8 / 6 / 5 / 3 |
+| Hancock et al. *The Art of Map Illustration* (2017) | adopted | 5 / 6 / 4 / 3 |

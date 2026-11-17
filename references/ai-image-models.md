@@ -14,6 +14,10 @@ House rules that apply:
 - Krea 2 stays out of any project that may be sold. It may be used for private experiments only.
 - Local ComfyUI is the only runtime the plugin assumes.
 
+### 1.1 Screen-print look (book, 2026-11-17)
+
+Vocabulary for a screen-print or risograph look, and the spec for a code style: 3 to 5 flat inks, each layer in multiply so overlaps make a new colour, a 1 to 3 px offset per ink for misregistration, halftone or grain texture per group, roughened edges scaled to feature size. Text and key lines stay solid and in register (Hancock et al., The Art of Map Illustration, 2017, sec. 15-18) (book rule, unverified).
+
 ## 2. What generative models get wrong on maps
 
 ### 2.1 Text

@@ -76,3 +76,22 @@ New rows from later research go under the command they belong to, or in a new se
 ## Explain terms the notes ask for
 
 Not rules, so not counted. One small pass over `mpw.py explain` would add: planimetric distance, trap street, paper street, template effect, relief displacement, standard line, areal aggregation, persuasive map (Monmonier); isobath, isogon, representative fraction, wind rose, cordiform, plane table, triangulation, centuriation, T-O map, portolan chart, strip map (Thrower); mappamundi, zonal map, Beatus map, wind rose versus compass rose, hidden circle, Peutinger map, itinerary, groma, Ptolemy's first projection (Harley and Woodward); historical atlas, map of a moment, dynamic map (Goffart).
+
+## Round 3 (2026-11-17): tactile, sky and illustrated maps
+
+Books: VA = van Altena and Wabinski (eds.), Tactile Mapping (2025). ST = Stott, Starfinder (DK, 2007). HA = Hancock et al., The Art of Map Illustration (2017). Notes in `Ai/technique-harvest/ai-docs/books/<slug>/notes.md`. Tactile numbers are book values; check them against BANA/CBA 2022 before coding.
+
+| # | Command | What it would do | Numbers | Source | Script | Size |
+|---|---|---|---|---|---|---|
+| R3-1 | `render --style tactile` | Black-only swell layer (or height layers) with mm-scaled symbols and Unicode braille labels. Test: only black fills in the raise layer; every symbol pair at least the gap apart | Gap about 3 mm, features 1-3 mm apart (book values, not cross-checked) | VA ch. 5-6, 10 | scripts/mpw_render.py | medium |
+| R3-2 | `check --tactile --size WxH` | Flag symbol pairs under the gap, features too close, texture count over a cap, labels that do not fit. Test: a fixture with two symbols 2 mm apart fails, 4 mm passes | As above; texture cap ours | VA table 7-2 | scripts/mpw.py | small |
+| R3-3 | `export --tactile-mesh` | Per-class heights to STL/3MF, dovetailed tiles to bed size, hand-off to polywright-print. Test: tile count matches size over bed; smaller symbols stand higher; watertight | Heights ours | VA ch. 10 | scripts/mpw_export.py | medium |
+| R3-4 | `sky --figures none/lines --boundaries none/iau` | The figures/boundaries dial (L-071). Line data from openly licensed sets (Stellarium sky cultures, IAU boundary polygons), licences checked. Tests: figure and boundary strokes differ; sampled points fall in exactly one boundary polygon | No number | ST p. 13 | scripts/mpw_sky.py | medium |
+| R3-5 | `sky --latitude L --time T` | Horizon view: horizon, cardinal points, looking north/south, circumpolar and never-visible cuts. Tests: every star has dec > L - 90; the pole plots at altitude L within 0.5 degree | No number | ST p. 8-11, 47 | scripts/mpw_sky.py | medium |
+| R3-6 | `sky --ecliptic` | Ecliptic line, optional zodiac band. Test: meets the equator at RA 0h and 12h within 0.5 px | Obliquity from a source | ST p. 10-13 | scripts/mpw_sky.py | small |
+| R3-7 | `sky` deep-sky symbols | Symbol per `type` column (open cluster, globular, nebula, planetary nebula, galaxy) with M/NGC/IC labels. Test: one legend entry per type present | No number | ST p. 13 | scripts/mpw_sky.py | small |
+| R3-8 | `sky --milky-way` | Band tint from a public outline (low priority). Test: tint drawn under stars, licence recorded | No number | ST | scripts/mpw_sky.py | small |
+| R3-9 | `render --style screenprint` | 4-ink palette, multiply blend per ink group, seeded 1-3 px offset per ink, labels and roads unblended. Tests: at most 5 distinct fills outside text; text group has no offset; same seed gives identical SVG | 3-5 inks, 1-3 px offset (book rule) | HA sec. 15-18 | scripts/mpw_render.py | medium |
+| R3-10 | `render --rough N` | Seeded vertex jitter scaled to feature size, any style. Tests: Hausdorff distance to the clean line at most N px; same seed identical | No number | HA sec. 15-16 | scripts/mpw_render.py | small |
+| R3-11 | `render --pictorial` (POI icon layer) | One icon per POI with collision avoidance, knock-out stroke for pale icons, then a gap-fill pass. Tests: zero icon-icon and icon-label overlaps; every icon within 0.15 luminance of paper has a stroke | 0.15 ours | HA sec. 10-12, 16 | scripts/mpw_render.py | medium |
+| R3-12 | `--compress k` | Radial distance compression of POI sets toward a focus. Tests: distance rank order preserved; max/median distance ratio reduced; output says "not to scale" | No number | HA sec. 21-23 | scripts/mpw_render.py | small |

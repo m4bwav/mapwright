@@ -199,3 +199,17 @@ Two books also disagreed with each other:
 - Thrower was read by search, Harley and Woodward by search hits in six chapters, Goffart by its introduction and conclusion. None of their dates was cross-checked.
 - The 22 BUILD rows wait in [book-build-backlog.md](book-build-backlog.md). The first round's command proposals listed above still wait too.
 - The ledger in technique-harvest was set for all eight books with `book_harvest.py done --verdict` (adopted or partial, as in round 1). Rows change to `built` only after a release.
+
+# Round 3 (2026-11-17): three more books
+
+Same verdict classes as round 2. Notes in Ai/technique-harvest/ai-docs/books/<slug>/notes.md.
+
+| Book (slug) | Verdict | ADOPT | ALREADY | BUILD | REJECT | Where they went |
+|---|---|---|---|---|---|---|
+| van-altena-tactile-mapping | adopted | 7 | 3 | 3 | 2 | games-film-print 7.1; cartography-design 3.3, rules 41-42; relief-and-labels 7.5 |
+| stott-starfinder | adopted | 8 | 6 | 5 | 3 | scifi-maps 2 (sky conventions); cli-render sky line |
+| hancock-art-of-map-illustration | adopted | 5 | 6 | 4 | 3 | cartography-design rules 43-44; relief-and-labels 7.5; fantasy-maps 3.5; ai-image-models 1.1 |
+
+- Tactile numbers are book values, marked not cross-checked; BANA/CBA 2022 is the source to fetch before coding.
+- Stott's 1725 date for Flamsteed numbers was not taken; mapwright keeps 1765 (Kanas).
+- Stott's star counts by sky darkness give no magnitudes, so no `--mag-limit` preset was set.

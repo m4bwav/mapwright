@@ -292,6 +292,15 @@ mapwright should export a heightmap or a mesh and hand it to a print tool (polyw
 
 Rules: state the exaggeration on the print or its label (cartographic convention for relief models) (practice figure, no single source; tunable default); compute real scale first (tile mm / ground m), then exaggeration; keep tiles the same base height and size so they tile; output STL or 3MF in millimetres with a flat bottom and watertight walls [S32].
 
+### 7.1 Tactile print (book, 2026-11-17)
+
+Source: van Altena and Wabinski (eds.), Tactile Mapping (Esri Press, 2025). The book gives few numbers and defers to the BANA/CBA 2022 Guidelines and Standards for Tactile Graphics; every number here is a book value, not cross-checked against BANA 2022.
+
+- Spacing: two raised symbols need a gap of about 3 mm (1/8 inch) to be felt as two; keep features 1 to 3 mm from other elements and never overlap symbols (ch. 6 and table 7-2) (book value, not cross-checked).
+- Swell (microcapsule) paper raises only what is printed black, at one height: put symbols, textures and braille in the black layer and use other colours only as contrast for low-vision readers (ch. 10).
+- 3D print allows several heights: smaller symbols stand higher, braille keeps its own standard height (ch. 5, 10).
+- Past one print bed, split into tiles joined by dovetails rather than cramming one bed; the book's East Africa case grew from one 20 x 20 cm tile to four tiles for 36 x 36 cm (ch. 10 case study). Hand the mesh to polywright-print as in section 7.
+
 ## 8. Open items
 
 - Check current Unreal recommended size table and World Partition tile naming for UE 5.6+.
