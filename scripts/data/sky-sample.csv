@@ -1,0 +1,21 @@
+# Bright stars around Orion for mpw.py sky. ra,dec in degrees (J2000), mag = visual magnitude.
+# Measured facts rounded to 0.01 degree and 0.01 mag; positions as listed in SIMBAD (CDS, Strasbourg).
+# Typed from published values, not copied from any catalogue file; not yet re-checked in a live session (unverified 2026-11-16).
+# For demonstration only, not for navigation.
+ra,dec,mag,name
+88.79,7.41,0.50,Betelgeuse
+78.63,-8.20,0.13,Rigel
+81.28,6.35,1.64,Bellatrix
+83.00,-0.30,2.23,Mintaka
+84.05,-1.20,1.69,Alnilam
+85.19,-1.94,1.77,Alnitak
+86.94,-9.67,2.07,Saiph
+83.78,9.93,3.39,Meissa
+101.29,-16.72,-1.46,Sirius
+114.83,5.22,0.34,Procyon
+68.98,16.51,0.86,Aldebaran
+116.33,28.03,1.14,Pollux
+113.65,31.89,1.58,Castor
+79.17,46.00,0.08,Capella
+95.67,-17.96,1.98,Mirzam
+56.87,24.11,2.87,Alcyone

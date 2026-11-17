@@ -22,6 +22,18 @@ Entry shape: `### T-20261116-14 · 2026-11-16 · pytest (tests/) + port-share sw
 - pytest -q full suite: 277 passed, 2 skipped (before: 272 passed, 2 skipped). New TestOrbitPhysics: Kepler 4 AU / 1 sun 8.0 yr, 1 AU / 0.25 sun 2.0 yr; solar day 23.934 h with 365.256 d gives 24.00 h; T_eq Earth 254.6 K, +33 K about 288 K; lock time Earth 1 AU over 10 Gyr, 0.05 AU / 0.2 sun under 1 Gyr; physics lock flag equals the locked texture on seeds 1-10 (M star).
 - Default bytes: seeds 1-3 before and after, map.svg, orbits.svg, names.json, recipe.json identical; old system.json fields equal.
 - Sweep seeds 1-200 (default, --lock physics, --companion random): 0 bar failures; rocky planets locked 142 (distance) vs 415 (physics), agree 489/792; largest e 0.18; 11 systems with no HZ planet; HZ planets' mean temperature 218-317 K, median 263 K.
+### T-20261116-30 · 2026-11-16 · full suite (python -m pytest -q) after the sky track · Windows · 284 passed, 2 skipped in 88 s
+- Before the track: 272 passed, 2 skipped on origin/main; new: 11 in tests/test_sky.py and 1 in test_mpw.py. Figures and boundaries dial skipped (L-071).
+- led to: L-071
+
+### T-20261116-29 · 2026-11-16 · mpw.py sky on scripts/data/sky-sample.csv (16 stars) · Windows · 4 of 4 renders pass
+- Stereographic and sinusoidal, sky and globe: five statements stated, 9 legend steps (-2 to 6) with ratio 1.30 each, 15 of 16 labels placed with 0 overlaps and 0 edge cuts, byte-identical on rerun. PNG by eye: Betelgeuse upper left of Rigel, Sirius lower left, as seen from Earth.
+- Decorative-star WARN: fires on 1 of 1 world checked in star-chart style, 0 FAIL bars; absent in topographic.
+- led to: L-069, L-070
+
+### T-20261116-28 · 2026-11-16 · sky period lint (tests/test_sky.py SkyPeriod) · Windows · 5 passed
+- Bayer + IAU boundaries at 1700 fails on IAU only; Flamsteed numbers at 1729 warn naming 1765, fail at 1700; iau-88 passes 1925, iau-boundaries fails; five uncertain conventions warn only; ngc does not fire on kind map.
+- led to: L-067, L-068
 
 ### T-20261116-18 · 2026-11-16 · pytest (python -m pytest -q tests) after row 4, region chunks · Windows · 260 passed, 2 skipped (live) in 74 s
 New TestGen cases: `gen region --chunk 1,1` twice gives byte-identical files; recipe carries place (world_seed, chunk, chunk_km) and seed = `place_seed(7, "region", "1,1@250")`; same window via --window keeps seed 7 and a different mesh; `check` on the chunk has no FAIL (zoom bars vs parent); bad chunks exit. Default world, region and zoom outputs for seed 7 diffed byte-identical against origin/main. No existing expectation changed.
