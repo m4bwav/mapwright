@@ -441,38 +441,188 @@ def lat_of(y, lat_top, lat_bottom):
     return lat_top + (lat_bottom - lat_top) * y / WORLD
 
 
-def wind_dir(lat):
-    """Prevailing surface wind as +1 (blowing east) or -1 (blowing west)."""
+def wind_dir(lat, hadley=30.0, ferrel=60.0):
+    """Prevailing surface wind as +1 (blowing east) or -1 (blowing west); cell edges in degrees."""
     a = abs(lat)
-    return 1 if 30 <= a < 60 else -1
+    return 1 if hadley <= a < ferrel else -1
 
 
-def lat_wetness(lat):
-    """Zonal precipitation factor: wet ITCZ, dry subtropics, wet mid-latitudes, dry poles."""
+def lat_wetness(lat, hadley=30.0, ferrel=60.0):
+    """Zonal precipitation factor: wet ITCZ, dry subtropics, wet mid-latitudes, dry poles.
+    The dry dip sits at 0.9 x hadley, the mid-latitude peak 8 degrees inside ferrel."""
     a = abs(lat)
-    return 0.35 + 1.0 * math.exp(-(a / 12.0) ** 2) + 0.55 * math.exp(-((a - 52) / 12.0) ** 2) \
-        - 0.25 * math.exp(-((a - 27) / 7.0) ** 2) - 0.2 * max(0.0, (a - 70) / 20.0)
+    dip = 27.0 * hadley / 30.0
+    peak = 52.0 + (ferrel - 60.0)
+    pole = 70.0 + (ferrel - 60.0)
+    return 0.35 + 1.0 * math.exp(-(a / 12.0) ** 2) + 0.55 * math.exp(-((a - peak) / 12.0) ** 2) \
+        - 0.25 * math.exp(-((a - dip) / 7.0) ** 2) - 0.2 * max(0.0, (a - pole) / 20.0)
 
 
 def sea_level_temp(lat):
     return 29.0 - 0.52 * abs(lat)
 
 
-def climate(seed, M, H, hyd, lat_top, lat_bottom):
+# climate model 2 (0.x, book track s45): currents, marine west coasts, continentality, snowline, Koppen.
+# A recipe without params.climate is model 1 and regenerates exactly as before.
+CLIMATE_DEFAULT = dict(model=2, hadley=30.0, ferrel=60.0, upwind="sea")
+CURRENT_KM = 300.0      # coastal reach of a current's effect (e-folding, km)
+MARINE_KM = 1000.0      # inland reach of the warm west-coast (marine) term
+CONTINENTAL_KM = 1500.0 # e-folding distance of the annual-range growth inland
+UPWIND_LAND_MOIST = 0.25  # starting moisture of a row whose upwind edge is land
+UPWIND_LAND_KM = 1000.0   # assumed distance to the sea beyond an upwind land edge
+SNOWLINE = ((0.0, 5000.0), (45.0, 2700.0), (62.0, 900.0), (90.0, 0.0))   # book rule (Geosystems ch. 4)
+ALPINE_BELOW_SNOW = 300.0   # alpine (rock and ice) starts this far below the snowline
+
+
+def climate_km_per_unit(lat_top, lat_bottom):
+    """Map units are 'km' on a 1000-unit square, but latitude spans lat_top..lat_bottom over it. Climate
+    distances use the latitude scale (111.2 km per degree) so 1500 km inland means the same on any world."""
+    span = abs(lat_top - lat_bottom)
+    return max(1.0, span * 111.2 / WORLD)
+
+
+def current_band(a):
+    """Weight of the subtropical current asymmetry: 1 at 15-35 degrees, tapering to 0 at 10 and 40."""
+    if a <= 10 or a >= 40:
+        return 0.0
+    if a < 15:
+        return (a - 10) / 5.0
+    if a > 35:
+        return (40 - a) / 5.0
+    return 1.0
+
+
+def marine_bonus(a):
+    """Warm poleward current on high-latitude west coasts: degrees C added at the coast."""
+    if a <= 30:
+        return 0.0
+    v = min(10.0, 10.0 * (a - 30) / 25.0)
+    return v * max(0.0, 1.0 - max(0.0, a - 75) / 15.0)
+
+
+def coastal_terms(lat, dw, de):
+    """C added to the zonal sea-level temperature: warm west-coast drift poleward of 30 degrees, cold current
+    on west coasts and warm current on east coasts at 15-35 degrees. dw, de: km to the sea west and east."""
+    a = abs(lat)
+    b = current_band(a)
+    return (marine_bonus(a) * math.exp(-dw / MARINE_KM) - 4.0 * b * math.exp(-dw / CURRENT_KM)
+            + 2.0 * b * math.exp(-de / CURRENT_KM))
+
+
+def snowline_m(lat):
+    a = min(90.0, abs(lat))
+    for (a0, h0), (a1, h1) in zip(SNOWLINE, SNOWLINE[1:]):
+        if a <= a1:
+            return h0 + (h1 - h0) * (a - a0) / (a1 - a0)
+    return 0.0
+
+
+def annual_range(lat, d_up_km):
+    """Warmest minus coldest month, C: a marine range rising with latitude, up to 3.4x far from the upwind sea."""
+    return (1.0 + 0.22 * abs(lat)) * (1.0 + 2.4 * (1.0 - math.exp(-d_up_km / CONTINENTAL_KM)))
+
+
+def monthly(t, rng, p_cm, lat):
+    """12 monthly temperatures (sinusoid, coldest in January north / July south) and 12 equal monthly
+    precipitation totals in mm. The generator has no rain seasonality yet, so every cell is f (or B, A)."""
+    s = -1.0 if lat >= 0 else 1.0
+    tm = [t + s * rng / 2.0 * math.cos(2 * math.pi * m / 12.0) for m in range(12)]
+    return tm, [p_cm * 10.0 / 12.0] * 12
+
+
+def koppen(tm, pm, lat=1.0):
+    """Koppen-Geiger class from 12 monthly means (C) and totals (mm), Peel et al. 2007 thresholds.
+    Order: E (warmest under 10 C), then B, then A/C/D; C/D split at 0 C; s tested before w."""
+    mat = sum(tm) / 12.0
+    tc, th = min(tm), max(tm)
+    ap = sum(pm)
+    summer = (3, 4, 5, 6, 7, 8) if lat >= 0 else (9, 10, 11, 0, 1, 2)
+    ps = [pm[m] for m in summer]
+    pw = [pm[m] for m in range(12) if m not in summer]
+    if th < 10:
+        return "ET" if th > 0 else "EF"
+    if ap > 0 and sum(pw) >= 0.7 * ap:
+        pth = 2 * mat
+    elif ap > 0 and sum(ps) >= 0.7 * ap:
+        pth = 2 * mat + 28
+    else:
+        pth = 2 * mat + 14
+    if ap < 10 * pth:
+        return ("BW" if ap < 5 * pth else "BS") + ("h" if mat >= 18 else "k")
+    if tc >= 18:
+        pd = min(pm)
+        if pd >= 60:
+            return "Af"
+        return "Am" if pd >= 100 - ap / 25.0 else "Aw"
+    first = "C" if tc > 0 else "D"
+    if min(ps) < 40 and min(ps) < max(pw) / 3.0:
+        second = "s"
+    elif min(pw) < max(ps) / 10.0:
+        second = "w"
+    else:
+        second = "f"
+    warm = sum(1 for v in tm if v >= 10)
+    if th >= 22:
+        third = "a"
+    elif warm >= 4:
+        third = "b"
+    elif first == "D" and tc <= -38:
+        third = "d"
+    else:
+        third = "c"
+    return first + second + third
+
+
+def climate(seed, M, H, hyd, lat_top, lat_bottom, opts=None, edge=None, extra=None):
+    """opts None: model 1 (the original sweep). opts dict: model 2 (CLIMATE_DEFAULT keys).
+    edge(lat, wd) -> 'sea' or 'land' for upwind 'parent'. extra, a dict, receives 'trange' in model 2."""
     X, Y, nx, ny = M["X"], M["Y"], M["nx"], M["ny"]
     n = len(X)
     temp = [0.0] * n
     prec = [0.0] * n
+    v2 = opts is not None
+    o = dict(CLIMATE_DEFAULT, **(opts or {}))
+    hd, fr = o["hadley"], o["ferrel"]
+    ocean = hyd["ocean"]
+    if v2:
+        kmu = climate_km_per_unit(lat_top, lat_bottom)
+        far = 1e9
+        dup, dw, de = [0.0] * n, [far] * n, [far] * n
     for j in range(ny):
         row = [j * nx + i for i in range(nx)]
         lat = lat_of(sum(Y[c] for c in row) / nx, lat_top, lat_bottom)
-        wd = wind_dir(lat)
+        wd = wind_dir(lat, hd, fr)
+        if v2:
+            for seq, dist in ((row, dw), (row[::-1], de)):   # distance to the sea on the west / east side
+                d, prev = far, None
+                for c in seq:
+                    if ocean[c]:
+                        d = 0.0
+                    elif d < far and prev is not None:
+                        d += abs(X[c] - X[prev]) * kmu
+                    dist[c] = d
+                    prev = c
         if wd < 0:
             row.reverse()
         moist = 1.0
+        side = "sea"
+        if v2:
+            side = o["upwind"]
+            if side == "parent":
+                side = edge(lat, wd) if edge else "sea"
+            if side == "land":
+                moist = UPWIND_LAND_MOIST
+            d, prev = (0.0 if side == "sea" else UPWIND_LAND_KM), None
         prev_h = 0.0
         for c in row:
             h = max(0.0, H[c])
+            if v2:
+                if ocean[c]:
+                    d = 0.0
+                elif prev is not None:
+                    d += abs(X[c] - X[prev]) * kmu
+                dup[c] = d
+                prev = c
             if hyd["ocean"][c] or hyd["lake"][c] >= 0:
                 moist = min(1.0, moist + 0.25)
                 prev_h = 0.0
@@ -484,21 +634,39 @@ def climate(seed, M, H, hyd, lat_top, lat_bottom):
             moist = max(0.0, moist - rain) + 0.004   # a little recycled moisture
             prev_h = h
             prec[c] = rain
+    if v2:
+        trange = [0.0] * n
     for c in range(n):
         lat = lat_of(Y[c], lat_top, lat_bottom)
         elev_km = max(0.0, H[c]) * ELEV_LAND / 1000.0
-        temp[c] = sea_level_temp(lat) - LAPSE * elev_km + 3.0 * fbm(seed + 300, X[c], Y[c], 0.01, 2)
-        prec[c] = 3200.0 * prec[c] * lat_wetness(lat) + 25.0 * lat_wetness(lat)   # cm / yr
+        base = sea_level_temp(lat)
+        wet = lat_wetness(lat, hd, fr)
+        p = prec[c]
+        if v2:
+            a = abs(lat)
+            b = current_band(a)
+            cw = b * math.exp(-dw[c] / CURRENT_KM)    # cold current off the west coast
+            ce = b * math.exp(-de[c] / CURRENT_KM)    # warm current off the east coast
+            base += coastal_terms(lat, dw[c], de[c])
+            trange[c] = annual_range(lat, dup[c])
+        temp[c] = base - LAPSE * elev_km + 3.0 * fbm(seed + 300, X[c], Y[c], 0.01, 2)
+        prec[c] = 3200.0 * p * wet + 25.0 * wet   # cm / yr
+        if v2:
+            prec[c] *= (1.0 - 0.6 * cw) * (1.0 + 0.6 * ce)
     biome = [0] * n
     for c in range(n):
         if hyd["ocean"][c]:
             biome[c] = BIOME_ID["ocean"]
         elif hyd["lake"][c] >= 0:
             biome[c] = BIOME_ID["lake"]
-        elif H[c] * ELEV_LAND > 2600 and temp[c] < 2:
+        elif v2 and H[c] * ELEV_LAND >= snowline_m(lat_of(Y[c], lat_top, lat_bottom)) - ALPINE_BELOW_SNOW:
+            biome[c] = BIOME_ID["alpine"]
+        elif not v2 and H[c] * ELEV_LAND > 2600 and temp[c] < 2:
             biome[c] = BIOME_ID["alpine"]
         else:
             biome[c] = BIOME_ID[whittaker(temp[c], prec[c])]
+    if v2 and extra is not None:
+        extra["trange"] = trange
     return temp, prec, biome
 
 
@@ -774,7 +942,7 @@ def harbour_ports(mesh, nb, sea, sets):
     cand.sort()
     return set(i for _, i in cand[:port_cap(len(sets))])
 
-def write_folder(out, recipe, M, H, hyd, temp, prec, biome, window, R, deltas=(), parent_ctx=None):
+def write_folder(out, recipe, M, H, hyd, temp, prec, biome, window, R, deltas=(), parent_ctx=None, trange=None):
     import mpw_human
     os.makedirs(out, exist_ok=True)
     X, Y, tris = M["X"], M["Y"], M["tris"]
@@ -786,6 +954,8 @@ def write_folder(out, recipe, M, H, hyd, temp, prec, biome, window, R, deltas=()
                 river=[1 if v else 0 for v in hyd["river"]], ocean=[1 if v else 0 for v in hyd["ocean"]],
                 lake=hyd["lake"], temp=[rnd(v, 3) for v in temp], prec=[rnd(v, 2) for v in prec],
                 biome=biome, deltas=list(deltas))
+    if trange is not None:
+        mesh["trange"] = [rnd(v, 2) for v in trange]
     if hyd.get("outlets"):
         mesh["outlets"] = hyd["outlets"]
     # human layer and names work on the stored (rounded) mesh, so files alone rebuild them
@@ -907,8 +1077,13 @@ def write_svg(path, recipe, X, Y, H, tris, hyd, rl, rings, window, rgb, human=()
 
 # ------------------------------------------------------------------ commands
 def gen_world(seed, cells, out, plates=12, erosion=15, lat_top=60.0, lat_bottom=0.0, raster_px=512,
-              version="0.2.0", style=None, pattern=None, language=None):
+              version="0.2.0", style=None, pattern=None, language=None, climate_opts="default"):
+    """climate_opts: "default" (model 2, CLIMATE_DEFAULT), a dict of overrides, or None (model 1)."""
     import mpw_names
+    if climate_opts == "default":
+        climate_opts = dict(CLIMATE_DEFAULT)
+    elif climate_opts is not None:
+        climate_opts = dict(CLIMATE_DEFAULT, **climate_opts)
     _LAT.clear()
     lang = language or mpw_names.make_language(seed, style, pattern)
     t = {}
@@ -929,7 +1104,8 @@ def gen_world(seed, cells, out, plates=12, erosion=15, lat_top=60.0, lat_bottom=
     hyd = hydrology(H, M["nb"], thr)
     t["hydrology"] = time.perf_counter() - t1
     t1 = time.perf_counter()
-    temp, prec, biome = climate(seed, M, H, hyd, lat_top, lat_bottom)
+    ex = {}
+    temp, prec, biome = climate(seed, M, H, hyd, lat_top, lat_bottom, climate_opts, extra=ex)
     t["climate"] = time.perf_counter() - t1
     recipe = dict(kind="world", seed=seed, generator=GEN_VERSION, tool="mapwright", tool_version=version,
                   params=dict(cells=cells, cells_actual=n, spacing_km=sp, plates=plates, erosion_steps=erosion,
@@ -943,8 +1119,11 @@ def gen_world(seed, cells, out, plates=12, erosion=15, lat_top=60.0, lat_bottom=
                                land_m_per_unit=ELEV_LAND, sea_m_per_unit=ELEV_SEA),
                   extent=[0, 0, WORLD, WORLD], parent=None, deltas=[],
                   plates=dict(continental=pinfo["continental"]), language=lang)
+    if climate_opts is not None:
+        recipe["params"]["climate"] = climate_opts
     t1 = time.perf_counter()
-    info = write_folder(out, recipe, M, H, hyd, temp, prec, biome, (0.0, 0.0, WORLD, WORLD), raster_px)
+    info = write_folder(out, recipe, M, H, hyd, temp, prec, biome, (0.0, 0.0, WORLD, WORLD), raster_px,
+                        trange=ex.get("trange"))
     t["write_render"] = time.perf_counter() - t1
     t["total"] = time.perf_counter() - t0
     land = sum(1 for o in hyd["ocean"] if not o)
@@ -1076,7 +1255,27 @@ def chunk_window(col, row, km):
     return (col * km, row * km, (col + 1) * km, (row + 1) * km)
 
 
-def gen_region(parent, window, cells, out, detail=0.03, raster_px=512, version="0.2.0", ref=None, chunk=None):
+def _parent_edge(pm, pp, x0, x1, psp):
+    """Upwind 'parent': is there parent sea within 3 parent spacings outside the window's upwind edge?
+    Off the world counts as sea (the old assumption)."""
+    PX, PY, PO = pm["x"], pm["y"], pm["ocean"]
+    lt, lb = pp["lat_top"], pp["lat_bottom"]
+
+    def edge(lat, wd):
+        y = (lat - lt) / (lb - lt) * WORLD if lb != lt else 0.0
+        xe = x0 if wd > 0 else x1
+        lo, hi = (xe - 3 * psp, xe) if wd > 0 else (xe, xe + 3 * psp)
+        if lo < 0 or hi > WORLD:
+            return "sea"
+        for i in range(len(PX)):
+            if lo <= PX[i] <= hi and abs(PY[i] - y) <= psp and PO[i]:
+                return "sea"
+        return "land"
+    return edge
+
+
+def gen_region(parent, window, cells, out, detail=0.03, raster_px=512, version="0.2.0", ref=None, chunk=None,
+               climate_opts="inherit", upwind=None):
     """chunk=(col, row, km): the window is that chunk and the child's detail seed is
     place_seed(world seed, "region", "col,row@km"), so the chunk regenerates alone; coast and rivers still
     come from the parent. Without chunk the child uses the world seed (unchanged output)."""
@@ -1242,7 +1441,16 @@ def gen_region(parent, window, cells, out, detail=0.03, raster_px=512, version="
             cur = hyd["rcv"][cur]
             guard += 1
     pp = prec_["params"]
-    temp, prc, biome = climate(seed, M, H, hyd, pp["lat_top"], pp["lat_bottom"])
+    # climate model follows the parent unless given; --upwind asks for model 2
+    if climate_opts == "inherit":
+        climate_opts = pp.get("climate")
+    if upwind is not None:
+        climate_opts = dict(climate_opts or CLIMATE_DEFAULT, upwind=upwind)
+    edge = None
+    if climate_opts is not None and climate_opts.get("upwind") == "parent":
+        edge = _parent_edge(pm, pp, x0, x1, psp)
+    ex = {}
+    temp, prc, biome = climate(seed, M, H, hyd, pp["lat_top"], pp["lat_bottom"], climate_opts, edge, ex)
     recipe = dict(kind="region", seed=seed, generator=GEN_VERSION, tool="mapwright", tool_version=version,
                   params=dict(cells=cells, cells_actual=n, spacing_km=sp, parent_spacing_km=psp, detail=detail,
                               lat_top=pp["lat_top"], lat_bottom=pp["lat_bottom"], river_threshold=thr,
@@ -1253,9 +1461,12 @@ def gen_region(parent, window, cells, out, detail=0.03, raster_px=512, version="
                   deltas=[], language=prec_.get("language") or mpw_names.make_language(prec_["seed"]))
     if place is not None:
         recipe["place"] = place
+    if climate_opts is not None:
+        recipe["params"]["climate"] = climate_opts
     pnames = load(parent, "names.json").get("names") or []
     ctx = dict(mesh=pm, features=pfe, names=pnames, sp=psp, open_sea=lambda: open_sea_dir(parent))
-    info = write_folder(out, recipe, M, H, hyd, temp, prc, biome, (x0, y0, x1, y1), raster_px, parent_ctx=ctx)
+    info = write_folder(out, recipe, M, H, hyd, temp, prc, biome, (x0, y0, x1, y1), raster_px, parent_ctx=ctx,
+                        trange=ex.get("trange"))
     return dict(out=out, cells=n, window=[x0, y0, x1, y1], rivers=info["rivers"], lakes=info["lakes"],
                 settlements=info["settlements"], roads=info["roads"], names=info["names"],
                 parent_river_segments=len(psegs), times=dict(total=round(time.perf_counter() - t0, 3)))
@@ -1394,15 +1605,16 @@ def regenerate(d, tmp):
     p = rc["params"]
     if rc["kind"] == "world":
         gen_world(rc["seed"], p["cells"], tmp, p["plates"], p["erosion_steps"], p["lat_top"], p["lat_bottom"],
-                  p["raster_px"], rc["tool_version"], language=rc.get("language"))
+                  p["raster_px"], rc["tool_version"], language=rc.get("language"), climate_opts=p.get("climate"))
     else:
         pl = rc.get("place")
         if pl:
             gen_region(parent_dir(d, rc), None, p["cells"], tmp, p["detail"], p["raster_px"], rc["tool_version"],
-                       ref=rc["parent"]["path"], chunk=(pl["chunk"][0], pl["chunk"][1], pl["chunk_km"]))
+                       ref=rc["parent"]["path"], chunk=(pl["chunk"][0], pl["chunk"][1], pl["chunk_km"]),
+                       climate_opts=p.get("climate"))
         else:
             gen_region(parent_dir(d, rc), tuple(rc["parent"]["window"]), p["cells"], tmp, p["detail"],
-                       p["raster_px"], rc["tool_version"], ref=rc["parent"]["path"])
+                       p["raster_px"], rc["tool_version"], ref=rc["parent"]["path"], climate_opts=p.get("climate"))
 
 
 FILES = ("recipe.json", "features.geojson", "heights.png", "heights.pgw", "mesh.json", "names.json",
@@ -1527,12 +1739,17 @@ def check(d, determinism=True):
     # 7 climate
     temp, prec, h = m["temp"], m["prec"], m["h"]
     lt, lb = rc["params"]["lat_top"], rc["params"]["lat_bottom"]
+    coastal = None
+    if rc["params"].get("climate") is not None:
+        coastal = coast_distances(m, climate_km_per_unit(lt, lb))
     bands = {}
     for c in range(n):
         if ocean[c]:
             continue
         lat = abs(lat_of(Y[c], lt, lb))
         sl = temp[c] + LAPSE * max(0.0, h[c]) * ELEV_LAND / 1000.0
+        if coastal is not None:   # model 2: judge the zonal part, without the coast-side terms
+            sl -= coastal_terms(lat, coastal[0][c], coastal[1][c])
         bands.setdefault(int(lat // 10), []).append(sl)
     keys = sorted(k for k in bands if len(bands[k]) >= 5)
     means = [sum(bands[k]) / len(bands[k]) for k in keys]
@@ -1544,7 +1761,7 @@ def check(d, determinism=True):
         if ocean[c] or h[c] * ELEV_LAND < 1200:
             continue
         lat = lat_of(Y[c], lt, lb)
-        wd = wind_dir(lat)
+        wd = wind_dir(lat, *_cells(rc))
         i = c % nx
         for k, lst in ((-3 * wd, wind_up), (3 * wd, wind_dn)):
             j = i + k
@@ -1561,6 +1778,113 @@ def check(d, determinism=True):
                  % ("/".join("%.1f" % v for v in means), up, dn, " (too few samples, shadow not judged)" if few else
                     " (windward under %d cm/yr, too arid to judge)" % SHADOW_MIN_WET if arid else "")))
     bars += human_bars(d, rc, m, nb, feats, diff)
+    if rc["params"].get("climate") is not None:
+        k = max(b[0] for b in bars) + 1
+        bars += [(k + i, name, ok, det) for i, (name, ok, det) in enumerate(climate_bars(rc, m))]
+    return bars
+
+
+def _cells(rc):
+    c = rc["params"].get("climate") or CLIMATE_DEFAULT
+    return c.get("hadley", 30.0), c.get("ferrel", 60.0)
+
+
+def coast_distances(m, kmu):
+    """Per cell: km along its row to the sea on the west side and on the east side (1e9 if none)."""
+    X, ocean, nx = m["x"], m["ocean"], m["nx"]
+    n = len(X)
+    far = 1e9
+    dw, de = [far] * n, [far] * n
+    for j in range(n // nx):
+        row = list(range(j * nx, (j + 1) * nx))
+        for seq, dist in ((row, dw), (row[::-1], de)):
+            d, prev = far, None
+            for c in seq:
+                if ocean[c]:
+                    d = 0.0
+                elif d < far and prev is not None:
+                    d += abs(X[c] - X[prev]) * kmu
+                dist[c] = d
+                prev = c
+    return dw, de
+
+
+def koppen_counts(rc, m):
+    lt, lb = rc["params"]["lat_top"], rc["params"]["lat_bottom"]
+    out, bad = {}, 0
+    tr = m.get("trange") or []
+    for c in range(len(m["x"])):
+        if m["ocean"][c] or m["lake"][c] >= 0 or c >= len(tr):
+            continue
+        lat = lat_of(m["y"][c], lt, lb)
+        k = koppen(*monthly(m["temp"][c], tr[c], m["prec"][c], lat), lat=lat)
+        if not k or k[0] not in "ABCDE":
+            bad += 1
+        out[k] = out.get(k, 0) + 1
+    return out, bad
+
+
+def climate_bars(rc, m):
+    """Model 2 bars: current asymmetry, continentality, snowline, one Koppen class per land cell."""
+    lt, lb = rc["params"]["lat_top"], rc["params"]["lat_bottom"]
+    kmu = climate_km_per_unit(lt, lb)
+    X, Y, ocean, lake, h, temp, prec = m["x"], m["y"], m["ocean"], m["lake"], m["h"], m["temp"], m["prec"]
+    tr = m.get("trange") or [0.0] * len(X)
+    strip = 3 * m["sp"] * kmu
+    dw, de = coast_distances(m, kmu)
+    side = {}   # 5-degree band -> ([west (rain, temp)], [east ...]); compared band by band
+    for c in range(len(X)):
+        lat = abs(lat_of(Y[c], lt, lb))
+        if ocean[c] or lake[c] >= 0 or h[c] * ELEV_LAND > 500 or not (15 <= lat <= 35):
+            continue   # lowland coast only: a coastal range's rain or shadow is bar 7's business
+        sl = temp[c] + LAPSE * max(0.0, h[c]) * ELEV_LAND / 1000.0
+        k = None
+        if dw[c] <= strip < de[c]:
+            k = 0
+        elif de[c] <= strip < dw[c]:
+            k = 1
+        if k is not None:
+            side.setdefault(min(3, int((lat - 15) // 5)), ([], []))[k].append((prec[c], sl))
+    pairs = [(w, e) for w, e in side.values() if len(w) >= 3 and len(e) >= 3]
+    nw, ne = sum(len(w) for w, e in pairs), sum(len(e) for w, e in pairs)
+    name = "currents: lowland east coast 15-35 deg warmer than the west coast, band by band"
+    if nw < 10 or ne < 10:
+        bars = [(name, True, "n/a (%d west, %d east lowland coastal cells in shared 5-deg bands)" % (nw, ne))]
+    else:
+        mean = lambda v, i: sum(x[i] for x in v) / len(v)   # noqa: E731
+        pw = sum(mean(w, 0) * len(w) for w, e in pairs) / nw
+        pe = sum(mean(e, 0) * len(w) for w, e in pairs) / nw   # east weighted like west: same band mix
+        dt = sum((mean(e, 1) - mean(w, 1)) * len(w) for w, e in pairs) / nw
+        # terrain can outweigh the current's rain term (seed 2: x1.02), so rain is reported, temperature judged
+        bars = [(name, dt >= 1.0,
+                 "rain east %.0f / west %.0f cm/yr (x%.2f, reported); east warmer by %.1f C (fails under 1.0; "
+                 "%d/%d cells, %d bands)"
+                 % (pe, pw, pe / pw if pw else 0.0, dt, ne, nw, len(pairs)))]
+    bands = {}
+    for c in range(len(X)):
+        if ocean[c] or lake[c] >= 0:
+            continue
+        dmin = min(dw[c], de[c])
+        lat = lat_of(Y[c], lt, lb)
+        dup = dw[c] if wind_dir(lat, *_cells(rc)) > 0 else de[c]   # the windward coast is the marine one
+        b = int(abs(lat) // 5)
+        if dmin >= 1500 and dmin < 1e9:
+            bands.setdefault(b, ([], []))[0].append(tr[c])
+        elif dup <= 1.5 * m["sp"] * kmu:
+            bands.setdefault(b, ([], []))[1].append(tr[c])
+    ratios = ["%d-%d: x%.2f" % (b * 5, b * 5 + 5, (sum(i) / len(i)) / (sum(k) / len(k)))
+              for b, (i, k) in sorted(bands.items()) if len(i) >= 5 and len(k) >= 5]
+    vals = [(sum(i) / len(i)) / (sum(k) / len(k)) for b, (i, k) in sorted(bands.items()) if len(i) >= 5 and len(k) >= 5]
+    bars.append(("continentality: annual range 1500+ km inland at least 2x the windward coast's", all(v >= 2.0 for v in vals),
+                 "; ".join(ratios) if vals else "n/a (no land 1500 km from the sea)"))
+    low = sum(1 for c in range(len(X)) if m["biome"][c] == BIOME_ID["alpine"]
+              and h[c] * ELEV_LAND < snowline_m(lat_of(Y[c], lt, lb)) - ALPINE_BELOW_SNOW - 1)
+    bars.append(("snowline: no alpine cell more than %d m below snowline(lat)" % ALPINE_BELOW_SNOW, low == 0,
+                 "%d alpine cells below it" % low))
+    kc, bad = koppen_counts(rc, m)
+    top = sorted(kc.items(), key=lambda kv: -kv[1])[:6]
+    bars.append(("Koppen (Peel 2007): every land cell one class", bad == 0 and bool(kc),
+                 ", ".join("%s %d" % kv for kv in top) + ("; Cfb %d, Dfc %d" % (kc.get("Cfb", 0), kc.get("Dfc", 0)))))
     return bars
 
 

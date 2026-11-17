@@ -6,6 +6,41 @@ Procedural lessons for [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md). C
 
 ## Active
 
+### L-066 · 2026-11-16 · `missing-climate-key-means-model-1`: old recipes regenerate the old climate byte for byte
+- Trigger: climate model 2 (currents, marine coasts, continentality, snowline) had to change default output while every existing recipe folder must still pass the determinism bar.
+- Hypothesis: a recipe records its climate model only when it has one, so its absence can name the old model.
+- Rule: `params.climate` present = model 2 with those settings; absent = model 1. `gen world --climate-model 1` writes no key; regions inherit the parent's model; `regenerate`, `names --style` and `sheet --seeds` pass `p.get("climate")`.
+- Evidence: seed 7 world and its default region from origin/main and from model 1 on the branch: all files identical. T-20261116-25
+- Scope: skill
+
+### L-065 · 2026-11-16 · `continentality-coast-is-windward`: compare inland range with the windward coast, not any coast
+- Trigger: first continentality bar took "coastal" as within one cell of any sea and failed seed 7 (15-20°: x1.12).
+- Hypothesis: a lee coast (east coast in the westerlies, west coast in the trades) has continental air and a wide range, as on real east coasts.
+- Rule: the bar's coastal set is the windward coast (sea on the upwind side within 1.5 cell spacings); inland is 1500+ km from sea on both sides.
+- Evidence: seeds 1-12 after the change: every judged band x2.10-2.54. T-20261116-26
+- Scope: skill
+
+### L-064 · 2026-11-16 · `current-rain-loses-to-terrain`: judge the current bar on temperature, report rain
+- Trigger: a real-world bar demanding east rain >= 1.5 x west at 15-35° failed 3 of 9 judged seeds (seed 2: x1.02, a windward range on the west coast).
+- Hypothesis: orographic rain and rain shadow outweigh the current's rain term on real terrain; the temperature term has no rival.
+- Rule: the `check` bar compares lowland (under 500 m) coastal strips band by band and fails only when the east coast is under 1.0 °C warmer; rain is reported. The strict 1.5x / 2 °C bar lives in the unit test on a flat symmetric continent.
+- Evidence: seeds 1-12: 7 judged, all pass, east warmer by 2.6-3.1 °C; symmetric continent x4.09 and +3.56 °C. T-20261116-25
+- Scope: skill
+
+### L-063 · 2026-11-16 · `marine-term-makes-cfb`: a linear sea-level temperature puts ET where Cfb belongs
+- Trigger: book track s45 verdict 2; `sea_level_temp` gives about -2 °C at 60° everywhere.
+- Hypothesis: a west-coast warm-drift term poleward of 30° (up to +10 °C, fading inland over about 1000 km) gives marine west coasts.
+- Rule: keep the zonal line and add `coastal_terms`; bar 7 subtracts the coast-side terms before judging that temperature falls poleward (seed 12 failed bar 7 without that: 50-60° band 7.8 > 7.4).
+- Evidence: lowland west-coast cells 45-60°, seeds 1-12, marine term off vs on: ET 243 / Dfc 86 / Cfb 0 vs Cfb 227 / Dfb 78 / Dfc 6; all land, Cfb+Cfc 885 vs 1313, Dfc 1697 vs 1120. A first try (+10 °C from 35°, 600 km reach, 800 km continentality) gave only Cfb 58 vs Dfb 157. T-20261116-26
+- Scope: skill
+
+### L-062 · 2026-11-16 · `climate-km-from-latitude`: the world is 1000 units wide but spans 60° of latitude
+- Trigger: continentality needs "1500 km inland", but `WORLD` is 1000 km while 60° of latitude is about 6700 km.
+- Hypothesis: climate distances measured in map units are inconsistent with the latitude the climate is built on.
+- Rule: climate distances use `climate_km_per_unit` = latitude span x 111.2 / 1000 (minimum 1). Other tools' km (travel, scale bars) are unchanged.
+- Evidence: symmetric continent 600 units wide on a 0-50° world = 3336 km; its centre is about 1670 km from both coasts. T-20261116-26
+- Scope: skill
+
 ### L-061 · 2026-11-16 · `canny-from-geometry-doubles-the-denoise`: a coast hint drawn from the recipe lets the repaint run to 0.75
 - Trigger: L-032 capped img2img at denoise 0.45; above it the coast drifted (0 of 4 pictures at 0.75).
 - Hypothesis: a second hold on the coast, independent of the init image, lets the model repaint texture without moving the shore.

@@ -1372,8 +1372,9 @@ def cmd_gen(a):
     g = _gen()
     try:
         if a.what == "world":
+            co = None if a.climate_model == 1 else dict(hadley=a.hadley, ferrel=a.ferrel)
             r = g.gen_world(a.seed, a.cells, a.out, a.plates, a.erosion, a.lat_top, a.lat_bottom, a.raster, VERSION,
-                            style=a.style, pattern=a.pattern)
+                            style=a.style, pattern=a.pattern, climate_opts=co)
         else:
             win = _window(a.window) if a.window else None
             ch = None
@@ -1383,7 +1384,8 @@ def cmd_gen(a):
                 except ValueError:
                     die("--chunk is COL,ROW, e.g. 1,2")
                 ch = (c_, r_, a.chunk_km)
-            r = g.gen_region(a.parent, win, a.cells, a.out, a.detail, a.raster, VERSION, chunk=ch)
+            r = g.gen_region(a.parent, win, a.cells, a.out, a.detail, a.raster, VERSION, chunk=ch,
+                             upwind=getattr(a, "upwind", None))
     except (ValueError, OSError) as e:
         die(str(e))
     if a.json:
@@ -1637,7 +1639,8 @@ def cmd_names(a):
                 rc["language"] = mpw_names.make_language(rc["seed"], a.style, a.pattern)
                 p = rc["params"]
                 g.gen_world(rc["seed"], p["cells"], a.dir, p["plates"], p["erosion_steps"], p["lat_top"],
-                            p["lat_bottom"], p["raster_px"], rc["tool_version"], language=rc["language"])
+                            p["lat_bottom"], p["raster_px"], rc["tool_version"], language=rc["language"],
+                            climate_opts=p.get("climate"))
             with open(os.path.join(a.dir, "names.json"), encoding="utf-8") as f:
                 nj = json.load(f)
             if a.json:
@@ -1909,7 +1912,7 @@ def cmd_sheet(a):
             for sd in seeds:
                 out = os.path.join(tmp, "s%d" % sd)
                 g.gen_world(sd, p["cells"], out, p["plates"], p["erosion_steps"], p["lat_top"], p["lat_bottom"],
-                            p["raster_px"], VERSION)
+                            p["raster_px"], VERSION, climate_opts=p.get("climate"))
                 items.append(("seed %d, %s" % (sd, st), r.render_svg(out, st)[0]))
         else:
             for st in styles:
@@ -2013,6 +2016,10 @@ def build_parser():
     w.add_argument("--erosion", type=int, default=15, help="stream-power steps (10-20)")
     w.add_argument("--lat-top", type=float, default=60.0)
     w.add_argument("--lat-bottom", type=float, default=0.0)
+    w.add_argument("--hadley", type=float, default=30.0, help="Hadley cell edge, degrees (trade winds inside)")
+    w.add_argument("--ferrel", type=float, default=60.0, help="Ferrel cell edge, degrees (westerlies inside)")
+    w.add_argument("--climate-model", type=int, choices=(1, 2), default=2,
+                   help="2: currents, marine west coasts, continentality, snowline, Koppen; 1: the pre-0.x sweep")
     w.add_argument("--out", required=True)
     w.add_argument("--style", help="name sound pattern (`names --list`); default: picked from the seed")
     w.add_argument("--pattern", help="custom sound pattern 'C=..;V=..;F=..;S=CV CVF;N=2-3'")
@@ -2025,6 +2032,8 @@ def build_parser():
         x.add_argument("--chunk-km", type=float, default=250.0, help="with --chunk: chunk width in km (default 250)")
         x.add_argument("--cells", type=int, default=16000)
         x.add_argument("--detail", type=float, default=0.03, help="detail noise amplitude (height units)")
+        x.add_argument("--upwind", choices=("sea", "land", "parent"),
+                       help="what lies upwind of the window edge (default: sea, or the parent's setting)")
         x.add_argument("--out", required=True)
     for x in (w, rg):
         x.add_argument("--raster", type=int, default=512, help="heights.png width in pixels")

@@ -12,6 +12,23 @@ Entry shape: `### T-20261116-14 · 2026-11-16 · pytest (tests/) + port-share sw
 
 ## Runs
 
+### T-20261116-27 · 2026-11-16 · pytest (python -m pytest -q tests) after climate model 2 · Windows · 284 passed, 2 skipped in 89 s
+- Before the track: 272 passed, 2 skipped. New tests/test_climate.py (12 cases): currents, continentality, snowline, upwind edge, Hadley edge, five Köppen stations, every land cell one class, model 1 regenerates byte-identical. Bar counts in test_mpw.py rose by the four new climate bars (17 to 21, 14 to 18).
+- Köppen stations (rounded normals): Singapore Af, Cairo BWh, London Cfb, Moscow Dfb, Utqiagvik ET, all correct. Upwind: land edge rain under 0.4 x sea edge. `--hadley 35`: 32° has easterlies, dry dip within 2° of 31.5°.
+- led to: L-062
+
+### T-20261116-26 · 2026-11-16 · climate sweep: symmetric continent + seeds 1-12 at 3000 cells · Windows
+- Continentality on a flat continent 3336 km wide (0-50°): inland/windward-coast range x2.24 (40-50°), x2.16 (30-40°), x2.12 (10-20°). Real worlds: every judged band x2.10-2.54 (6 of 12 seeds have land 1500 km from the sea).
+- Marine term (verdict 2), all land seeds 1-12: Cfb+Cfc 885 to 1313, Dfc 1697 to 1120; lowland west coast 45-60°: ET 243, Dfc 86, Cfb 0 to Cfb 227, Dfb 78, Dfc 6.
+- Snowline: 3000 m at 0° no alpine; 1200 m at 60° all alpine. Bar 7 passes on 12 of 12 after subtracting the coast terms (seed 12 failed before).
+- led to: L-063, L-065
+
+### T-20261116-25 · 2026-11-16 · currents bar + model 1 byte identity · Windows
+- Symmetric continent 15-35°, 3-cell coastal strips: east/west rain x1.95 and east warmer +0.62 °C with model 1; x4.09 and +3.56 °C with model 2 (bar: x1.5 and +2 °C).
+- Real worlds seeds 1-12, lowland strips band by band: 7 judged, rain x1.02-x19.9 (reported), east warmer 2.6-3.1 °C, all pass; 5 n/a (under 10 cells a side).
+- Model 1: seed 7 world (3000 cells) and its default region from origin/main vs the branch: recipe, mesh, map.svg, heights.png, names, features identical. Default (model 2) output for every seed changes.
+- led to: L-064, L-066
+
 ### T-20261116-18 · 2026-11-16 · pytest (python -m pytest -q tests) after row 4, region chunks · Windows · 260 passed, 2 skipped (live) in 74 s
 New TestGen cases: `gen region --chunk 1,1` twice gives byte-identical files; recipe carries place (world_seed, chunk, chunk_km) and seed = `place_seed(7, "region", "1,1@250")`; same window via --window keeps seed 7 and a different mesh; `check` on the chunk has no FAIL (zoom bars vs parent); bad chunks exit. Default world, region and zoom outputs for seed 7 diffed byte-identical against origin/main. No existing expectation changed.
 

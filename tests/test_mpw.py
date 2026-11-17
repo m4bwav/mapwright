@@ -397,9 +397,9 @@ class TestGen(unittest.TestCase):
 
     def test_world_bars_pass(self):
         out = run_cli("check", self.world)
-        self.assertEqual(out.count("PASS") + out.count("SKIP"), 17, out)
+        self.assertEqual(out.count("PASS") + out.count("SKIP"), 21, out)   # 17 + 4 climate model 2 bars (s45)
         self.assertEqual(out.count("FAIL"), 0, out)
-        self.assertEqual(run_cli("check", self.world, "--no-labels").count("PASS"), 14)
+        self.assertEqual(run_cli("check", self.world, "--no-labels").count("PASS"), 18)   # 14 + 4 climate bars
 
     def test_bar7_arid_not_judged(self):
         bars = mpw_gen.check(self.world, determinism=False)
@@ -656,7 +656,7 @@ class TestHuman(unittest.TestCase):
     def test_bars_world_and_child(self):
         for d in (self.world, self.child):
             bars = mpw_gen.check(d)
-            self.assertEqual(len(bars), 14)
+            self.assertEqual(len(bars), 18)   # 14 + 4 climate model 2 bars
             self.assertTrue(all(b[2] for b in bars), [b for b in bars if not b[2]])
         b13 = mpw_gen.check(self.child, determinism=False)[12]
         self.assertIn("parent settlements in window", b13[3])
