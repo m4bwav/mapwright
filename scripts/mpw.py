@@ -1306,7 +1306,13 @@ def cmd_gen_space(a):
             r = S.gen_sector(a.seed, a.out, a.size, a.density, a.jump, a.real, a.radius_pc, VERSION, a.name_style,
                              a.systems)
         elif a.what == "system":
-            r = S.gen_system(a.seed, a.out, a.star, a.planets, VERSION, a.name_style, a.sector_seed, a.hex)
+            comp = a.companion
+            if comp and comp != "random":
+                comp = [float(x) for x in comp.split(",")]
+                if len(comp) != 3:
+                    raise ValueError("--companion is random or q,a_au,e such as 1,20,0")
+            r = S.gen_system(a.seed, a.out, a.star, a.planets, VERSION, a.name_style, a.sector_seed, a.hex,
+                             a.lock, comp, a.tab)
         elif a.what == "planet":
             r = S.gen_planet(a.seed, a.out, a.kind, a.width, VERSION)
         else:
@@ -1372,8 +1378,9 @@ def cmd_gen(a):
     g = _gen()
     try:
         if a.what == "world":
+            co = None if a.climate_model == 1 else dict(hadley=a.hadley, ferrel=a.ferrel)
             r = g.gen_world(a.seed, a.cells, a.out, a.plates, a.erosion, a.lat_top, a.lat_bottom, a.raster, VERSION,
-                            style=a.style, pattern=a.pattern)
+                            style=a.style, pattern=a.pattern, climate_opts=co)
         else:
             win = _window(a.window) if a.window else None
             ch = None
@@ -1383,7 +1390,8 @@ def cmd_gen(a):
                 except ValueError:
                     die("--chunk is COL,ROW, e.g. 1,2")
                 ch = (c_, r_, a.chunk_km)
-            r = g.gen_region(a.parent, win, a.cells, a.out, a.detail, a.raster, VERSION, chunk=ch)
+            r = g.gen_region(a.parent, win, a.cells, a.out, a.detail, a.raster, VERSION, chunk=ch,
+                             upwind=getattr(a, "upwind", None))
     except (ValueError, OSError) as e:
         die(str(e))
     if a.json:
@@ -1584,6 +1592,10 @@ def cmd_check(a):
             die(str(e))
         nxt = max(b[0] for b in bars) + 1
         bars += [(nxt + i, name, ok, detail) for i, (name, ok, detail) in enumerate(lb)]
+    if _kind(a.dir) not in ("city", "dungeon", "battle") + SPACE and a.style in _render().STYLES:
+        sb = _render().style_bars(a.style)
+        nxt = max(b[0] for b in bars) + 1
+        bars += [(nxt + i, name, ok, detail) for i, (name, ok, detail) in enumerate(sb)]
     if not a.no_aistyle and _kind(a.dir) not in ("city", "dungeon", "battle") + SPACE:
         # optional: one bar per styled picture with a sidecar in the folder; none there, no bar
         ab = _aistyle().bars(a.dir)
@@ -1614,6 +1626,33 @@ def cmd_check(a):
         sys.exit(1)
 
 
+def cmd_sky(a):
+    sky = importlib.import_module("mpw_sky")
+    try:
+        stars = sky.read_stars(a.csv)
+        centre = tuple(float(v) for v in a.centre.split(",")) if a.centre else None
+        svg, desc = sky.render(stars, a.projection, a.orientation, a.epoch, a.mag_limit, centre, a.title)
+        bars = sky.check(desc, svg)
+        if a.period is not None:
+            used = sky.sky_conventions(desc) | {u.strip() for u in (a.uses or "").split(",") if u.strip()}
+            bars += _render().period_lint(used, a.period, "sky")
+    except ValueError as e:
+        die(str(e))
+    with open(a.out, "w", encoding="utf-8", newline="\n") as f:
+        f.write(svg)
+    with open(os.path.splitext(a.out)[0] + ".sky.json", "w", encoding="utf-8", newline="\n") as f:
+        json.dump(desc, f, indent=1, sort_keys=True)
+    if a.json:
+        print(json.dumps(dict(out=a.out, descriptor=desc,
+                              bars=[dict(name=n, ok=ok, detail=d) for n, ok, d in bars]), indent=1))
+    else:
+        print("wrote %s" % a.out)
+        for n, ok, d in bars:
+            print("%s: %s (%s)" % ("SKIP" if ok is None else ("PASS" if ok else "FAIL"), n, d))
+    if any(b[1] is False for b in bars):
+        sys.exit(1)
+
+
 def cmd_names(a):
     _gen()
     import mpw_names
@@ -1637,7 +1676,8 @@ def cmd_names(a):
                 rc["language"] = mpw_names.make_language(rc["seed"], a.style, a.pattern)
                 p = rc["params"]
                 g.gen_world(rc["seed"], p["cells"], a.dir, p["plates"], p["erosion_steps"], p["lat_top"],
-                            p["lat_bottom"], p["raster_px"], rc["tool_version"], language=rc["language"])
+                            p["lat_bottom"], p["raster_px"], rc["tool_version"], language=rc["language"],
+                            climate_opts=p.get("climate"))
             with open(os.path.join(a.dir, "names.json"), encoding="utf-8") as f:
                 nj = json.load(f)
             if a.json:
@@ -1909,7 +1949,7 @@ def cmd_sheet(a):
             for sd in seeds:
                 out = os.path.join(tmp, "s%d" % sd)
                 g.gen_world(sd, p["cells"], out, p["plates"], p["erosion_steps"], p["lat_top"], p["lat_bottom"],
-                            p["raster_px"], VERSION)
+                            p["raster_px"], VERSION, climate_opts=p.get("climate"))
                 items.append(("seed %d, %s" % (sd, st), r.render_svg(out, st)[0]))
         else:
             for st in styles:
@@ -2013,6 +2053,10 @@ def build_parser():
     w.add_argument("--erosion", type=int, default=15, help="stream-power steps (10-20)")
     w.add_argument("--lat-top", type=float, default=60.0)
     w.add_argument("--lat-bottom", type=float, default=0.0)
+    w.add_argument("--hadley", type=float, default=30.0, help="Hadley cell edge, degrees (trade winds inside)")
+    w.add_argument("--ferrel", type=float, default=60.0, help="Ferrel cell edge, degrees (westerlies inside)")
+    w.add_argument("--climate-model", type=int, choices=(1, 2), default=2,
+                   help="2: currents, marine west coasts, continentality, snowline, Koppen; 1: the pre-0.x sweep")
     w.add_argument("--out", required=True)
     w.add_argument("--style", help="name sound pattern (`names --list`); default: picked from the seed")
     w.add_argument("--pattern", help="custom sound pattern 'C=..;V=..;F=..;S=CV CVF;N=2-3'")
@@ -2025,6 +2069,8 @@ def build_parser():
         x.add_argument("--chunk-km", type=float, default=250.0, help="with --chunk: chunk width in km (default 250)")
         x.add_argument("--cells", type=int, default=16000)
         x.add_argument("--detail", type=float, default=0.03, help="detail noise amplitude (height units)")
+        x.add_argument("--upwind", choices=("sea", "land", "parent"),
+                       help="what lies upwind of the window edge (default: sea, or the parent's setting)")
         x.add_argument("--out", required=True)
     for x in (w, rg):
         x.add_argument("--raster", type=int, default=512, help="heights.png width in pixels")
@@ -2083,6 +2129,11 @@ def build_parser():
     sy.add_argument("--hex", help="with --sector-seed: four-digit hex such as 0118")
     sy.add_argument("--star", choices=("M", "K", "G", "F"))
     sy.add_argument("--planets", type=int)
+    sy.add_argument("--lock", choices=("distance", "physics"), default="distance",
+                    help="tidal lock: distance rule (default) or the Gladman despin time against system age")
+    sy.add_argument("--companion", nargs="?", const="random",
+                    help="add a companion star: random, or q,a_au,e; planets stay inside the Holman-Wiegert limit")
+    sy.add_argument("--tab", help="with --sector-seed and --hex: T5 tab file whose row pins star class and gas giants")
     pl = gs.add_parser("planet", help="equirectangular sphere texture with no seam or pole pinch")
     pl.add_argument("--seed", type=int, required=True)
     pl.add_argument("--kind", choices=("rocky", "ice", "ocean", "gas", "moon", "locked"), default="rocky")
@@ -2162,8 +2213,8 @@ def build_parser():
     s.add_argument("--no-aistyle", action="store_true", help="skip the bars on styled pictures (*.aistyle.json) in the folder")
     s.add_argument("--period", type=int, help="period lint: fail every convention on the map younger than YEAR "
                    "(first-use tables, book dates; a style may carry a 'period' year)")
-    s.add_argument("--period-kind", choices=("map", "chart", "mappa"), default="map",
-                   help="--period: land map, sea chart or mappa mundi (their rules differ)")
+    s.add_argument("--period-kind", choices=("map", "chart", "mappa", "sky"), default="map",
+                   help="--period: land map, sea chart, mappa mundi or sky chart (their rules differ)")
     s.add_argument("--uses", help="--period: more conventions the map carries, comma separated (e.g. "
                    "mercator,land-contours,dot-map,greenwich)")
     s.add_argument("--chokepoints", action="store_true", help="grid recipes: cells whose loss cuts the map, what each "
@@ -2231,6 +2282,22 @@ def build_parser():
     s.add_argument("--list", action="store_true", help="list the built-in styles")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_names)
+
+    s = sub.add_parser("sky", help="sky chart from a ra,dec,mag,name CSV (degrees): stereographic or sinusoidal, "
+                       "equatorial grid, magnitude legend, the five statements; prints its bars")
+    s.add_argument("csv")
+    s.add_argument("-o", "--out", default="sky.svg", help="SVG out; the descriptor goes beside it as NAME.sky.json")
+    s.add_argument("--projection", choices=("stereographic", "sinusoidal"), default="stereographic")
+    s.add_argument("--orientation", choices=("sky", "globe"), default="sky",
+                   help="sky: as seen from Earth (east left, north up); globe: mirrored, as on a celestial globe")
+    s.add_argument("--epoch", default="J2000", help="epoch of the input coordinates (stated, not converted)")
+    s.add_argument("--mag-limit", type=float, default=6.0, help="faintest magnitude drawn")
+    s.add_argument("--centre", help="chart centre RA,DEC in degrees (default: middle of the stars)")
+    s.add_argument("--title")
+    s.add_argument("--period", type=int, help="period lint the chart against YEAR (kind sky)")
+    s.add_argument("--uses", help="--period: more conventions, e.g. bayer-letters,iau-boundaries,stick-figures")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_sky)
 
     s = sub.add_parser("render", help="recipe folder to a print map (.svg, or .png/.pdf via headless Chrome or Edge)")
     s.add_argument("dir")

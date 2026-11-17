@@ -48,7 +48,7 @@ STYLES = {
     "blueprint": dict(desc="white line work on blueprint blue, monospace", land="flat", landc="#2c66aa", sea=("#1d4e89", "#1d4e89"),
                       shade=0.15, coast="#e8f1fb", river="#cfe2f8", lake="#1d4e89", roads=("#ffffff", "#e0ecfa", "#c0d4ee"),
                       dot="#ffffff", ink="#ffffff", halo="#1d4e89", font=MONO, mono=True, grid="#5d8cc4", paper="#1d4e89"),
-    "star-chart": dict(desc="night palette with a star field (palette only for now)", land="flat", landc="#1b2348", sea=("#0b1026", "#0b1026"),
+    "star-chart": dict(desc="night palette with a decorative star field (real stars: mpw.py sky)", land="flat", landc="#1b2348", sea=("#0b1026", "#0b1026"),
                        shade=0.25, coast="#c9d4ff", river="#8fa2e8", lake="#0b1026", roads=("#c9d4ff", "#a8b6ee", "#8090c8"),
                        dot="#ffe9a8", ink="#e9ecff", halo="#0b1026", font=SANS, stars=True, paper="#0b1026"),
 }
@@ -93,8 +93,32 @@ PERIOD_RULES = [
     ("flow-lines", 1837, "fail", "flow lines (1837)", None),
     ("greenwich", 1884, "warn", "Greenwich as prime meridian (1884)", None),
     ("robinson", 1963, "fail", "Robinson projection (1963)", None),
+    # Sky charts (kind "sky"): Kanas, Star Maps (3rd ed., 2019), cross-checked where noted in RESEARCH.md.
+    # A year that is "first major atlas" rather than first use, or that sources dispute, is warn only.
+    ("magnitude-scale", -150, "fail", "magnitude classes 1-6 (Hipparchus, c. 150 BC at the earliest)", ("sky",)),
+    ("magnitude-scale", 150, "warn", "magnitude classes 1-6 (Ptolemy, c. 150 AD; the Hipparchus date is disputed)", ("sky",)),
+    ("ecliptic-grid", -150, "fail", "ecliptic coordinates (Hipparchus, c. 150 BC at the earliest)", ("sky",)),
+    ("ecliptic-grid", 150, "warn", "ecliptic coordinates (Ptolemy's catalogue, c. 150 AD)", ("sky",)),
+    ("stereographic", 1515, "warn", "stereographic star hemispheres (printed by 1515; older on astrolabes)", ("sky",)),
+    ("bayer-letters", 1603, "fail", "Bayer Greek letters (Uranometria, 1603)", ("sky",)),
+    ("trapezoidal", 1603, "warn", "trapezoidal star-map projection (Bayer, 1603)", ("sky",)),
+    ("equatorial-grid", 1729, "warn", "equatorial grid as the main grid (Flamsteed's atlas, 1729; earlier atlases exist)", ("sky",)),
+    ("sinusoidal", 1729, "warn", "sinusoidal star-map projection (Flamsteed, 1729)", ("sky",)),
+    ("flamsteed-numbers", 1712, "fail", "Flamsteed numbers (an early numbering in Halley's unauthorised 1712 edition)", ("sky",)),
+    ("flamsteed-numbers", 1765, "warn", "Flamsteed numbers as used today (in print by 1765; absent from Flamsteed's own 1725/1729 works)", ("sky",)),
+    ("flamsteed-numbers", 1783, "warn", "Flamsteed numbers (often dated to Lalande's 1783 edition)", ("sky",)),
+    ("constellation-boundaries", 1801, "warn", "drawn constellation boundaries (Bode, 1801)", ("sky",)),
+    ("conic", 1801, "warn", "conic star-map projection (Bode, 1801)", ("sky",)),
+    ("stick-figures", 1831, "warn", "stick-figure constellation lines (1831)", ("sky",)),
+    ("bd-numbers", 1859, "fail", "Bonner Durchmusterung numbers (published 1859-1862)", ("sky",)),
+    ("ngc", 1888, "fail", "NGC numbers (Dreyer, 1888)", ("sky",)),
+    ("ic", 1895, "fail", "IC numbers (1895)", ("sky",)),
+    ("hd-numbers", 1918, "fail", "Henry Draper numbers (1918-1924)", ("sky",)),
+    ("iau-88", 1922, "fail", "the IAU list of 88 constellations (1922)", ("sky",)),
+    ("iau-boundaries", 1930, "fail", "IAU constellation boundaries (Delporte, 1930)", ("sky",)),
+    ("epoch-2000", 1981, "warn", "a chart plotted for epoch 2000.0 (Tirion, 1981)", ("sky",)),
 ]
-PERIOD_KINDS = ("map", "chart", "mappa")
+PERIOD_KINDS = ("map", "chart", "mappa", "sky")
 PERIOD_CONVENTIONS = sorted({r[0] for r in PERIOD_RULES})
 
 
@@ -111,6 +135,14 @@ def map_conventions(style_name=DEFAULT_STYLE, rc=None):
     if name in PERIOD_CONVENTIONS:
         used.add(name)
     return used
+
+
+def style_bars(style_name):
+    """Bars about the style itself: the star-chart dots come from no catalogue."""
+    if style(style_name).get("stars"):
+        return [("style %s: decorative stars" % style_name, True,
+                 "WARN decorative star field, not a sky chart; for real stars use `mpw.py sky`")]
+    return []
 
 
 def period_lint(conventions, year, kind="map"):
