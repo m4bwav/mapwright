@@ -1,0 +1,2 @@
+{"t": "2026-11-16T19:31:42-06:00", "kind": "read", "by": "agent"}
+{"t": "2026-11-16T19:31:45-06:00", "kind": "consumed", "by": "close", "note": "closed every answered question (last: denoise)"}
