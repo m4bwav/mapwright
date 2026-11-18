@@ -44,6 +44,20 @@ STYLES = {
                  S="CV V CV", N="2-4", desc="no codas, small inventory"),
 }
 
+# Site words per style: a settlement on that site ends in the root, and names.json glosses it.
+# Invented roots, each fitted to its style's sounds. A custom pattern has none, so its names get no site word.
+SITES = ("river mouth", "ford", "coast", "hill")
+ROOTS = {
+    "soft": {"river mouth": "sael", "ford": "wen", "coast": "thea", "hill": "lin"},
+    "harsh": {"river mouth": "kruz", "ford": "dak", "coast": "zar", "hill": "gor"},
+    "nordic": {"river mouth": "osk", "ford": "vad", "coast": "stren", "hill": "kold"},
+    "latinate": {"river mouth": "ostra", "ford": "vira", "coast": "lita", "hill": "colla"},
+    "desert": {"river mouth": "shat", "ford": "makh", "coast": "sahr", "hill": "tul"},
+    "isle": {"river mouth": "wana", "ford": "kawa", "coast": "kai", "hill": "pali"},
+}
+GLOSS = {"ocean": "open ocean", "sea": "sea", "land": "landmass", "range": "mountain range", "lake": "lake",
+         "river": "river", "settlement": "settlement, no site word"}
+
 DEFAULT_STYLE = "soft"
 BAD = ("fuck", "shit", "cunt", "nigg", "fag", "rape", "kkk", "nazi", "piss", "slut", "whore", "dick",
        "cock", "anus", "porn")
@@ -163,6 +177,22 @@ class Namer:
             i += 1
         self.used.add((base + str(i)).lower())
         return base.capitalize() + str(i)
+
+
+def site_name(namer, key, site):
+    """A settlement name: a base name plus the style's root for the site. Returns (name, generic, gloss)."""
+    roots = ROOTS.get(namer.lang.get("style"), {})
+    root = roots.get(site) if site else None
+    base = namer.name("settlement", key)
+    if root and h64(namer.lang["seed"], 7177, *key) % 5 >= 3:      # two in five keep a bare name
+        root = None
+    if not root:
+        return base, None, GLOSS["settlement"]
+    full = base + root
+    if full.lower() in namer.used or any(b in full.lower() for b in BAD):
+        return base, None, GLOSS["settlement"]
+    namer.used.add(full.lower())
+    return full, site, "%s + -%s '%s'" % (base, root, site)
 
 
 def sample(n, seed=0, style=None, pattern=None):

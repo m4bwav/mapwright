@@ -60,6 +60,13 @@ Best sources (primary first): <official docs / changelog / official forums of th
 
 Newest first. One entry per material finding; a quiet refresh gets one entry saying so. `Track` is subject, tooling, practice, or testing.
 
+### R-20261117-1 · 2026-11-17 · Books round 20: names, atlases, sci-fi map sets, map politics
+- Summary: nine map books read for methods (Rosenfelder Lexipedia; Fonstad atlases of the Forgotten Realms and Dragonlance; Star Trek Maps; Infinity Suite Maps; Dodecahedron 2014 and 2015; Leuenberger, The Politics of Maps; Akerman, Decolonizing the Map). Built: site-matched name roots with glosses, current arrows, index grid and gazetteer, player dungeon copy and secret-only floor report, sector hazard tiers, OSM boundary notes. Book rules unverified on our tools: three hazard tiers, two in five settlements keeping a bare name, the gazetteer as the index form. Star Trek is a Paramount setting and Dodecahedron 2015 has no open licence, so only methods were taken, in our own words; no setting maps ship. Other proposals stay in the notes files and were not built this round.
+- Track: practice
+- Sources: Ai/technique-harvest/ai-docs/books/<slug>/notes.md for the nine slugs above
+- Magnitude: minor
+- Applied: C-20261117-2
+
 ### R-20261114-1 · 2026-11-14 · Creation pass
 - Summary: the current content rests on the 2026-11-14 research in references/ (formats, projections, sources and terms partly source-checked that day; the rest marked unverified there) and 15 map book notes. Converted to evergreen on 2026-11-15 without a new web pass; the first refresh should re-check the unverified items.
 - Track: subject

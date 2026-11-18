@@ -5,6 +5,7 @@
 ## Render: print maps and pages
 
 - `MPW render DIR -o out.svg|png|pdf [--style S] [--font F.ttf] [--title T]`: the map from the recipe folder's files alone. Same folder and style give byte-identical SVG. PNG and PDF need Chrome or Edge (headless); without one, write .svg. About 0.7 s at 16k cells, 1.1 s at 65k (raster dominates); SVG 110-460 KB by style.
+- Since 0.27.0, world and region only: `--currents` draws the currents climate model 2 applies (cold equatorward arrows off west coasts and warm poleward ones off east coasts at 15-35 degrees, warm poleward off west coasts beyond 30) with legend rows; every arrow sits at sea, and a model 1 recipe draws none. `--grid N` puts a letter-number index grid on the frame (A1 top left, N columns, square cells); `--gazetteer FILE.csv` writes name, kind, grid ref for every named point or river midpoint on the same grid (default 8 columns).
 - `MPW label DIR [--json]`: placed and dropped labels, and the label bars. Labels never overlap and never touch the edge; a label with no free spot is dropped and listed, never squeezed in.
 - `MPW legend DIR [--style S] [-o legend.svg]`: only the symbols on this map (biomes or height bands present, roads and settlement ranks present).
 - `MPW style --list`, `MPW style NAME`: topographic, atlas, satellite, ink-and-parchment, blueprint, star-chart (palette and a decorative star field; `check` warns, use `sky` for real stars).

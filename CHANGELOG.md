@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261117-2 · 2026-11-17 · 0.27.0: site-word names, current arrows, index grid, player dungeon, sector hazards
+- because: books round 20 (Rosenfelder Lexipedia, Fonstad Forgotten Realms and Dragonlance atlases, Star Trek Maps, Infinity Suite Maps, Dodecahedron 2014 and 2015, Leuenberger The Politics of Maps, Akerman Decolonizing the Map; notes in Ai/technique-harvest/ai-docs/books); T-20261117-2. Methods only, own words. Hazard tiers and the gazetteer are book rules, unverified against play; currents follow the climate model already checked by world bar 16.
+- files: scripts/mpw.py, mpw_names.py, mpw_human.py, mpw_gen.py, mpw_render.py, mpw_places.py, mpw_export.py, mpw_space.py, tests/test_books_r20.py (new), tests/test_mpw.py, references/cli-generate.md, cli-render.md, cli-export.md, cli-read-write.md, README.md, RESEARCH.md
+- Settlement names gain per-style site roots (river mouth, ford, coast, hill) with a gloss on every names.json entry; world bar 15 fails on a missing gloss or a mismatched site word. `render --currents`, `--grid N`, `--gazetteer FILE.csv`. Dungeon check reports secret-only floor; `export --to player` writes a handout copy without it. `gen sector --hazards N` (warning, danger, prohibited; routes avoid the last two while the graph stays connected). `inspect` reports OSM boundary tags (disputed, name languages, legend and credit lines). New world and region recipes get new names; sectors without `--hazards` are byte-identical. Tests: 318 pass, 2 skip.
+
 ### C-20261117-1 · 2026-11-17 · 0.26.0: measure compact, WFC failure notes, tactile selection rules
 - because: books Making Democracy Count (Volic), Tactile Mapping (van Altena and Wabinski), Procedural Content Generation via Machine Learning (notes in Ai/technique-harvest/ai-docs/books); T-20261117-1. Compactness formulas are standard; the tactile and WFC lines are book rules, unverified on our tools.
 - files: scripts/mpw.py, tests/test_mpw.py, references/cli-read-write.md, game-map-generation.md, cartography-design.md, games-film-print.md, ai-docs/notes/book-build-backlog.md, skills/mapwright/SKILL.md, README.md

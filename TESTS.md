@@ -12,6 +12,11 @@ Entry shape: `### T-20261116-14 · 2026-11-16 · pytest (tests/) + port-share sw
 
 ## Runs
 
+### T-20261117-2 · 2026-11-17 · unittest (python -m unittest discover -s tests) after books round 20 · Windows · 318 passed, 2 skipped
+- Before: 307 passed, 2 skipped. New tests/test_books_r20.py (11): gloss bar passes, fails on a dropped gloss and on a flipped site word; custom pattern gets no root; current arrows all at sea, none for model 1; grid refs and gazetteer CSV; player copy has no secret floor, marks or failing bars; hazard tiers, avoidance and default byte-identity; OSM boundary notes.
+- Real material: seed 7 worlds in six styles: 263 of 486 settlements carry a site word (coast 143, river mouth 78, ford 42, hill 0), 0 mismatched. Seed 7 world: 15 warm and 13 cold arrows, all at sea by eye. Cyclic dungeons seeds 1-8 with 4 branches: secret-only floor on 8 of 8 (15 to 76 squares). Sectors seeds 1-10 with 6 zones: 22 routes dropped, 21 kept tagged, graph connected on all.
+- led to: C-20261117-2
+
 ### T-20261117-1 · 2026-11-17 · unittest (python -m unittest discover -s tests) after measure compact · Windows · 307 passed, 2 skipped
 - Before: 303 passed, 2 skipped. New TestCompactness: square pi/4 and hull 1.0; 720-gon Polsby-Popper > 0.9999; two 10x10 squares 10 apart hull 2/3, 2 groups, touching squares 1 group; 0.01 deg lon/lat cell within 0.01 of pi/4 and area within 1e-4 of the ellipsoid area.
 - Real material: tests/fixtures/square.geojson (cell with a quarter hole) gives Polsby-Popper 0.2618, hull ratio 0.75, as expected by hand.

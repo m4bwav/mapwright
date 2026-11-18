@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.26.0"
+VERSION = "0.27.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -703,6 +703,30 @@ def _summary_fc(collection, fmt, crs):
             "extent": extent(collection["features"]), "crs": crs, "properties": keys[:30]}
 
 
+def boundary_notes(features):
+    """OpenStreetMap boundary tags in a GeoJSON (tags flat in properties, or under properties.tags as some
+    Overpass converters write them): how many boundaries, which are disputed, which name languages exist, and
+    the legend and credit lines a map drawn from them should carry. None when no feature has boundary tags."""
+    n, disputed, langs = 0, [], set()
+    for f in features:
+        pr = f.get("properties") or {}
+        t = pr["tags"] if isinstance(pr.get("tags"), dict) else pr
+        if not (t.get("boundary") or t.get("admin_level")):
+            continue
+        n += 1
+        langs |= {k[5:] for k in t if k.startswith("name:") and 2 <= len(k[5:]) <= 3}
+        if t.get("boundary") == "disputed" or t.get("disputed") == "yes" or t.get("disputed_by"):
+            disputed.append(t.get("name") or t.get("name:en") or str(pr.get("id", f.get("id", "?"))))
+    if not n:
+        return None
+    legend = ["boundary"] + (["disputed boundary (dashed)"] if disputed else [])
+    return {"count": n, "disputed": len(disputed), "disputed_names": disputed[:10],
+            "name_languages": sorted(langs),
+            "legend": legend,
+            "credit": "boundaries: OpenStreetMap contributors, ODbL; names: the name tag (local language) unless a "
+                      "name:xx tag is chosen, so say which"}
+
+
 def inspect_file(path):
     low = path.lower()
     if not os.path.exists(path):
@@ -713,7 +737,12 @@ def inspect_file(path):
         crs = "WGS84 lon/lat (RFC 7946)"
         if "crs" in d:
             crs = "stated (pre-RFC 7946 crs member): " + json.dumps(d["crs"])[:100]
-        return _summary_fc(read_geojson(path), "GeoJSON", crs)
+        fc = read_geojson(path)
+        s = _summary_fc(fc, "GeoJSON", crs)
+        b = boundary_notes(fc["features"])
+        if b:
+            s["boundaries"] = b
+        return s
     if low.endswith(".gpx"):
         s = _summary_fc(read_gpx(path), "GPX 1.1", "WGS84 (by schema)")
         pts = sum(1 for f in read_gpx(path)["features"] for _ in iter_coords(f["geometry"]))
@@ -1402,7 +1431,7 @@ def cmd_gen_space(a):
     try:
         if a.what == "sector":
             r = S.gen_sector(a.seed, a.out, a.size, a.density, a.jump, a.real, a.radius_pc, VERSION, a.name_style,
-                             a.systems)
+                             a.systems, a.hazards or 0)
         elif a.what == "system":
             comp = a.companion
             if comp and comp != "random":
@@ -1828,8 +1857,15 @@ def cmd_render(a):
         print("wrote %s" % a.out)
         return
     try:
-        svg, info = r.render_svg(a.dir, a.style, a.font, a.title)
+        svg, info = r.render_svg(a.dir, a.style, a.font, a.title, a.currents, a.grid or 0)
         r.write_out(svg, a.out)
+        if a.gazetteer:
+            rows = r.gazetteer(a.dir, a.grid or 8)
+            with open(a.gazetteer, "w", encoding="utf-8", newline="\n") as f:
+                f.write("name,kind,ref\n")
+                for nm, kd, ref in rows:
+                    f.write('"%s",%s,%s\n' % (nm.replace('"', '""'), kd, ref))
+            info["gazetteer"] = len(rows)
     except (ValueError, RuntimeError, OSError) as e:
         die(str(e))
     info.pop("labels")
@@ -2224,6 +2260,8 @@ def build_parser():
     sc.add_argument("--real", action="store_true", help="bundled near stars (scripts/data/near-stars.csv) by parallax")
     sc.add_argument("--radius-pc", type=float, default=6.0, help="with --real: stars within this distance")
     sc.add_argument("--systems", action="store_true", help="also write systems/<hex>/ per world from per-place seeds")
+    sc.add_argument("--hazards", type=int, help="1-20 hazard zones on empty hexes: prohibited centre, danger ring, "
+                                                "warning ring; routes avoid danger and prohibited where they can")
     sy = gs.add_parser("system", help="star, planets on stable orbits, moons; schematic and to-scale diagrams")
     sy.add_argument("--seed", type=int, help="system seed; or use --sector-seed with --hex")
     sy.add_argument("--sector-seed", type=int, help="with --hex: the system at that hex of this sector's seed")
@@ -2264,7 +2302,9 @@ def build_parser():
     s.add_argument("-o", "--out", required=True, help="output file; the extension picks the target when --to is absent "
                                                       "(.dd2vtt .tmj .raw .r16 .obj .pdf .tab, .png for a planet or hex map)")
     s.add_argument("--to", choices=("uvtt", "png", "sphere", "t5", "unity", "unreal", "godot", "roblox", "tiled",
-                                    "mesh", "print", "nav"))
+                                    "mesh", "print", "nav", "player"),
+                   help="player: a dungeon copy for players (-o is a folder): secret doors walled, the floor behind "
+                        "them filled, secret and treasure marks dropped")
     s.add_argument("--nav", action="store_true", help="same as --to nav: walkable squares merged into rectangles "
                                                       "with portals, JSON for a game engine (dungeon, square battle)")
     s.add_argument("--agent", type=int, help="nav: body width in squares (default 1); walkable squares are eroded "
@@ -2405,6 +2445,11 @@ def build_parser():
     s.add_argument("-o", "--out", required=True)
     s.add_argument("--title")
     s.add_argument("--view", choices=("schematic", "scale"), help="system recipes: schematic (default) or to scale")
+    s.add_argument("--currents", action="store_true", help="world or region: draw the ocean currents climate model 2 "
+                                                           "applies (warm red, cold blue arrows)")
+    s.add_argument("--grid", type=int, help="world or region: letter-number index grid this many columns across")
+    s.add_argument("--gazetteer", help="world or region: also write a CSV index (name, kind, grid ref; "
+                                       "grid of --grid columns, default 8)")
     s.set_defaults(fn=cmd_render)
     rn = s
 

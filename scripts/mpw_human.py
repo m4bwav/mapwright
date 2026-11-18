@@ -475,6 +475,21 @@ def river_stems(m, nb):
     return stem, mouths
 
 
+def site_of(m, nb, c):
+    """The site word a settlement cell earns: river mouth, ford, coast, hill (300 m up and above two thirds of
+    its neighbours) or None; the first match wins."""
+    river, rcv, ocean, h = m["river"], m["rcv"], m["ocean"], m["h"]
+    if river[c] and rcv[c] >= 0 and ocean[rcv[c]]:
+        return "river mouth"
+    if river[c]:
+        return "ford"
+    if any(ocean[q] for q in nb[c]):
+        return "coast"
+    if nb[c] and h[c] * ELEV_LAND >= 300 and 3 * sum(h[c] > h[q] for q in nb[c]) >= 2 * len(nb[c]):
+        return "hill"
+    return None
+
+
 def name_features(m, hum, lang, parent=None):
     """Names for settlements, rivers, lakes, seas, ranges and landmasses.
 
@@ -526,21 +541,27 @@ def name_features(m, hum, lang, parent=None):
             nm, kd, pid = e["name"], e["kind"], e["id"]
         else:
             nm, kd, pid = namer.name(kind, qkey(X[anchor], Y[anchor])), kind, None
-        ent = dict(kind=kd, id=fid, name=nm)
+        ent = dict(kind=kd, id=fid, name=nm, gloss=e.get("gloss", mpw_names.GLOSS.get(kd, kd)) if pid is not None
+                   else mpw_names.GLOSS.get(kd, kd))
         if pid is not None:
             ent["parent_id"] = pid
         entries.append(ent)
         return ent
     feats = []
     # settlements (inherited ones keep the parent name)
+    pset = {e["id"]: e for e in parent["names"] if e["kind"] == "settlement"} if parent else {}
     for s in hum["sets"]:
         if s.get("name"):
             namer.used.add(s["name"].lower())
             nm = s["name"]
+            pe = pset.get(s.get("parent_id"), {})
+            gen, gloss = pe.get("generic"), pe.get("gloss", mpw_names.GLOSS["settlement"])
         else:
-            nm = namer.name("settlement", qkey(X[s["cell"]], Y[s["cell"]]))
+            nm, gen, gloss = mpw_names.site_name(namer, qkey(X[s["cell"]], Y[s["cell"]]), site_of(m, nb, s["cell"]))
         s["name"] = nm
-        ent = dict(kind="settlement", id=s["id"], name=nm)
+        ent = dict(kind="settlement", id=s["id"], name=nm, gloss=gloss)
+        if gen:
+            ent["generic"] = gen
         if "parent_id" in s:
             ent["parent_id"] = s["parent_id"]
         entries.append(ent)
