@@ -12,6 +12,11 @@ Entry shape: `### T-20261116-14 · 2026-11-16 · pytest (tests/) + port-share sw
 
 ## Runs
 
+### T-20261117-1 · 2026-11-17 · unittest (python -m unittest discover -s tests) after measure compact · Windows · 307 passed, 2 skipped
+- Before: 303 passed, 2 skipped. New TestCompactness: square pi/4 and hull 1.0; 720-gon Polsby-Popper > 0.9999; two 10x10 squares 10 apart hull 2/3, 2 groups, touching squares 1 group; 0.01 deg lon/lat cell within 0.01 of pi/4 and area within 1e-4 of the ellipsoid area.
+- Real material: tests/fixtures/square.geojson (cell with a quarter hole) gives Polsby-Popper 0.2618, hull ratio 0.75, as expected by hand.
+- led to: C-20261117-1
+
 ### T-20261116-27 · 2026-11-16 · pytest (python -m pytest -q tests) after climate model 2 · Windows · 284 passed, 2 skipped in 89 s
 - Before the track: 272 passed, 2 skipped. New tests/test_climate.py (12 cases): currents, continentality, snowline, upwind edge, Hadley edge, five Köppen stations, every land cell one class, model 1 regenerates byte-identical. Bar counts in test_mpw.py rose by the four new climate bars (17 to 21, 14 to 18).
 - Köppen stations (rounded normals): Singapore Af, Cairo BWh, London Cfb, Moscow Dfb, Utqiagvik ET, all correct. Upwind: land edge rain under 0.4 x sea edge. `--hadley 35`: 32° has easterlies, dry dip within 2° of 31.5°.

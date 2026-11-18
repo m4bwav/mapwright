@@ -3,7 +3,7 @@ name: mapwright
 description: "Cartography for real, fantasy and sci-fi worlds: read, write, find and generate maps of places. Reads and converts GeoJSON, GPX, KML and shapefiles, finds OpenStreetMap or Overpass data with its licence, measures distance, area and scale, grows seeded worlds, regions, cities, dungeons, battle maps, star sectors, systems, planets and ship deck plans. Exports engine heightmaps (Unity, Unreal, Godot, Roblox), Tiled tilemaps, Universal VTT, meshes and PDFs. Use for any map of a place or world: 'what is in this GPX', 'KML to GeoJSON', 'find OpenStreetMap data for this area', 'make a fantasy continent map', 'generate a dungeon for my game', 'star sector or deck plan for my sci-fi setting', 'shortest path or chokepoints on my game map', 'export it as a Unity heightmap, Tiled map or dd2vtt'. Also 'refresh mapwright'. Not for code or repository maps (evergreen-map), data charts on a map such as choropleths (chartwright), 3D models of real places (polywright-capture) or pixel-art tiles (pixelwright)."
 license: MIT
 metadata:
-  version: 0.10.2
+  version: 0.26.0
 ---
 
 # mapwright
@@ -38,7 +38,7 @@ Read [references/cli-read-write.md](../../references/cli-read-write.md) before r
 ## Write: convert, measure, project
 
 - `MPW convert <in> <out>` between GeoJSON, GPX and KML (reads shapefiles and KMZ).
-- `MPW measure distance LAT1 LON1 LAT2 LON2` (latitude first), `MPW measure area <file>`, `MPW measure scale 1:50000 --map 2cm`.
+- `MPW measure distance LAT1 LON1 LAT2 LON2` (latitude first), `MPW measure area <file>`, `MPW measure compact <file>`, `MPW measure scale 1:50000 --map 2cm`.
 - `MPW project <name> LON LAT [--inverse]`, `MPW explain <term>`.
 
 Read [references/cli-read-write.md](../../references/cli-read-write.md) for options and per-command traps (GPX drops polygons, ring order, ellipsoids, projection list). Picking a projection: [references/projections.md](../../references/projections.md). Drawn-map design: [references/cartography-design.md](../../references/cartography-design.md) and [references/relief-and-labels.md](../../references/relief-and-labels.md).

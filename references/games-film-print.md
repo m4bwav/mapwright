@@ -299,6 +299,9 @@ Source: van Altena and Wabinski (eds.), Tactile Mapping (Esri Press, 2025). The 
 - Spacing: two raised symbols need a gap of about 3 mm (1/8 inch) to be felt as two; keep features 1 to 3 mm from other elements and never overlap symbols (ch. 6 and table 7-2) (book value, not cross-checked).
 - Swell (microcapsule) paper raises only what is printed black, at one height: put symbols, textures and braille in the black layer and use other colours only as contrast for low-vision readers (ch. 10).
 - 3D print allows several heights: smaller symbols stand higher, braille keeps its own standard height (ch. 5, 10).
+- Selection checks for a tactile version (design rules; mapwright has no `check --tactile` yet, backlog R3-2): density must not collapse (a class that was dense stays visibly denser than its neighbours after selection), connectivity is kept (every network link that joined two kept features survives), and textured areas stay under a cap on the share of the map they cover (cap ours, to set when the check is built) (ch. 6; book rules, unverified).
+- Before a tactile render, ask the user for obstacles and non-visual landmarks the reader uses (steps, kerbs, poles, a fountain heard from afar, a change of floor surface); they rarely appear in source data (ch. 5).
+- Offer a hybrid print for readers with some sight: the raised layer plus high-contrast colour and large print on the same sheet (ch. 5, 10).
 - Past one print bed, split into tiles joined by dovetails rather than cramming one bed; the book's East Africa case grew from one 20 x 20 cm tile to four tiles for 36 x 36 cm (ch. 10 case study). Hand the mesh to polywright-print as in section 7.
 
 ## 8. Open items

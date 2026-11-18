@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.25.0"
+VERSION = "0.26.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -928,6 +928,87 @@ def polygon_area(geom, ell="WGS84"):
     return total
 
 
+def _local_plane(rings, ell="WGS84"):
+    """Lon/lat rings to metres on a plane tangent at their mean point (radii of curvature there)."""
+    a, f = ELLIPSOIDS[ell]
+    e2 = f * (2 - f)
+    pts = [p for r in rings for p in r]
+    lon0 = sum(p[0] for p in pts) / len(pts)
+    lat0 = math.radians(sum(p[1] for p in pts) / len(pts))
+    w = math.sqrt(1 - e2 * math.sin(lat0) ** 2)
+    n, m = a / w, a * (1 - e2) / w ** 3
+    kx, ky = n * math.cos(lat0) * math.pi / 180, m * math.pi / 180
+    return [[((p[0] - lon0) * kx, p[1] * ky) for p in r] for r in rings]
+
+
+def _convex_hull(pts):
+    pts = sorted(set((p[0], p[1]) for p in pts))
+    if len(pts) < 3:
+        return pts
+
+    def half(seq):
+        h = []
+        for q in seq:
+            while len(h) >= 2 and ((h[-1][0] - h[-2][0]) * (q[1] - h[-2][1]) - (h[-1][1] - h[-2][1]) * (q[0] - h[-2][0])) <= 0:
+                h.pop()
+            h.append(q)
+        return h[:-1]
+    return half(pts) + half(pts[::-1])
+
+
+def _parts_contiguous(polys):
+    """Count connected groups of polygon parts; parts sharing a vertex are joined."""
+    parent = list(range(len(polys)))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+    seen = {}
+    for i, poly in enumerate(polys):
+        for p in poly[0]:
+            k = (round(p[0], 9), round(p[1], 9))
+            if k in seen:
+                parent[find(i)] = find(seen[k])
+            else:
+                seen[k] = i
+    return len(set(find(i) for i in range(len(polys))))
+
+
+def compactness(geom, ell="WGS84", planar=False):
+    """Polsby-Popper (4 pi A / P^2), convex-hull ratio (A / hull area) and part count of a polygon.
+
+    Lon/lat goes to a local tangent plane first, so use it for districts up to a few
+    hundred km; pass planar=True for coordinates already in a projected CRS (metres).
+    """
+    t = geom["type"]
+    polys = [geom["coordinates"]] if t == "Polygon" else geom["coordinates"] if t == "MultiPolygon" else []
+    if not polys:
+        return None
+    rings = [r for poly in polys for r in poly]
+    plane = rings if planar else _local_plane(rings, ell)
+    it = iter(plane)
+    area = perim = 0.0
+    outer = []
+    for poly in polys:
+        for j, _ in enumerate(poly):
+            r = [tuple(p[:2]) for p in next(it)]
+            if r[0] != r[-1]:
+                r.append(r[0])
+            ar = abs(_ring_area(r))
+            area += ar if j == 0 else -ar
+            perim += sum(math.hypot(r[i + 1][0] - r[i][0], r[i + 1][1] - r[i][1]) for i in range(len(r) - 1))
+            if j == 0:
+                outer.extend(r)
+    hull = _convex_hull(outer)
+    hull_area = abs(_ring_area(hull + hull[:1])) if len(hull) >= 3 else 0.0
+    return {"area": area, "perimeter": perim,
+            "polsby_popper": 4 * math.pi * area / perim ** 2 if perim else 0.0,
+            "hull_ratio": area / hull_area if hull_area else 0.0,
+            "parts": len(polys), "contiguous_groups": _parts_contiguous(polys)}
+
+
 def parse_scale(s):
     s = s.replace(",", "").replace(" ", "")
     if ":" in s:
@@ -962,6 +1043,23 @@ def cmd_measure(a):
         r = {"area_m2": total, "area_km2": total / 1e6,
              "method": "ellipsoid (%s) via authalic latitude; edges straight in cylindrical equal-area" % a.ellipsoid}
         print(json.dumps(r, indent=2) if a.json else "area  %.1f m2 (%.6f km2)\nmethod %s" % (total, total / 1e6, r["method"]))
+    elif a.what == "compact":
+        col = READERS[os.path.splitext(a.file)[1].lower()](a.file)
+        out = []
+        for i, f in enumerate(col["features"]):
+            r = f.get("geometry") and compactness(f["geometry"], a.ellipsoid, a.planar)
+            if r:
+                props = f.get("properties") or {}
+                r["feature"] = props.get("name", props.get("id", i))
+                out.append(r)
+        if a.json:
+            print(json.dumps(out, indent=2))
+        else:
+            for r in out:
+                print("%s  polsby-popper %.4f  hull ratio %.4f  parts %d  contiguous groups %d"
+                      % (r["feature"], r["polsby_popper"], r["hull_ratio"], r["parts"], r["contiguous_groups"]))
+            print("method %s; 1.0 is a circle (Polsby-Popper) or a convex shape (hull ratio)"
+                  % ("planar coordinates as given" if a.planar else "local tangent plane on %s" % a.ellipsoid))
     elif a.what == "scale":
         n = parse_scale(a.scale)
         if a.map:
@@ -1995,11 +2093,14 @@ def build_parser():
         d.add_argument(n, type=float)
     ar = ms.add_parser("area", help="area of the polygons in a file")
     ar.add_argument("file")
+    cp = ms.add_parser("compact", help="shape compactness per polygon: Polsby-Popper, convex-hull ratio, parts")
+    cp.add_argument("file")
+    cp.add_argument("--planar", action="store_true", help="coordinates are already projected (metres), not lon/lat")
     sc = ms.add_parser("scale", help="1:N conversions")
     sc.add_argument("scale", help="e.g. 1:50000")
     sc.add_argument("--map", help="length on the map, e.g. 2cm")
     sc.add_argument("--ground", help="length on the ground, e.g. 3km")
-    for x in (d, ar, sc):
+    for x in (d, ar, cp, sc):
         x.add_argument("--ellipsoid", default="WGS84", choices=sorted(ELLIPSOIDS))
         x.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_measure)

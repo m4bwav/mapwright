@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261117-1 · 2026-11-17 · 0.26.0: measure compact, WFC failure notes, tactile selection rules
+- because: books Making Democracy Count (Volic), Tactile Mapping (van Altena and Wabinski), Procedural Content Generation via Machine Learning (notes in Ai/technique-harvest/ai-docs/books); T-20261117-1. Compactness formulas are standard; the tactile and WFC lines are book rules, unverified on our tools.
+- files: scripts/mpw.py, tests/test_mpw.py, references/cli-read-write.md, game-map-generation.md, cartography-design.md, games-film-print.md, ai-docs/notes/book-build-backlog.md, skills/mapwright/SKILL.md, README.md
+- New `measure compact FILE [--planar]`: Polsby-Popper, convex-hull ratio, parts and contiguous groups per polygon (Reock skipped). WFC section gains gap growth, restart count, negative examples and pre-fill. Tactile: density, connectivity and texture-area checks as design rules (R3-2), ask for obstacles and non-visual landmarks, hybrid print, clustering over thresholds. Tests: 307 pass, 2 skip.
+
 ### C-20261116-18 · 2026-11-16 · 0.25.0: four books built in (climate, sky, star systems)
 - because: books Geosystems 10th ed., The Planet Construction Kit, Kanas Star Maps, Traveller World Builder's Handbook (notes in Ai/technique-harvest/ai-docs/books); PRs #70-#72; T-20261116-25..33, L-062..L-076
 - files: scripts/mpw_gen.py, scripts/mpw_sky.py (new), scripts/mpw_render.py, scripts/mpw_space.py, scripts/mpw.py, tests, references/realistic-land.md, fantasy-maps.md, scifi-maps.md, cli-*.md, skills/mapwright/SKILL.md, README.md
