@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261118-1 · 2026-11-18 · 0.27.1: sky-from-a-place rules in scifi-maps
+- because: books round 21 (Hockey, How We See the Sky, 2011, ch. 2-4 and 8; notes in Ai/technique-harvest/ai-docs/books); the circumpolar inequalities were checked against culmination altitudes on six latitude and declination cases
+- files: references/scifi-maps.md (section 2), scripts/mpw.py (VERSION), plugin.json, .claude-plugin/plugin.json
+- Adds pole altitude equals latitude, the circumpolar and never-rises tests, precession moving the pole star, and where a moon of each phase can stand relative to the sun.
+
 ### C-20261117-2 · 2026-11-17 · 0.27.0: site-word names, current arrows, index grid, player dungeon, sector hazards
 - because: books round 20 (Rosenfelder Lexipedia, Fonstad Forgotten Realms and Dragonlance atlases, Star Trek Maps, Infinity Suite Maps, Dodecahedron 2014 and 2015, Leuenberger The Politics of Maps, Akerman Decolonizing the Map; notes in Ai/technique-harvest/ai-docs/books); T-20261117-2. Methods only, own words. Hazard tiers and the gazetteer are book rules, unverified against play; currents follow the climate model already checked by world bar 16.
 - files: scripts/mpw.py, mpw_names.py, mpw_human.py, mpw_gen.py, mpw_render.py, mpw_places.py, mpw_export.py, mpw_space.py, tests/test_books_r20.py (new), tests/test_mpw.py, references/cli-generate.md, cli-render.md, cli-export.md, cli-read-write.md, README.md, RESEARCH.md
