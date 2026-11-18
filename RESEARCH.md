@@ -60,6 +60,10 @@ Best sources (primary first): <official docs / changelog / official forums of th
 
 Newest first. One entry per material finding; a quiet refresh gets one entry saying so. `Track` is subject, tooling, practice, or testing.
 
+### R-20261118-1 · 2026-11-18 · Historic map drape (georeferencing note)
+- Summary: when a scanned map and a DEM disagree, warp the DEM to the scan with a thin-plate spline over many control points, dropping outliers; a power curve on elevation before displacement keeps low ground visible beside high peaks. Build a recipe when a request comes. Idea only, no code.
+- Sources: D:/m4bwa/Claude/Projects/Ai/technique-harvest/ai-docs/posts/1xrrijk.md (technique-harvest batch E)
+
 ### R-20261117-1 · 2026-11-17 · Books round 20: names, atlases, sci-fi map sets, map politics
 - Summary: nine map books read for methods (Rosenfelder Lexipedia; Fonstad atlases of the Forgotten Realms and Dragonlance; Star Trek Maps; Infinity Suite Maps; Dodecahedron 2014 and 2015; Leuenberger, The Politics of Maps; Akerman, Decolonizing the Map). Built: site-matched name roots with glosses, current arrows, index grid and gazetteer, player dungeon copy and secret-only floor report, sector hazard tiers, OSM boundary notes. Book rules unverified on our tools: three hazard tiers, two in five settlements keeping a bare name, the gazetteer as the index form. Star Trek is a Paramount setting and Dodecahedron 2015 has no open licence, so only methods were taken, in our own words; no setting maps ship. Other proposals stay in the notes files and were not built this round.
 - Track: practice
