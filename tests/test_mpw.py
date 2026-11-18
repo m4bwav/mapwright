@@ -234,6 +234,42 @@ class TestGeodesy(unittest.TestCase):
         self.assertIn("6 cm", run_cli("measure", "scale", "1:50,000", "--ground", "3km"))
 
 
+class TestCompactness(unittest.TestCase):
+    SQ = {"type": "Polygon", "coordinates": [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]]}
+
+    def test_square(self):
+        r = mpw.compactness(self.SQ, planar=True)
+        self.assertAlmostEqual(r["polsby_popper"], math.pi / 4, places=12)
+        self.assertAlmostEqual(r["hull_ratio"], 1.0, places=12)
+        self.assertEqual((r["parts"], r["contiguous_groups"]), (1, 1))
+
+    def test_circle_approximation(self):
+        n = 720
+        ring = [[100 * math.cos(2 * math.pi * k / n), 100 * math.sin(2 * math.pi * k / n)] for k in range(n)]
+        r = mpw.compactness({"type": "Polygon", "coordinates": [ring + ring[:1]]}, planar=True)
+        self.assertGreater(r["polsby_popper"], 0.9999)
+        self.assertAlmostEqual(r["hull_ratio"], 1.0, places=9)
+
+    def test_two_parts(self):
+        far = [[[20, 0], [30, 0], [30, 10], [20, 10], [20, 0]]]
+        g = {"type": "MultiPolygon", "coordinates": [self.SQ["coordinates"], far]}
+        r = mpw.compactness(g, planar=True)
+        self.assertEqual((r["parts"], r["contiguous_groups"]), (2, 2))
+        self.assertAlmostEqual(r["hull_ratio"], 200 / 300, places=12)
+        self.assertAlmostEqual(r["polsby_popper"], 4 * math.pi * 200 / 80 ** 2, places=12)
+        touch = [[[10, 0], [20, 0], [20, 10], [10, 10], [10, 0]]]
+        r = mpw.compactness({"type": "MultiPolygon", "coordinates": [self.SQ["coordinates"], touch]}, planar=True)
+        self.assertEqual(r["contiguous_groups"], 1)
+
+    def test_lonlat_square_and_cli(self):
+        g = {"type": "Polygon", "coordinates": [[[0, 0], [0.01, 0], [0.01, 0.01], [0, 0.01], [0, 0]]]}
+        r = mpw.compactness(g)
+        self.assertLess(abs(r["polsby_popper"] - math.pi / 4), 0.01)  # 1.1 km cell is near square on the ground
+        self.assertLess(abs(r["area"] / mpw.ellipsoid_area(g["coordinates"][0]) - 1), 1e-4)
+        out = run_cli("measure", "compact", os.path.join(FIX, "square.geojson"))
+        self.assertIn("polsby-popper", out)
+
+
 GRID = [(lon, lat) for lon in range(-170, 180, 10) for lat in range(-80, 90, 10)]
 
 
