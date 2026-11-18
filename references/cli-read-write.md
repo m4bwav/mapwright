@@ -6,6 +6,8 @@
 
 `MPW inspect <file> [--json]` reads GeoJSON, GPX, KML/KMZ, shapefiles (.shp with .dbf and .prj), dBASE, PNG (16-bit heightmaps and .pgw world files), GeoPackage and MBTiles. It prints feature counts by geometry type, the extent, property names and the CRS when the file states one. Report "CRS not stated" plainly; never guess it. A world file holds the centre of the top-left pixel, so the extent is half a pixel wider than the naive sum.
 
+Since 0.27.0 `inspect` on a GeoJSON with OpenStreetMap boundary tags (flat or under `tags`) adds `boundaries`: count, disputed ones (`boundary=disputed`, `disputed=yes`, `disputed_by`), the `name:xx` languages present, legend rows and a credit line naming the source and which name tag was used. `find` lists sources only and does not read tags, and mapwright does not draw OSM boundaries itself, so carry these into whatever map draws them.
+
 Reading a map picture (a scan, a screenshot, a fantasy map image): [references/reading-map-pictures.md](reading-map-pictures.md). The script measures; your vision finds; neither invents.
 
 - `MPW read <image>`: size, colour class shares (water, vegetation, relief, light, ink, grey; plain RGB rules listed in the output), dominant colours, and text by tesseract when it is on PATH. Without tesseract every text field (names, legend, printed scale) is `"not sure"` with the reason. PNG needs nothing; other formats need Pillow.

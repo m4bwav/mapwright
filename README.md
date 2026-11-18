@@ -36,6 +36,7 @@ mapwright is a skill for AI coding agents plus one small script, `mpw.py`, that 
 - **Region chunks** (0.18.0): `gen region --chunk COL,ROW [--chunk-km 250]` makes one chunk of the parent world with its own stable seed; reruns are byte-identical.
 - **Agent-size navigation** (0.19.0): `export --nav --agent N` erodes the walkable squares for a body N squares wide before merging rectangles and portals.
 - **Shape compactness** (0.26.0): `measure compact` gives Polsby-Popper, convex-hull ratio and contiguity per polygon, for districts, regions and generated provinces.
+- **Map furniture and play aids** (0.27.0): settlement names with site words and a gloss each, `render --currents`, `--grid` and `--gazetteer`, a dungeon player copy (`export --to player`), sector hazard zones (`gen sector --hazards N`), and OSM boundary notes in `inspect`.
 - **Book rules** (0.25.0): `sky` star charts from RA/Dec with sky period rules; world climate model 2 (ocean currents, mild west coasts, continentality, snowline by latitude, Koppen); orbits, temperatures, eccentricity and companion stars in `gen system`.
 - **ControlNet style hold** (0.24.0): `aistyle --control canny` draws a hint from the map geometry so a stronger style (denoise up to 0.75) keeps the coast inside the bar.
 - **Wide block halls** (0.23.0): `--corridor N` also works with `--method blocks`; halls and hub squares widen, agent 2 at corridor 2 reaches every room on 97 of 100 seeds.

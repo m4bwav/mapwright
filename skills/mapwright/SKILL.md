@@ -3,7 +3,7 @@ name: mapwright
 description: "Cartography for real, fantasy and sci-fi worlds: read, write, find and generate maps of places. Reads and converts GeoJSON, GPX, KML and shapefiles, finds OpenStreetMap or Overpass data with its licence, measures distance, area and scale, grows seeded worlds, regions, cities, dungeons, battle maps, star sectors, systems, planets and ship deck plans. Exports engine heightmaps (Unity, Unreal, Godot, Roblox), Tiled tilemaps, Universal VTT, meshes and PDFs. Use for any map of a place or world: 'what is in this GPX', 'KML to GeoJSON', 'find OpenStreetMap data for this area', 'make a fantasy continent map', 'generate a dungeon for my game', 'star sector or deck plan for my sci-fi setting', 'shortest path or chokepoints on my game map', 'export it as a Unity heightmap, Tiled map or dd2vtt'. Also 'refresh mapwright'. Not for code or repository maps (evergreen-map), data charts on a map such as choropleths (chartwright), 3D models of real places (polywright-capture) or pixel-art tiles (pixelwright)."
 license: MIT
 metadata:
-  version: 0.26.0
+  version: 0.27.0
 ---
 
 # mapwright

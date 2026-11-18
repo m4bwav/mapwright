@@ -2046,6 +2046,75 @@ def completion_path(gj):
     return -1 if d < 0 else steps + d
 
 
+def secret_only(gj):
+    """Passable squares a player reaches only through a secret door: flood from the entrance with every
+    secret door's gap closed. Returns (set of hidden squares, set of secret gap squares)."""
+    g, w, h = gj["cells"], gj["w"], gj["h"]
+    gaps = set()
+    for e in (gj.get("graph") or {}).get("edges", []):
+        if e.get("secret"):
+            gaps |= {tuple(c) for c in e.get("gap") or [e["door"]]}
+    if not gaps:
+        return set(), gaps
+    nb = nbrs_hex if gj["grid"] == "hex" else nbrs4
+    st = [tuple(gj["entrance"])]
+    seen = set(st)
+    while st:
+        x, y = st.pop()
+        for q in nb(x, y):
+            if 0 <= q[0] < w and 0 <= q[1] < h and q not in seen and q not in gaps and g[q[1]][q[0]] in PASS:
+                seen.add(q)
+                st.append(q)
+    hidden = {(x, y) for y in range(h) for x in range(w) if g[y][x] in PASS and (x, y) not in seen} - gaps
+    return hidden, gaps
+
+
+def player_view(d, out):
+    """Copy a dungeon recipe folder for players: secret doors become wall, the floor behind them is filled,
+    and secret, treasure and hidden markers go. The copy is a handout, not a recipe check can regenerate."""
+    rc, gj = load(d, "recipe.json"), load(d, "grid.json")
+    if rc["kind"] != "dungeon":
+        raise ValueError("a player copy is for dungeons")
+    hidden, gaps = secret_only(gj)
+    w, h = gj["w"], gj["h"]
+    g = [list(r) for r in gj["cells"]]
+    for x, y in hidden | gaps:
+        g[y][x] = WALLC
+    gj = dict(gj, cells=["".join(r) for r in g])
+    gj["walls"] = [[list(a), list(b)] for a, b in wall_segments(g, w, h, border_walls=True)] if gj["grid"] == "square" else []
+    gj["portals"] = door_portals(g, w, h) if gj["grid"] == "square" else []
+    keep_room = [r for r in gj.get("rooms", []) if any(g[y][x] in PASS for x in range(r["x"], r["x"] + r["w"])
+                                                       for y in range(r["y"], r["y"] + r["h"]))]
+    gj["rooms"] = keep_room
+    if gj.get("graph"):
+        gr = dict(gj["graph"])
+        gr["edges"] = [e for e in gr["edges"] if not e.get("secret")]
+        gr["branches"] = [dict(b, treasure=False) for b in gr.get("branches", [])]
+        gr["keys"] = [k for k in gr.get("keys", []) if all(tuple(c) not in hidden for c in [gr["cells"][k["node"]]])]
+        gj["graph"] = gr
+    if gj.get("goal") and tuple(gj["goal"]) in hidden:
+        gj.pop("goal")
+    feats = []
+    for f in load(d, "features.geojson")["features"]:
+        k, geo = f["properties"]["kind"], f["geometry"]
+        if k in ("secret door", "treasure", "door", "wall"):
+            continue
+        if geo["type"] == "Point" and (int(geo["coordinates"][0]), int(geo["coordinates"][1])) in hidden:
+            continue
+        if k == "room" and f["properties"]["id"] not in {r["id"] for r in keep_room}:
+            continue
+        feats.append(f)
+    feats += [{"type": "Feature", "properties": dict(kind="door"), "geometry": {"type": "LineString",
+                                                                                 "coordinates": p["bounds"]}}
+              for p in gj["portals"]]
+    feats += [{"type": "Feature", "properties": dict(kind="wall"), "geometry": {"type": "LineString",
+                                                                                 "coordinates": [a, b]}}
+              for a, b in gj["walls"]]
+    rc = dict(rc, player_view=dict(hidden_squares=len(hidden), secret_door_squares=len(gaps)))
+    write_place(out, rc, feats, load(d, "names.json")["names"], gj, None)
+    return dict(out=out, hidden=len(hidden), secret_squares=len(gaps))
+
+
 def _grid_bars(d):
     rc = load(d, "recipe.json")
     gj = load(d, "grid.json")
@@ -2076,7 +2145,11 @@ def _grid_bars(d):
                     ov += 1
         bars.append(("dungeon: every room reached, none overlap", not unr and ov == 0,
                      "%d rooms, %d unreached, %d overlapping pairs" % (len(rooms), len(unr), ov)))
-    if gj.get("goal"):
+    if rc["kind"] == "dungeon":
+        hidden, gaps = secret_only(gj)
+        bars.append(("dungeon: floor reachable only through secret doors (reported, not failed)", True,
+                     "%d of %d passable squares behind %d secret door squares" % (len(hidden), len(floor), len(gaps))))
+    if gj.get("goal") and not rc.get("player_view"):
         bars += goal_bars(gj, rc["params"])
     if gj.get("blocks"):
         bars += block_bars(gj)

@@ -2002,4 +2002,22 @@ def human_bars(d, rc, m, nb, feats, diff):
                 % int(PORT_SHARE * 100), not bad and same and len(ports) <= cap,
                 "%d ports (cap %d), %d off open sea%s" % (len(ports), cap, len(bad),
                                                           "" if same else "; recipe ports differ")))
+    out.append(gloss_bar(m, nb, ents, sets))
     return out
+
+
+def gloss_bar(m, nb, ents, sets):
+    """Bar 15: every name has a gloss; a settlement's site word matches its site (inherited names are skipped)."""
+    import mpw_human
+    cell = {s["id"]: s["cell"] for s in sets}
+    nogloss = sum(1 for e in ents if not e.get("gloss"))
+    wrong, used = [], 0
+    for e in ents:
+        if e["kind"] == "settlement" and e.get("generic") and "parent_id" not in e:
+            used += 1
+            c = cell.get(e["id"])
+            if c is None or mpw_human.site_of(m, nb, c) != e["generic"]:
+                wrong.append(e["name"])
+    return (15, "every name glossed; site words (ford, hill, river mouth, coast) match the settlement's site",
+            nogloss == 0 and not wrong, "%d names, %d without a gloss, %d site words, %d mismatched%s"
+            % (len(ents), nogloss, used, len(wrong), (": " + ", ".join(wrong[:5])) if wrong else ""))

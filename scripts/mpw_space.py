@@ -63,6 +63,62 @@ SST = dict(bg="#0b1020", ink="#dfe8ff", grid="#2a3558", route="#6f8fd8", long="#
 
 
 # ================================================================== sector
+HAZ_TIERS = ("warning", "danger", "prohibited")      # rings 2, 1 and 0 hexes out from a hazard's centre
+HAZ_COL = {"warning": "#c9a14a", "danger": "#d0602a", "prohibited": "#c0283a"}
+
+
+def hazard_hexes(seed, cols, rows, n, taken):
+    """n seeded hazard zones on empty hexes: the centre hex prohibited, its ring danger, the next ring warning.
+    Returns {(col, row): tier}, the worst tier where zones overlap."""
+    r = P.Rng(seed, 131)
+    free = sorted((c, rw) for c in range(cols) for rw in range(rows) if (c, rw) not in taken)
+    out = {}
+    for _ in range(n):
+        if not free:
+            break
+        ctr = free.pop(r.randint(0, len(free) - 1))
+        for c in range(max(0, ctr[0] - 2), min(cols, ctr[0] + 3)):
+            for rw in range(max(0, ctr[1] - 3), min(rows, ctr[1] + 4)):
+                d = hex_dist(ctr, (c, rw))
+                if d <= 2:
+                    t = HAZ_TIERS[2 - d]
+                    if (c, rw) not in out or HAZ_TIERS.index(t) > HAZ_TIERS.index(out[(c, rw)]):
+                        out[(c, rw)] = t
+    return out
+
+
+def route_hazard(a, b, haz):
+    """Worst hazard tier a straight route between hexes a and b passes through (its end hexes excluded)."""
+    (ax, ay), (bx, by) = hex_center(a[0], a[1], 1.0), hex_center(b[0], b[1], 1.0)
+    L = (bx - ax) ** 2 + (by - ay) ** 2 or 1.0
+    worst = None
+    for h, t in haz.items():
+        if h in (tuple(a), tuple(b)):
+            continue
+        hx, hy = hex_center(h[0], h[1], 1.0)
+        u = max(0.0, min(1.0, ((hx - ax) * (bx - ax) + (hy - ay) * (by - ay)) / L))
+        if math.hypot(ax + u * (bx - ax) - hx, ay + u * (by - ay) - hy) < 0.8:
+            if worst is None or HAZ_TIERS.index(t) > HAZ_TIERS.index(worst):
+                worst = t
+    return worst
+
+
+def avoid_hazards(n, routes, cell, haz):
+    """Drop routes through danger or prohibited hexes, worst first, while the graph stays connected; a route
+    that cannot go keeps its hazard tag. Warning routes stay, tagged."""
+    for e in routes:
+        t = route_hazard(cell[e["a"]], cell[e["b"]], haz)
+        if t:
+            e["hazard"] = t
+    keep = list(routes)
+    for tier in ("prohibited", "danger"):
+        for e in [x for x in keep if x.get("hazard") == tier]:
+            rest = [x for x in keep if x is not e]
+            if components(n, [(x["a"], x["b"]) for x in rest]) == 1:
+                keep = rest
+    return keep
+
+
 def hex_center(col, row, r):
     """Flat-topped hexes in columns; 0-based odd columns sit half a hex lower (odd-q)."""
     return 1.5 * r * col, SQ3 * r * (row + 0.5 * (col & 1))
@@ -280,12 +336,16 @@ def place_seed(world_seed, kind, ident):
 
 
 def gen_sector(seed, out, size="subsector", density=0.5, jump=2, real=False, radius_pc=6.0, version="0.6.0",
-               name_style=None, systems=False):
+               name_style=None, systems=False, hazards=0):
     t0 = time.perf_counter()
     r = P.Rng(seed, 101)
     lang = mpw_names.make_language(seed, name_style)
     namer = mpw_names.Namer(lang)
     params = dict(size=size, density=density, jump=jump, real=bool(real), radius_pc=radius_pc, name_style=name_style)
+    if hazards:
+        if real or not 0 < hazards <= 20:
+            raise ValueError("--hazards is 1 to 20 zones, on a generated sector")
+        params["hazards"] = int(hazards)
     if real:
         stars = [s for s in load_near_stars() if 1000.0 / s["plx"] <= radius_pc]
         sol = dict(name="Sol", ra=0.0, dec=0.0, plx=None, star="G2 V", xyz=[0.0, 0.0, 0.0])
@@ -325,10 +385,18 @@ def gen_sector(seed, out, size="subsector", density=0.5, jump=2, real=False, rad
         for a, b in edges:
             hd = hex_dist((worlds[a]["col"], worlds[a]["row"]), (worlds[b]["col"], worlds[b]["row"]))
             routes.append(dict(a=a, b=b, hexes=hd, kind="jump" if hd <= jump else "long"))
+        haz = {}
+        if hazards:
+            cell = [(w["col"], w["row"]) for w in worlds]
+            haz = hazard_hexes(seed, cols, rows, int(hazards), set(cell))
+            routes = avoid_hazards(len(worlds), routes, cell, haz)
         grid = dict(cols=cols, rows=rows, layout="flat-top columns, 0-based odd columns half a hex lower (odd-q)",
                     subsectors="ABCDEFGHIJKLMNOP" if size == "sector" else "A")
     name = namer.name("sector", (seed,)) if not real else "Near stars within %.1f pc" % radius_pc
     sec = dict(name=name, grid=grid, worlds=worlds, routes=routes)
+    if hazards:
+        sec["hazards"] = [dict(hex="%02d%02d" % (c + 1, rw + 1), col=c, row=rw, tier=t)
+                          for (c, rw), t in sorted(haz.items())]
     recipe = dict(kind="sector", seed=int(seed), tool_version=version, space_version=SPACE_VERSION, params=params,
                   language=lang)
     t1 = time.perf_counter()
@@ -399,6 +467,11 @@ def render_sector_svg(rc, sec, st=SST):
             cx, cy = ctr(c, rw)
             pts = [(cx + rad * math.cos(math.pi / 3 * i), cy + rad * math.sin(math.pi / 3 * i)) for i in range(6)]
             path.append("M" + "L".join("%.1f,%.1f" % p for p in pts) + "Z")
+    for hz in sec.get("hazards", []):
+        cx, cy = ctr(hz["col"], hz["row"])
+        pts = [(cx + rad * math.cos(math.pi / 3 * i), cy + rad * math.sin(math.pi / 3 * i)) for i in range(6)]
+        o.append('<path class="hazard %s" d="M%sZ" fill="%s" fill-opacity="0.45"/>'
+                 % (hz["tier"], "L".join("%.1f,%.1f" % p for p in pts), HAZ_COL[hz["tier"]]))
     o.append('<path d="%s" fill="none" stroke="%s" stroke-width="0.8"/>' % ("".join(path), st["grid"]))
     W = sec["worlds"]
     for e in sec["routes"]:
@@ -416,6 +489,10 @@ def render_sector_svg(rc, sec, st=SST):
             o.append('<text x="%.1f" y="%.1f" font-family="%s" font-size="7" fill="%s" text-anchor="middle">%s</text>'
                      % (cx, cy - rad * 0.55, st["font"], st["grid"], wd["hex"]))
         cands.append((wd["name"], cx, cy + (rad * 0.62 if cols <= 8 else rad * 0.9), 9.0 if cols <= 8 else 6.0))
+    if sec.get("hazards"):
+        o.append('<text x="%d" y="%d" font-family="%s" font-size="9" fill="%s">hazards: amber warning, '
+                 'orange danger, red prohibited</text>'
+                 % (m, h - 6, st["font"], st["ink"]))
     labs, _ = P.place_labels(cands, w, h, False)
     o.append(P.labels_svg(labs, st))
     o.append("</svg>")
@@ -474,6 +551,17 @@ def _sector_bars(d):
         bars.append(("sector: jump routes within jump %d, longer ones marked long" % jump, bad == 0,
                      "%d jump, %d long, %d mislabelled" % (sum(e["kind"] == "jump" for e in R),
                                                            sum(e["kind"] == "long" for e in R), bad)))
+        if sec.get("hazards"):
+            hz = {(x["col"], x["row"]): x["tier"] for x in sec["hazards"]}
+            cell = [(w["col"], w["row"]) for w in W]
+            through = [e for e in R if route_hazard(cell[e["a"]], cell[e["b"]], hz) in ("danger", "prohibited")]
+            needed = sum(1 for e in through if components(len(W), [(x["a"], x["b"]) for x in R if x is not e]) > 1)
+            tagged = all(e.get("hazard") == route_hazard(cell[e["a"]], cell[e["b"]], hz) for e in R)
+            bars.append(("sector: routes avoid danger and prohibited hexes unless no other link holds the graph",
+                         needed == len(through) and tagged,
+                         "%d hazard hexes (%s), %d routes through danger or prohibited, %d of them needed"
+                         % (len(hz), ", ".join("%d %s" % (sum(t == k for t in hz.values()), k) for k in HAZ_TIERS),
+                            len(through), needed)))
         cols, rows = sec["grid"]["cols"], sec["grid"]["rows"]
         cells = [(w["col"], w["row"]) for w in W]
         outside = sum(1 for c, rw in cells if not (0 <= c < cols and 0 <= rw < rows))
@@ -1496,7 +1584,8 @@ def regenerate(d, tmp):
     v = rc["tool_version"]
     k = rc["kind"]
     if k == "sector":
-        gen_sector(rc["seed"], tmp, p["size"], p["density"], p["jump"], p["real"], p["radius_pc"], v, p["name_style"])
+        gen_sector(rc["seed"], tmp, p["size"], p["density"], p["jump"], p["real"], p["radius_pc"], v, p["name_style"],
+                   hazards=p.get("hazards", 0))
     elif k == "system":
         pl = rc.get("place") if p.get("tab") else None
         gen_system(None if pl else rc["seed"], tmp, p["star"], p["planets"], v, p["name_style"],

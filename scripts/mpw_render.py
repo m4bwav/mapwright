@@ -589,13 +589,117 @@ def _P(c, x0, y0, s):
     return "%.1f %.1f" % p
 
 
-def render_svg(d, style_name=DEFAULT_STYLE, font=None, title=None):
+CURRENT_COL = {"warm": "#c8442f", "cold": "#2f6fc8"}
+
+
+def current_arrows(rc, m, frame, rows=14, steps=200):
+    """Arrows for the currents climate model 2 applies: cold and equatorward off west coasts and warm and
+    poleward off east coasts at 15-35 degrees; warm and poleward off west coasts poleward of 30 degrees.
+    Returns [(kind, (x, y) tail px, (x, y) head px)], each wholly at sea."""
+    p = rc.get("params", {})
+    if (p.get("climate") or {}).get("model") != 2:
+        return []
+    x0, y0, x1, y1 = rc["extent"]
+    s = frame[2]
+    grid = G.Grid(m["x"], m["y"], max(1.0, (x1 - x0) / 60.0))
+
+    def sea(x, y):
+        return bool(m["ocean"][grid.near(x, y, 1)[0][1]])
+    lt, lb = p["lat_top"], p["lat_bottom"]
+    dx = (x1 - x0) / steps
+    off, ln = 8 * dx, 0.05 * (x1 - x0)
+    out = []
+    for i in range(rows):
+        y = y0 + (y1 - y0) * (i + 0.5) / rows
+        lat = G.lat_of(y, lt, lb)
+        a = abs(lat)
+        band, warm_w = G.current_band(a) > 0, G.marine_bonus(a) > 0
+        if not (band or warm_w):
+            continue
+        pole = (1 if lat >= 0 else -1) * (1 if lb > lt else -1)   # +1: poleward is down the map
+        xs = [x0 + dx * (k + 0.5) for k in range(steps)]
+        wet = [sea(x, y) for x in xs]
+        for k in range(1, steps):
+            if wet[k - 1] == wet[k]:
+                continue
+            if wet[k - 1]:                                 # sea then land: a west coast
+                kind, xa = ("cold" if band else "warm"), xs[k] - off
+                dy = -pole if band else pole
+            else:                                          # land then sea: an east coast
+                if not band:
+                    continue
+                kind, xa, dy = "warm", xs[k] + off, pole
+            ya, yb = y - dy * ln / 2, y + dy * ln / 2
+            if x0 <= xa <= x1 and all(sea(xa, yy) for yy in (ya, y, yb)):
+                out.append((kind, ((xa - x0) * s, (ya - y0) * s), ((xa - x0) * s, (yb - y0) * s)))
+    return out
+
+
+def currents_svg(arrows):
+    o = ['<g class="currents" fill="none" stroke-width="1.6" stroke-linecap="round">']
+    for kind, (ax, ay), (bx, by) in arrows:
+        d = 1 if by > ay else -1
+        o.append('<path stroke="%s" d="M%.1f %.1fL%.1f %.1fM%.1f %.1fL%.1f %.1fL%.1f %.1f"/>'
+                 % (CURRENT_COL[kind], ax, ay, bx, by, bx - 4, by - 6 * d, bx, by, bx + 4, by - 6 * d))
+    o.append("</g>")
+    return o
+
+
+LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+
+def grid_ref(px, py, cols):
+    """Letter-number reference of a map pixel on a grid of square cells, cols across (A1 top left)."""
+    c = W / cols
+    return "%s%d" % (LETTERS[min(cols - 1, max(0, int(px // c)))], max(0, int(py // c)) + 1)
+
+
+def ref_grid_svg(Hs, cols, st):
+    """Index grid on the map frame: thin lines, letters along the top, numbers down the left."""
+    c = W / cols
+    rows = int(math.ceil(Hs / c - 1e-9))
+    d = "".join("M%.1f 0V%.1f" % (i * c, Hs) for i in range(1, cols))
+    d += "".join("M0 %.1fH%d" % (j * c, W) for j in range(1, rows))
+    f = escape(st["font"], {"'": "&apos;"})
+    o = ['<g class="refgrid" font-family="%s" font-size="10" fill="%s">' % (f, st["ink"]),
+         '<path d="%s" stroke="%s" stroke-width="0.5" stroke-opacity="0.5" fill="none"/>' % (d, st["ink"])]
+    for i in range(cols):
+        o.append('<text x="%.1f" y="11" text-anchor="middle">%s</text>' % ((i + 0.5) * c, LETTERS[i]))
+    for j in range(rows):
+        o.append('<text x="3" y="%.1f">%d</text>' % (min(Hs - 2, (j + 0.5) * c + 4), j + 1))
+    o.append("</g>")
+    return o
+
+
+def gazetteer(d, cols):
+    """Index rows (name, kind, grid ref) for every named feature, sorted by name; the grid matches --grid."""
+    if not 1 <= cols <= 26:
+        raise ValueError("--grid wants 1 to 26 columns")
+    rc, m, feats = load(d)
+    x0, y0, s, Hs = _frame(rc)
+    rows = []
+    for f in feats:
+        pr, g = f["properties"], f["geometry"]
+        if not pr.get("name") or not g or not g.get("coordinates"):
+            continue
+        cs = g["coordinates"]
+        if g["type"] == "LineString":
+            cs = cs[len(cs) // 2]
+        elif g["type"] != "Point":
+            continue
+        px, py = _to_px(cs, x0, y0, s)
+        if 0 <= px <= W and 0 <= py <= Hs:
+            rows.append((pr["name"], pr["kind"], grid_ref(px, py, cols)))
+    return sorted(set(rows), key=lambda r: (r[0].lower(), r[1], r[2]))
+
+
+def render_svg(d, style_name=DEFAULT_STYLE, font=None, title=None, currents=False, grid=0):
     """Return (svg_text, info). info: placed, dropped, legend, times, style."""
-    p, info = render_parts(d, style_name, font, title)
+    p, info = render_parts(d, style_name, font, title, currents, grid)
     return "\n".join(p["head"] + p["ground"] + p["water"] + p["coast"] + p["over"] + ["</svg>"]) + "\n", info
 
 
-def render_parts(d, style_name=DEFAULT_STYLE, font=None, title=None):
+def render_parts(d, style_name=DEFAULT_STYLE, font=None, title=None, currents=False, grid=0):
     """Return (parts, info). parts holds the SVG lines of the map in drawing order:
 
     head: the opening tag. ground: sea, land raster, star field, grid. water: lakes and rivers.
@@ -652,6 +756,9 @@ def render_parts(d, style_name=DEFAULT_STYLE, font=None, title=None):
     o.append('<path class="coast" fill="none" stroke="%s" stroke-width="1.1" d="%s"/>' % (st["coast"], "".join(cd)))
     parts = dict(head=o[:1], ground=o[1:n_ground], water=o[n_ground:n_water], coast=o[n_water:])
     o = []
+    arrows = current_arrows(rc, m, frame) if currents else []
+    if arrows:
+        o += currents_svg(arrows)
     rk = {"major": (0, 1.6, ""), "minor": (1, 1.0, ""), "track": (2, 0.7, "3 2")}
     for f in roads:
         i, w, dash = rk.get(f["properties"].get("rank"), rk["minor"])
@@ -669,6 +776,9 @@ def render_parts(d, style_name=DEFAULT_STYLE, font=None, title=None):
     sb, sbox, km = scale_bar(frame, rc, st)
     na, nbox = north_arrow(frame, st)
     ents = legend_entries(feats, m, st, rc)
+    for kind in ("warm", "cold"):
+        if any(a[0] == kind for a in arrows):
+            ents.append(dict(kind="line", label="%s current" % kind, stroke=CURRENT_COL[kind], width=1.6))
     lg, lbox = legend_svg(ents, frame, st)
     placed, dropped = place_labels(feats, frame, st, reserved=[tb, sbox, nbox, lbox], metrics=metrics)
     times["labels"] = time.perf_counter() - t0 - times["raster"] - times["features"]
@@ -691,11 +801,17 @@ def render_parts(d, style_name=DEFAULT_STYLE, font=None, title=None):
     o.append('<text class="title" x="%.1f" y="%.1f" font-family="%s" font-size="20" fill="%s">%s</text>'
              % (MARGIN + 6, MARGIN + 24, fam, st["ink"], escape(title)))
     o += lg + sb + na
+    if grid:
+        if not 1 <= grid <= 26:
+            raise ValueError("--grid wants 1 to 26 columns")
+        o += ref_grid_svg(Hs, grid, st)
     o.append('<rect width="%d" height="%.1f" fill="none" stroke="%s" stroke-width="2"/>' % (W, Hs, st["ink"]))
     times["total"] = time.perf_counter() - t0
     info = dict(style=style_name, placed=len(placed), dropped=[x["text"] for x in dropped],
                 legend=[e["label"] for e in ents], scale_km=km, width=int(W), height=round(Hs, 1), times=times,
                 labels=placed)
+    if currents:
+        info["currents"] = dict(warm=sum(a[0] == "warm" for a in arrows), cold=sum(a[0] == "cold" for a in arrows))
     parts["over"] = o
     return parts, info
 

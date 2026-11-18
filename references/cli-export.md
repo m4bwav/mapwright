@@ -6,6 +6,8 @@
 
 `MPW export DIR -o FILE [--to TARGET]` writes the file, reads it back and prints its proof bars (exit 1 when one fails). The extension picks the target; a .png needs `--to`.
 
+Since 0.27.0 `export DIR --to player -o FOLDER` (dungeons): a handout copy with secret doors walled, the floor reached only through them filled, and secret and treasure marks dropped. Its bar fails if any of those remain. The copy is not a recipe: `check --no-regen` on it skips the lock and key bars.
+
 | Recipe | Command | Gives |
 |---|---|---|
 | world, region | `-o t.raw [--size 1025] [--flip]` | Unity RAW: 16 bit, little-endian, square, 2^n + 1 |

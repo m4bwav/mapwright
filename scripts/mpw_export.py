@@ -1347,6 +1347,13 @@ def export(d, out, to=None, version="0.7.0", **o):
         grid = P.load(d, "grid.json").get("grid")
     if o.get("nav"):
         to = "nav"
+    if to == "player":
+        r = P.player_view(d, out)
+        hid, _ = P.secret_only(P.load(out, "grid.json"))
+        return [("player copy: no secret door, treasure or hidden floor left", not hid
+                 and not any(f["properties"]["kind"] in ("secret door", "treasure")
+                             for f in P.load(out, "features.geojson")["features"]),
+                 "%d hidden squares and %d secret door squares filled" % (r["hidden"], r["secret_squares"]))], [out]
     to = pick_target(kind, out, to, grid)
     if to in ("sphere", "t5"):
         import mpw_space as S
