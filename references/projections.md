@@ -103,6 +103,8 @@ Each entry gives the property kept, what breaks, and the source. "Conformal" kee
 - Keeps: the look of a globe from space; only one hemisphere visible. Breaks: area and shape severely near the edge (Snyder 1987 p.145-153).
 - `x = R cos φ sin(λ-λ0)`, `y = R (cos φ1 sin φ - sin φ1 cos φ cos(λ-λ0))`; a point is visible when `cos c = sin φ1 sin φ + cos φ1 cos φ cos(λ-λ0) ≥ 0` (Snyder 1987 eq. 20-3, 20-4, 5-3).
 - Use for "globe view" art of real or invented planets.
+- Minimap or globe inset: a marker on the far side (`cos c < 0`) sits on the rim at angle `atan2(y, x)` of its unclipped `x, y`, so it still points the right way (`mpw_sphere.rim_angle`).
+- Draw it smaller or hollow so it reads as "behind the globe", not on the edge.
 
 ### 3.12 Stereographic (azimuthal, conformal)
 - Keeps: angles; circles on the sphere map to circles. Breaks: area grows away from the centre; the antipode is at infinity (Snyder 1987 p.154-163).
@@ -113,6 +115,12 @@ Each entry gives the property kept, what breaks, and the source. "Conformal" kee
 - Keeps: every great circle is a straight line, so the shortest route is a straight line. Breaks: everything else; less than a hemisphere can be shown (Snyder 1987 p.164-168).
 - `cos c` as above; `x = R cos φ sin(λ-λ0)/cos c`, `y = R (cos φ1 sin φ - sin φ1 cos φ cos(λ-λ0))/cos c`; visible only for `cos c > 0` (Snyder 1987 eq. 22-4, 22-5).
 - Used for great-circle route planning and as the face projection of cube-sphere planets in games.
+- Sphere toolkit in `scripts/mpw_sphere.py` (stdlib): `unit(lon, lat)` gives a unit vector; `frame(c)` and `gnomonic(p, frame)` project, returning None for `cos c <= 0`, the hemisphere clip.
+- Point in a spherical polygon: project about the vertex mean and run the plane ray test. Edges are great circles, so they stay straight and the answer is exact for polygons inside one hemisphere.
+- Great-circle arc crossing: the two plane normals `a×b` and `p×q` meet at `±(a×b)×(p×q)`; keep the sign that lies on both arcs, or none.
+- Use this instead of a lon/lat ray test, which fails across the antimeridian and near the poles.
+- Checked against the three-plane inside test on 5000 random points (tests/test_sphere.py).
+- Technique idea from robinduckett/boo-mas (no licence there; own code).
 
 ### 3.14 Projections by first use (for period styles)
 

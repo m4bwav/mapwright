@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261118-2 · 2026-11-18 · 0.27.2: sphere geometry helpers, far-side markers, range circles
+- because: technique harvest rows 4-6 (Ai/technique-harvest/ai-docs/posts); technique idea from robinduckett/boo-mas (no licence there, so own code, nothing copied)
+- files: scripts/mpw_sphere.py (new), tests/test_sphere.py (new), references/projections.md (3.11, 3.13), references/formats-and-tools.md, scripts/mpw.py (VERSION), plugin.json, .claude-plugin/plugin.json, skills/mapwright/SKILL.md
+- New stdlib module: unit vectors from lon/lat, gnomonic projection with hemisphere clip, point in a spherical polygon, great-circle arc crossing, rim angle and small-circle radius. Notes on far-side markers and range circles. Not wired into the CLI. Tests: 323 pass, 2 skip.
+
 ### C-20261118-1 · 2026-11-18 · 0.27.1: sky-from-a-place rules in scifi-maps
 - because: books round 21 (Hockey, How We See the Sky, 2011, ch. 2-4 and 8; notes in Ai/technique-harvest/ai-docs/books); the circumpolar inequalities were checked against culmination altitudes on six latitude and declination cases
 - files: references/scifi-maps.md (section 2), scripts/mpw.py (VERSION), plugin.json, .claude-plugin/plugin.json

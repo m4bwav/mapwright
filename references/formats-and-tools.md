@@ -181,6 +181,9 @@ A route is a LineString plus metadata. Interchange: GPX `rte` for planned routes
 ### Geodesic distance
 
 - Haversine on a sphere (R = 6371008.8 m mean radius) errs up to about 0.5% against the ellipsoid (practice figure, no single source; tunable default).
+- Range circles (a radio, a spell, a fuel limit) on a planet of radius R: ground radius r is an angular radius r/R, and the circumference is 2πR·sin(r/R), less than the flat 2πr.
+- Past r = πR the circle closes on the antipode: nothing lies further than πR, so a circumference never exceeds 2πR (`mpw_sphere.small_circle`).
+- Draw the circle as points at that angular radius from the centre, not as a flat circle in degrees.
 - Vincenty's inverse formula (1975) on WGS 84 gives sub-millimetre accuracy but fails to converge for nearly antipodal points ([Vincenty 1975, Survey Review](https://www.ngs.noaa.gov/PUBS_LIB/inverse.pdf)).
 - Karney's algorithm (2013) is accurate to about 15 nm and always converges ([Karney, "Algorithms for geodesics", J. Geodesy 2013](https://doi.org/10.1007/s00190-012-0578-z)); `geographiclib` is a pure-Python port with no dependencies ([geographiclib Python](https://geographiclib.sourceforge.io/Python/)). The Python package is MIT-licensed (copyright Charles Karney; keep the notice), which allows vendoring it and keeps mapwright stdlib-only ([geographiclib-python LICENSE](https://github.com/geographiclib/geographiclib-python/blob/main/LICENSE), checked 2026-11-14).
 
