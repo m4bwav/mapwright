@@ -390,11 +390,21 @@ Seeds must reproduce the map exactly, because bug reports, shared and daily seed
 | 4X galaxy | Points by shape, spanning tree plus extra lanes, chokepoint check (section 7.3) | `gen sector`; `gen system` and `gen planet` for what is at each star. Spiral and ring shapes: not built |
 | Hex wargame | Terrain fields sampled onto hexes, fair starts by path distance (section 7) | `gen battle --grid hex` at tactical scale; `gen region` for the land. Region to hex terrain: not built |
 | Survival voxel world | Noise terrain, chunked, staged passes (section 5) | `gen world` and `gen planet` give heightmaps for engine import (see games-film-print.md). Chunked 3D voxels and caves: not built |
-| Tabletop battle map | Templates plus scatter on a grid, walls and doors exported (section 2) | `gen battle`, `gen dungeon`, `gen deck`, `gen city`, with `export` to Universal VTT |
+| Tabletop battle map | Templates plus scatter on a grid, walls and doors exported (section 2) | `gen battle` (`--biome` for banded ground and scatter rules), `gen dungeon`, `gen deck`, `gen city`, with `export` to Universal VTT |
 
 Candidate additions, in rough order of value for the list above: a `--method accrete` dungeon with a loop-distance threshold; vault files placed with a connectivity veto; a node-map generator with rule re-rolls; a key-level pass over an existing dungeon; an expressive-range report (`sheet` of N seeds plus a histogram of two metrics).
 
 ---
+
+## 12. Biomes as data: banded ground and scatter rules
+
+A shipped colony sim keeps its map rules in data files, not code. Two shapes are worth copying.
+
+Ground from noise bands. One smooth noise field per map, cut at fixed values: below the first cut is water, then marsh, then grass. Rank-normalise the field first so a cut of 0.3 covers about 30% of the map whatever the frequency. A biome is then just a frequency and a list of cuts. `gen battle --biome` does this for temperate, boreal, tundra, desert and swamp.
+
+Scatter as rules. Each placed thing is one row: a count per 10 000 cells as a range (so a bigger map gets more, a small one may get none), a minimum spacing between two of the same kind, an edge margin, terrain it may not stand on, and whether it blocks. The generator draws the count once, shuffles candidate cells and takes the first ones that pass. A blocker goes only where its whole ring is open, so it never cuts a route. `--rules FILE.json` replaces a biome's rows; the recipe echoes the rules and the placed counts.
+
+Ordered steps with gaps. The same game runs map generation as named steps with integer orders spaced widely (10, 20, 200, 500, 900), so a new step slots between two old ones without renumbering. Optional features (a river, a cave system, a coast) hook in at a few named points (after elevation, after terrain, final) instead of being separate generators. `gen world` runs a fixed pipeline today; this is the shape to reach for if it ever needs plug-in steps. Not built.
 
 ## Sources (all accessed 2026-11-15 unless marked unverified)
 

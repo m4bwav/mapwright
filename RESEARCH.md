@@ -60,6 +60,13 @@ Best sources (primary first): <official docs / changelog / official forums of th
 
 Newest first. One entry per material finding; a quiet refresh gets one entry saying so. `Track` is subject, tooling, practice, or testing.
 
+### R-20261121-1 · 2026-11-21 · Biome rules as data (local game harvest)
+- Summary: technique observed in RimWorld's shipped defs, 2026-11-21. Biomes as data: noise field cut into terrain bands; scatter rows with count per 10k cells, min spacing, edge margin and validators; map generation as ordered steps with wide gaps and named hook points. Built the first two into `gen battle`; the third is guidance only.
+- Track: practice
+- Sources: Ai/technique-harvest/ai-docs/sources/local/rimworld-mapgen.md
+- Magnitude: minor
+- Applied: C-20261121-1
+
 ### R-20261118-1 · 2026-11-18 · Historic map drape (georeferencing note)
 - Summary: when a scanned map and a DEM disagree, warp the DEM to the scan with a thin-plate spline over many control points, dropping outliers; a power curve on elevation before displacement keeps low ground visible beside high peaks. Build a recipe when a request comes. Idea only, no code.
 - Sources: D:/m4bwa/Claude/Projects/Ai/technique-harvest/ai-docs/posts/1xrrijk.md (technique-harvest batch E)

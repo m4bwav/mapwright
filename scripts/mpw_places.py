@@ -20,6 +20,7 @@ import time
 from xml.sax.saxutils import escape
 
 import mpw_gen as G
+import mpw_biome
 import mpw_names
 
 PLACES_VERSION = "places-1"
@@ -1231,6 +1232,7 @@ def battle_hex(w, h, rng):
     return g, []
 
 
+BIOME_MULT = {"sparse": 0.6, "normal": 1.0, "dense": 1.4}   # --density scales scatter counts with --biome
 BATTLE_DENSITY = {"sparse": None, "normal": 0.22, "dense": 0.32}   # target share of squares holding a feature
 DENSITY_STREAM = 4000
 
@@ -1372,8 +1374,10 @@ def door_portals(g, w, h):
     return out
 
 
-def grid_png(g, w, h, pps, st):
-    """Square grid picture: cell colours, a 1 px grid line on every multiple of pps."""
+def grid_png(g, w, h, pps, st, tr=None):
+    """Square grid picture: cell colours, a 1 px grid line on every multiple of pps. tr: terrain code rows
+    (battle --biome) tint open floor."""
+    tcol = {v[0]: _rgb(v[1]) for v in mpw_biome.TERRAIN.values()}
     col = {WALLC: _rgb(st["rock"]), FLOOR: _rgb(st["floor"]), DOOR: _rgb(st["door"]), TREE: _rgb(st["tree"])}
     gl = _rgb(st["grid"])
     rows = []
@@ -1381,7 +1385,7 @@ def grid_png(g, w, h, pps, st):
         body = bytearray()
         line = bytearray()
         for x in range(w):
-            c = col[g[y][x]]
+            c = tcol[tr[y][x]] if tr is not None and g[y][x] == FLOOR else col[g[y][x]]
             body += gl + c * (pps - 1)
             line += gl * pps
         body = bytes(body)
@@ -1468,6 +1472,10 @@ def battle_frame(o, cands, W, H, gj, st, pps):
     name, _, _, size = cands[0]
     top = int(math.ceil(size * 1.8))
     rows = battle_legend(gj)
+    tk = gj.get("terrain_key") or {}
+    if tk:
+        st = dict(st, **{"t-" + n: mpw_biome.TERRAIN[n][1] for n in tk.values()})
+        rows = rows + [("t-" + n, n + " ground") for n in sorted(tk.values())]
     fs = max(11.0, min(16.0, pps * 0.3))
     bottom = int(math.ceil((fs * 1.6 * len(rows) + fs * 0.8) + 2 * fs)) if rows else 0
     H2 = H + top + bottom
@@ -1486,6 +1494,13 @@ def render_grid_svg(rc, gj, st):
     w, h, pps = gj["w"], gj["h"], rc["params"]["pps"]
     g = gj["cells"]
     col = {WALLC: st["rock"], FLOOR: st["floor"], DOOR: st["door"], TREE: st["tree"]}
+    tr = gj.get("terrain")
+    for code, tname in (gj.get("terrain_key") or {}).items():
+        col["~" + code] = mpw_biome.TERRAIN[tname][1]
+
+    def cell(x, y):
+        c = g[y][x]
+        return "~" + tr[y][x] if tr and c == FLOOR else c
     lbox = None
     if gj["grid"] == "hex":
         centre, verts, W, H = hex_geometry(w, h, pps)
@@ -1495,7 +1510,7 @@ def render_grid_svg(rc, gj, st):
         for y in range(h):
             for x in range(w):
                 v, _ = verts(x, y)
-                o.append('<polygon points="%s" fill="%s"/>' % (" ".join("%d,%d" % p for p in v), col[g[y][x]]))
+                o.append('<polygon points="%s" fill="%s"/>' % (" ".join("%d,%d" % p for p in v), col[cell(x, y)]))
         o.append("</g>")
         cands = [(rc["name"], W / 2, 30.0, 22.0)]
     else:
@@ -1505,9 +1520,9 @@ def render_grid_svg(rc, gj, st):
         for y in range(h):
             x = 0
             while x < w:
-                c = g[y][x]
+                c = cell(x, y)
                 x1 = x
-                while x1 < w and g[y][x1] == c:
+                while x1 < w and cell(x1, y) == c:
                     x1 += 1
                 if c != WALLC:
                     o.append('<rect x="%d" y="%d" width="%d" height="%d" fill="%s"/>'
@@ -1525,6 +1540,12 @@ def render_grid_svg(rc, gj, st):
         o.append("</g>")
         if gj.get("goal"):
             o.append(markers_svg(gj, pps))
+        marks = [(x, y) for p in gj.get("scatter", []) for x, y in p["points"] if g[y][x] == FLOOR]
+        if marks:
+            o.append('<g class="scatter" fill="%s" fill-opacity="0.55">' % st["tree"])
+            o.extend('<circle cx="%.1f" cy="%.1f" r="%.1f"/>' % ((x + 0.5) * pps, (y + 0.5) * pps, pps * 0.18)
+                     for x, y in marks)
+            o.append("</g>")
         cands = []
         for r in gj.get("rooms", []):
             cands.append((str(r["id"] + 1), (r["x"] + r["w"] / 2) * pps, (r["y"] + r["h"] / 2) * pps + pps * 0.3,
@@ -1611,7 +1632,8 @@ def _build_once(seed, w, h, method, cave, legacy, rng, branches=0, corridor=1):
 
 
 def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style=None, version="0.5.0",
-             name_style=None, cave=None, legacy=False, density=None, branches=None, corridor=None):
+             name_style=None, cave=None, legacy=False, density=None, branches=None, corridor=None,
+             biome=None, rules=None):
     t0 = time.perf_counter()
     rng = Rng(seed, 2 if kind == "dungeon" else 3)
     lang = mpw_names.make_language(seed, name_style)
@@ -1648,11 +1670,28 @@ def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style
             nb = nbrs4
         if density not in (None,) + tuple(BATTLE_DENSITY):
             raise ValueError("--density must be one of %s" % ", ".join(BATTLE_DENSITY))
-        if density and BATTLE_DENSITY[density]:
+        if rules and not biome:
+            biome = "temperate"
+        if biome and biome not in mpw_biome.BIOMES:
+            raise ValueError("--biome must be one of %s" % ", ".join(mpw_biome.BIOMES))
+        if density and BATTLE_DENSITY[density] and not biome:
             add_cover(g, w, h, nb, BATTLE_DENSITY[density], Rng(seed, DENSITY_STREAM))
         edge = {(x, y) for y in range(h) for x in range(w) if x in (0, w - 1) or y in (0, h - 1)}
         keep = set(fill_pockets(g, w, h, nb, edge))
         entrance = list(min(p for p in edge if p in keep))
+        if biome:
+            B = mpw_biome.BIOMES[biome]
+            rules = mpw_biome.validate_rules(rules or B["scatter"])
+            terr = mpw_biome.terrain_grid(seed, w, h, B)
+            ent = tuple(entrance)
+
+            def ring(x, y):
+                return nb(x, y) if nb is nbrs_hex else [(x + a, y + b) for a in (-1, 0, 1) for b in (-1, 0, 1) if a or b]
+
+            def blocks_ok(x, y):     # a blocker only where its whole ring is open floor: it can never cut a route
+                return (x, y) != ent and all(0 <= px < w and 0 <= py < h and g[py][px] == FLOOR for px, py in ring(x, y))
+            placed = mpw_biome.scatter(g, terr, w, h, rules, seed, BIOME_MULT[density or "normal"],
+                                       lambda x, y: g[y][x] == FLOOR, blocks_ok, {"rock": WALLC, "tree": TREE})
     cells = ["".join(r) for r in g]
     walls = wall_segments(g, w, h, border_walls=(kind == "dungeon")) if grid == "square" else []
     trees = [[x, y] for y in range(h) for x in range(w) if g[y][x] == TREE]
@@ -1660,6 +1699,10 @@ def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style
     name = namer.name(kind, (seed,))
     gj = dict(w=w, h=h, grid=grid, cells=cells, rooms=rooms, entrance=entrance,
               walls=[[list(a), list(b)] for a, b in walls], portals=portals, lights=lights, trees=trees)
+    if kind == "battle" and biome:
+        gj["terrain"] = ["".join(mpw_biome.TERRAIN[t][0] for t in r) for r in terr]
+        gj["terrain_key"] = {mpw_biome.TERRAIN[t][0]: t for t in sorted({t for r in terr for t in r})}
+        gj["scatter"] = placed
     if goal:
         gj["goal"] = goal
         gj["rerolls"] = graph["rerolls"] if graph else D["stats"].get("rerolls", 0)
@@ -1710,6 +1753,14 @@ def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style
                   extent=[0, 0, w, h], parent=None, language=lang)
     if kind == "battle" and density is not None:
         recipe["params"]["density"] = density
+    if kind == "battle" and biome:
+        recipe["params"]["biome"] = biome
+        recipe["params"]["rules"] = rules
+        recipe["scatter"] = [dict(feature=p["feature"], target=p["target"], placed=p["placed"]) for p in placed]
+        for p in placed:
+            for x, y in p["points"]:
+                feats.append({"type": "Feature", "properties": dict(kind=p["feature"], scatter=True),
+                              "geometry": {"type": "Point", "coordinates": [x + 0.5, y + 0.5]}})
     if kind == "dungeon" and branches is not None:
         recipe["params"]["branches"] = branches
     if kind == "dungeon" and corridor is not None:
@@ -1742,7 +1793,8 @@ def write_place(out, recipe, feats, names, gj, _):
         dump(os.path.join(out, "grid.json"), gj)
         if gj["grid"] == "square":
             with open(os.path.join(out, "map.png"), "wb") as f:
-                f.write(grid_png([list(r) for r in gj["cells"]], gj["w"], gj["h"], recipe["params"]["pps"], st))
+                f.write(grid_png([list(r) for r in gj["cells"]], gj["w"], gj["h"], recipe["params"]["pps"], st,
+                                 gj.get("terrain")))
     svg = render_svg(out, sname)
     with open(os.path.join(out, "map.svg"), "w", encoding="utf-8", newline="\n") as f:
         f.write(svg)
@@ -1854,6 +1906,7 @@ def regenerate(d, tmp):
         gen_grid(rc["kind"], rc["seed"], tmp, p["w"], p["h"], p["method"] or "bsp", p["grid"], p["pps"], p["style"],
                  rc["tool_version"], p["name_style"], cave=p.get("cave"),
                  legacy=rc["kind"] == "dungeon" and "goal" not in p, density=p.get("density"),
+                 biome=p.get("biome"), rules=p.get("rules"),
                  branches=p.get("branches"), corridor=p.get("corridor"))
 
 

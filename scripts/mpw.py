@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.27.2"
+VERSION = "0.28.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -1482,7 +1482,8 @@ def cmd_gen_place(a):
             r = P.gen_grid(a.what, a.seed, a.out, a.w, a.h, getattr(a, "method", "bsp"), getattr(a, "grid", "square"),
                            a.pps, a.style, VERSION, a.name_style, cave=cave or None,
                            density=getattr(a, "density", None), branches=getattr(a, "branches", None),
-                           corridor=getattr(a, "corridor", None))
+                           corridor=getattr(a, "corridor", None), biome=getattr(a, "biome", None),
+                           rules=_load_rules(getattr(a, "rules", None)))
     except (ValueError, OSError, KeyError) as e:
         die(str(e))
     if a.json:
@@ -1495,6 +1496,13 @@ def cmd_gen_place(a):
         print("wrote %s: %s, %dx%d %s squares at %d px, %d rooms, %d doors, %d wall runs, %d lights in %.2f s"
               % (r["out"], r["name"], r["w"], r["h"], r["grid"], r["pps"], r["rooms"], r["doors"], r["walls"],
                  r["lights"], r["times"]["total"]))
+
+
+def _load_rules(path):
+    if not path:
+        return None
+    import mpw_biome
+    return mpw_biome.load_rules(path)
 
 
 def cmd_gen(a):
@@ -2252,6 +2260,12 @@ def build_parser():
     b.add_argument("--density", choices=("sparse", "normal", "dense"), default="normal",
                    help="share of squares holding a feature: sparse = the pre-0.11 map (about 0.13 square, 0.07 hex), "
                         "normal 0.22, dense 0.32")
+    b.add_argument("--biome", choices=("temperate", "boreal", "tundra", "desert", "swamp"),
+                   help="ground terrain cut from a seeded noise field into bands, plus the biome's scatter rules "
+                        "(count per 10k cells, min spacing, edge margin, avoided terrain); --density then scales counts "
+                        "by 0.6, 1 or 1.4")
+    b.add_argument("--rules", help="JSON file of scatter rules replacing the biome's (a list, or an object with a "
+                                   "scatter list); implies --biome temperate when no biome is given")
     sc = gs.add_parser("sector", help="hex subsector or sector: worlds, T5 tab file, connected routes; --real for near stars")
     sc.add_argument("--seed", type=int, default=1)
     sc.add_argument("--size", choices=("subsector", "sector"), default="subsector", help="8x10 or 32x40 hexes")

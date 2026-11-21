@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261121-1 · 2026-11-21 · 0.28.0: battle biomes with noise-band ground and scatter rules
+- because: harvest: RimWorld local harvest 2026-11-21 (technique observed in RimWorld's shipped defs, 2026-11-21; describe-only notes, code written fresh, nothing copied)
+- files: scripts/mpw_biome.py (new), scripts/mpw_places.py, scripts/mpw.py, tests/test_biome.py (new), references/game-map-generation.md (section 12), references/cli-generate.md, RESEARCH.md, plugin.json, .claude-plugin/plugin.json, skills/mapwright/SKILL.md
+- `gen battle --biome` and `--rules`: seeded value noise cut into terrain bands, then per-feature scatter rules (count per 10k cells, min spacing, edge margin, avoided terrain, blocking or marker). Blockers only where their ring is open, so the map stays one region. Before: 0.27.2 rejected `--biome` and had one global density share. Tests: 332 pass, 2 skip (9 new).
+
 ### C-20261118-2 · 2026-11-18 · 0.27.2: sphere geometry helpers, far-side markers, range circles
 - because: technique harvest rows 4-6 (Ai/technique-harvest/ai-docs/posts); technique idea from robinduckett/boo-mas (no licence there, so own code, nothing copied)
 - files: scripts/mpw_sphere.py (new), tests/test_sphere.py (new), references/projections.md (3.11, 3.13), references/formats-and-tools.md, scripts/mpw.py (VERSION), plugin.json, .claude-plugin/plugin.json, skills/mapwright/SKILL.md
