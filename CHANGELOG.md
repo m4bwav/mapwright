@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261126-3 · 2026-11-26 · 0.31.0: lint warns on routes with no trade-off, hub links with no cue, district neighbours
+- because: RPG book harvest verdict, ICRPG Worlds (Runehammer Games; p. 110 route choices need a trade-off, hub exits need a visible cue) and Kobold Guide: Campaign Builder, Cities and Towns (Kobold Press; p. 44 nuisance trades away from homes, markets on a gate, dock or main road). Ideas only, rules written fresh; unverified against play.
+- files: scripts/mpw_lint.py, tests/test_lint.py, skills/mapwright/SKILL.md, scripts/mpw.py, plugin.json, .claude-plugin/plugin.json
+- New `routes` and `districts` lint families. Links may carry `hazard` and `cue`; the hub cue check runs only when some link has a cue. District plans reuse rooms (`kind`, `tags`) and links as borders, so no new plan kind. Tests: 5 new.
+
 ### C-20261126-2 · 2026-11-26 · 0.30.0: lint warns on dead-end climax, flat levels, hookless empty rooms, faction ecology
 - because: RPG book harvest verdict, Kobold Guide to Dungeons (Kobold Press; p. 29-30 no empty rooms, p. 85-88 retreat routes, p. 91 vertical design); faction eats and tolerates from the DMG ecology advice (5e and 3.5). Ideas only, rules written fresh; unverified against play.
 - files: scripts/mpw_lint.py, tests/test_lint.py, skills/mapwright/SKILL.md, scripts/mpw.py, plugin.json, .claude-plugin/plugin.json

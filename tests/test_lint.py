@@ -259,3 +259,39 @@ class TestKoboldChecks(LintBase):
         self.assertEqual(len(w), 3)
         self.assertTrue(any("goblins has no tolerates" in t for t in w))
         self.assertTrue(any("ghouls has no eats" in t for t in w))
+
+
+class TestRouteAndDistrictChecks(LintBase):
+    def test_good_plan_clean(self):
+        res = self.put(good_dungeon())
+        self.assertEqual(texts(res, "routes") + texts(res, "districts"), [])
+
+    def test_parallel_routes_without_trade_off(self):
+        plan = good_dungeon()
+        plan["links"] += [{"a": "a", "b": "c", "length": 3}, {"a": "c", "b": "a", "length": 3}]
+        self.assertTrue(any("rooms c and a are joined by two routes" in t for t in texts(self.put(plan), "routes")))
+
+    def test_parallel_routes_with_trade_off(self):
+        plan = good_dungeon()
+        plan["links"] += [{"a": "a", "b": "c", "length": 3}, {"a": "a", "b": "c", "length": 3, "hazard": 2}]
+        self.assertEqual(texts(self.put(plan), "routes"), [])
+
+    def test_hub_cue_opt_in(self):
+        plan = {"rooms": [{"id": h} for h in "hxyz"],
+                "links": [{"a": "h", "b": "x", "cue": "bell tower"}, {"a": "h", "b": "y"}, ["h", "z"]]}
+        w = texts(self.put(plan), "routes")
+        self.assertEqual(sorted(w), ["hub h: link to y has no cue the players can see",
+                                     "hub h: link to z has no cue the players can see"])
+        plan["links"] = [["h", "x"], ["h", "y"], ["h", "z"]]
+        self.assertEqual(texts(self.put(plan), "routes"), [])
+
+    def test_districts(self):
+        plan = {"rooms": [{"id": "tan", "kind": "tannery", "tags": ["nuisance"]},
+                          {"id": "homes", "kind": "residential"},
+                          {"id": "mkt", "kind": "market"},
+                          {"id": "mkt2", "kind": "market"},
+                          {"id": "g", "kind": "gate"}],
+                "links": [["tan", "homes"], ["mkt", "homes"], ["mkt2", "g"]]}
+        w = texts(self.put(plan), "districts")
+        self.assertEqual(sorted(w), ["market mkt has no link to a gate, dock or main road",
+                                     "nuisance district tan borders residential district homes"])
