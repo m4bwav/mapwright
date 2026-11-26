@@ -410,3 +410,60 @@ class TestLairChecks(LintBase):
         with redirect_stdout(buf), self.assertRaises(SystemExit):
             mpw.main(["lint", self.tmp, "--strict"])
         self.assertIn("WARN lair:", buf.getvalue())
+
+
+class TestLockChecks(LintBase):
+    """Deep Carbon Observatory p. 21, 31 (keys dropped by wanderers), p. 34-35 (decoy door), p. 46-47 (toll, words)."""
+
+    def plan(self):
+        return {"rooms": [{"id": "gate", "entrance": True}, {"id": "hall"}, {"id": "shrine"},
+                          {"id": "vault"}, {"id": "fake", "decoy": True}, {"id": "nook", "secret": True}],
+                "links": [["gate", "hall"], {"id": "door", "a": "hall", "b": "vault"},
+                          ["gate", "shrine"], ["hall", "fake"], ["fake", "nook"],
+                          {"id": "troll", "a": "shrine", "b": "vault", "oneway": True}],
+                "locks": [{"at": "door", "key": "red", "key_in": "shrine", "kind": "key"},
+                          {"at": "vault", "key": "word", "key_in": "hall", "kind": "word"},
+                          {"at": "troll", "key": "life", "key_in": "wander", "kind": "toll",
+                           "drop_from": "guardian"}]}
+
+    def test_clean(self):
+        self.assertEqual(texts(self.put(self.plan()), "locks"), [])
+
+    def test_softlock_one_room_toll_wander_decoy(self):
+        plan = self.plan()
+        plan["locks"][0]["key_in"] = "vault"
+        plan["locks"][1]["key_in"] = "vault"
+        del plan["locks"][2]["drop_from"]
+        del plan["links"][5]["oneway"]
+        plan["rooms"][5] = {"id": "nook"}
+        self.assertEqual(texts(self.put(plan), "locks"), [
+            "key word in vault cannot be reached with lock at vault closed: softlock",
+            "wandering key life has no drop_from foe: say who carries it",
+            "toll lock at troll is not marked oneway: say whether the far side pays",
+            "all 2 keys sit in room vault: spread them out",
+            "decoy fake has no secret door within 2 rooms: hide the real way nearby"])
+
+    def test_secret_link_and_lock_oneway(self):
+        plan = self.plan()
+        plan["rooms"][5] = {"id": "nook"}
+        plan["links"][4] = {"a": "fake", "b": "nook", "secret": True}
+        del plan["links"][5]["oneway"]
+        plan["locks"][2]["oneway"] = True
+        self.assertEqual(texts(self.put(plan), "locks"), [])
+
+    def test_bad_refs_and_silent(self):
+        for k, v in (("at", "nowhere"), ("key_in", "nowhere"), ("kind", "riddle")):
+            plan = self.plan()
+            plan["locks"][0][k] = v
+            with self.assertRaises(ValueError):
+                self.put(plan)
+        self.assertEqual(texts(self.put({"rooms": [{"id": "a"}]}), "locks"), [])
+
+    def test_cli_strict(self):
+        plan = self.plan()
+        plan["locks"][1]["key_in"] = "vault"
+        self.put(plan)
+        buf = io.StringIO()
+        with redirect_stdout(buf), self.assertRaises(SystemExit):
+            mpw.main(["lint", self.tmp, "--strict"])
+        self.assertIn("WARN locks:", buf.getvalue())

@@ -43,6 +43,13 @@ Checks, each grouped by family:
              entrance rooms may give "opening" (squares across). Warns on fewer than 2 entrances,
              on no entrance narrower than the owner (a gap the owner cannot use), and on a treasure
              room smaller than the hoard footprint; reports each treasure room's area vs the hoard.
+  locks    - opt-in with plan "locks" = [{"at": room id or link "id", "key": "red stone",
+             "key_in": room id or "wander", "kind": "key" | "word" | "toll", "oneway": true,
+             "drop_from": "foe"}]. Warns when the key_in room cannot be reached from any entrance with
+             that lock closed (softlock), when 2+ keys all sit in one room, when a toll lock is not
+             marked "oneway" (on the lock or its link), and when a wander key has no "drop_from" foe.
+             Rooms may carry "decoy": true; a decoy with no "secret" room or secret link within 2
+             rooms warns.
   factions - every plan faction names what it eats and why it tolerates its neighbours
   roles    - five-room roles in path order on the entrance-to-goal path, exactly one climax,
              a setback on that path
@@ -392,6 +399,68 @@ def lint_lair(p, lair):
     return w, info
 
 
+LOCK_KINDS = ("key", "word", "toll")
+
+
+def _reach(p, starts, closed_room=None, closed_link=None):
+    seen = {k for k in starts if k != closed_room}
+    todo = list(seen)
+    while todo:
+        u = todo.pop()
+        for a, b, at in p.link_attrs:
+            if closed_link is not None and at.get("id") == closed_link:
+                continue
+            for x, y in ((a, b), (b, a)):
+                if x == u and y != closed_room and y not in seen:
+                    seen.add(y)
+                    todo.append(y)
+    return seen
+
+
+def lint_locks(p, locks):
+    w, info = [], []
+    link_ids = {at.get("id"): at for _, _, at in p.link_attrs if at.get("id") is not None}
+    ents = p.entrances()
+    if locks and not ents:
+        info.append("locks: plan has no entrance, softlock check skipped")
+    homes = []
+    for i, lk in enumerate(locks or []):
+        at, key_in, kind = lk.get("at"), lk.get("key_in"), lk.get("kind", "key")
+        name = lk.get("key") or "lock %d" % (i + 1)
+        if kind not in LOCK_KINDS:
+            raise ValueError("lock kind %r: use %s" % (kind, ", ".join(LOCK_KINDS)))
+        if at in p.rooms:
+            closed_room, closed_link, link = at, None, None
+        elif at in link_ids:
+            closed_room, closed_link, link = None, at, link_ids[at]
+        else:
+            raise ValueError("lock at %r names no room or link id" % (at,))
+        if key_in == "wander":
+            if not lk.get("drop_from"):
+                w.append("wandering key %s has no drop_from foe: say who carries it" % name)
+        elif key_in in p.rooms:
+            homes.append(key_in)
+            if ents and key_in not in _reach(p, ents, closed_room, closed_link):
+                w.append("key %s in %s cannot be reached with lock at %s closed: softlock" % (name, key_in, at))
+        else:
+            raise ValueError("lock key_in %r names no room (or use 'wander')" % (key_in,))
+        if kind == "toll" and not (lk.get("oneway") or (link or {}).get("oneway")):
+            w.append("toll lock at %s is not marked oneway: say whether the far side pays" % at)
+    if len(homes) >= 2 and len(set(homes)) == 1:
+        w.append("all %d keys sit in room %s: spread them out" % (len(homes), homes[0]))
+    for k, r in p.rooms.items():
+        if not r.get("decoy"):
+            continue
+        near = {k}
+        for _ in range(2):
+            near |= {y for x in near for y in p.adj[x]}
+        ok = any(p.rooms[x].get("secret") for x in near) or any(
+            at.get("secret") and (a in near or b in near) for a, b, at in p.link_attrs)
+        if not ok:
+            w.append("decoy %s has no secret door within 2 rooms: hide the real way nearby" % k)
+    return w, info
+
+
 def lint_districts(p):
     w = []
     for k, r in p.rooms.items():
@@ -537,7 +606,8 @@ def lint(d, landmarks=()):
                          ("supply", lint_supply(p, plan.get("supply"))),
                          ("layers", lint_layers(p, plan.get("layers"))),
                          ("terrain", lint_terrain(p, plan.get("terrain"))),
-                         ("lair", lint_lair(p, plan.get("lair")))):
+                         ("lair", lint_lair(p, plan.get("lair"))),
+                         ("locks", lint_locks(p, plan.get("locks")))):
         res["warnings"] += [dict(check=name, text=t) for t in w]
         res["info"] += i
     return res

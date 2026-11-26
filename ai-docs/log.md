@@ -129,3 +129,4 @@ Newest last. One dated line per fact another session would need.
 - 2026-11-26: 0.31.0 lint routes (trade-off, hub cue) and districts (nuisance/residential, market access) from ICRPG Worlds p.110 and Kobold Cities and Towns p.44.
 - 2026-11-26: 0.32.0 lint `supply` family (weighted hex supply lines, user weights) and hex_scale() nested daily/weekly hexes, from Domains at War: Campaigns p.55, p.58.
 - 2026-11-26: 0.33.0 lint `layers`, `terrain` (special cost and boon) and `lair` families, from Manual of the Planes p.9, p.21-22 and Draconomicon (chromatic) p.93, p.61.
+- 2026-11-26: 0.34.0 lint `locks` family (softlock BFS, keys in one room, toll oneway, wander drop_from, decoy near secret), from Deep Carbon Observatory p.21, 31, 34-35, 46-47.
