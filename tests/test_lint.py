@@ -295,3 +295,44 @@ class TestRouteAndDistrictChecks(LintBase):
         w = texts(self.put(plan), "districts")
         self.assertEqual(sorted(w), ["market mkt has no link to a gate, dock or main road",
                                      "nuisance district tan borders residential district homes"])
+
+
+class TestSupplyChecks(LintBase):
+    """Domains at War: Campaigns (Autarch; p. 55 nested hexes, p. 58 supply lines). Weights are test input."""
+    W = {"road": 1, "settled": 2, "wild": 3, "desert": 6, "river": 1}
+
+    def plan(self, **sup):
+        return {"rooms": [{"id": "base", "ground": "settled"}, {"id": "r1", "ground": "road"},
+                          {"id": "w1", "ground": "wild"}, {"id": "camp", "ground": "wild", "army": True}],
+                "links": [["base", "r1"], ["r1", "camp"], ["base", "w1"], ["w1", "camp"]],
+                "supply": dict(weights=self.W, bases=["base"], **sup)}
+
+    def test_hex_scale(self):
+        s = L.hex_scale(6)
+        self.assertEqual((s["weekly_hex"], s["daily_per_weekly"]), (24.0, 16))
+        with self.assertRaises(ValueError):
+            L.hex_scale(6, 1)
+
+    def test_cheapest_line(self):
+        res = self.put(self.plan(max=10, daily_hex=6))
+        self.assertEqual(texts(res, "supply"), [])
+        self.assertIn("supply line camp: cost 4 via base > r1 > camp", res["info"])
+        self.assertTrue(any("weekly hex 24" in i for i in res["info"]))
+
+    def test_over_max_and_cut(self):
+        self.assertEqual(texts(self.put(self.plan(max=3)), "supply"),
+                         ["army at camp: supply line costs 4, over the max 3"])
+        plan = self.plan()
+        plan["links"] = [["base", "r1"]]
+        self.assertEqual(texts(self.put(plan), "supply"), ["army at camp has no supply line to a base"])
+
+    def test_missing_weights(self):
+        plan = self.plan()
+        plan["supply"]["weights"] = {}
+        self.assertTrue(texts(self.put(plan), "supply")[0].startswith("supply has no weights"))
+        plan = self.plan()
+        plan["rooms"][2]["ground"] = "swamp"
+        self.assertIn("hex w1 ground 'swamp' has no supply weight", texts(self.put(plan), "supply"))
+
+    def test_no_supply_is_silent(self):
+        self.assertEqual(texts(self.put({"rooms": [{"id": "a"}]}), "supply"), [])

@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261126-4 · 2026-11-26 · 0.32.0: lint traces supply lines over weighted hexes, nested hex scales
+- because: RPG book harvest verdict, Domains at War: Campaigns (Autarch; p. 55 a small daily-march hex inside a weekly hex about four times as wide, p. 58 supply lines traced over road, settled, wild, desert and river hexes). Ideas only, code written fresh; the weights are the user's input, no book numbers ship; unverified against play.
+- files: scripts/mpw_lint.py, tests/test_lint.py, skills/mapwright/SKILL.md, scripts/mpw.py, plugin.json, .claude-plugin/plugin.json
+- New `supply` lint family and `hex_scale()` helper. Plan rooms act as hexes with `ground` and `army`; the opt-in `supply` block holds weights, bases, max, daily_hex and ratio. Tests: 5 new.
+
 ### C-20261126-3 · 2026-11-26 · 0.31.0: lint warns on routes with no trade-off, hub links with no cue, district neighbours
 - because: RPG book harvest verdict, ICRPG Worlds (Runehammer Games; p. 110 route choices need a trade-off, hub exits need a visible cue) and Kobold Guide: Campaign Builder, Cities and Towns (Kobold Press; p. 44 nuisance trades away from homes, markets on a gate, dock or main road). Ideas only, rules written fresh; unverified against play.
 - files: scripts/mpw_lint.py, tests/test_lint.py, skills/mapwright/SKILL.md, scripts/mpw.py, plugin.json, .claude-plugin/plugin.json

@@ -27,6 +27,12 @@ Checks, each grouped by family:
              a hub (3+ neighbours) with a link that has no "cue", checked only once any link has a cue
   districts- a nuisance district bordering a residential one; a market with no link to a gate, dock
              or main road (kind or tag)
+  supply   - opt-in with plan "supply" = {"weights": {"road": 1, "settled": 2, "wild": 3, "desert": 5,
+             "river": 1}, "bases": ["h1"], "max": 10, "daily_hex": 6, "ratio": 4}; rooms are hexes with
+             "ground" (a weights key) and "army": true. Warns on a hex whose ground has no weight, an army
+             with no supply line to a base, and a line costing more than "max"; reports each line's cost
+             and path. With "daily_hex" (width of a daily-march hex) it reports the weekly hex width,
+             "ratio" (default 4) daily hexes across. The weights are yours: no numbers ship as defaults.
   factions - every plan faction names what it eats and why it tolerates its neighbours
   roles    - five-room roles in path order on the entrance-to-goal path, exactly one climax,
              a setback on that path
@@ -221,6 +227,67 @@ def _dtags(r):
     return {str(t).casefold() for t in (r.get("tags") or [])} | {str(r.get("kind", "")).casefold()}
 
 
+def hex_scale(daily_hex, ratio=4):
+    """Nested hex scales: a weekly hex `ratio` daily-march hexes across, ~ratio**2 of them inside."""
+    daily_hex, ratio = float(daily_hex), int(ratio)
+    if daily_hex <= 0 or ratio < 2:
+        raise ValueError("daily_hex must be > 0 and ratio >= 2")
+    return dict(daily_hex=daily_hex, weekly_hex=daily_hex * ratio, ratio=ratio, daily_per_weekly=ratio * ratio)
+
+
+def lint_supply(p, sup):
+    if not sup:
+        return [], []
+    w, info = [], []
+    if sup.get("daily_hex"):
+        s = hex_scale(sup["daily_hex"], sup.get("ratio", 4))
+        info.append("hex scale: daily hex %g, weekly hex %g (%d across, about %d daily hexes inside)"
+                    % (s["daily_hex"], s["weekly_hex"], s["ratio"], s["daily_per_weekly"]))
+    weights = {str(k).casefold(): float(v) for k, v in (sup.get("weights") or {}).items()}
+    if not weights:
+        return w + ["supply has no weights: give each ground type (road, settled, wild, desert, river) a cost"], info
+    cost = {}
+    for k, r in p.rooms.items():
+        g = str(r.get("ground", "")).casefold()
+        if g not in weights:
+            w.append("hex %s ground %r has no supply weight" % (k, r.get("ground")))
+        else:
+            cost[k] = weights[g]
+    bases = [b for b in (sup.get("bases") or []) if b in p.rooms]
+    if not bases:
+        return w + ["supply has no base among the plan hexes"], info
+    best, prev = {}, {}
+    q = []
+    for b in bases:
+        best[b] = 0.0
+        heapq.heappush(q, (0.0, str(b), b))
+    while q:
+        du, _, u = heapq.heappop(q)
+        if du > best.get(u, float("inf")):
+            continue
+        for v in p.adj[u]:
+            if v not in cost:
+                continue
+            nd = du + cost[v]
+            if nd < best.get(v, float("inf")):
+                best[v], prev[v] = nd, u
+                heapq.heappush(q, (nd, str(v), v))
+    mx = sup.get("max")
+    for k, r in p.rooms.items():
+        if not r.get("army"):
+            continue
+        if k not in best:
+            w.append("army at %s has no supply line to a base" % k)
+            continue
+        path = [k]
+        while path[-1] in prev:
+            path.append(prev[path[-1]])
+        info.append("supply line %s: cost %g via %s" % (k, best[k], " > ".join(str(x) for x in path[::-1])))
+        if mx is not None and best[k] > float(mx):
+            w.append("army at %s: supply line costs %g, over the max %g" % (k, best[k], float(mx)))
+    return w, info
+
+
 def lint_districts(p):
     w = []
     for k, r in p.rooms.items():
@@ -362,7 +429,8 @@ def lint(d, landmarks=()):
     for name, (w, i) in (("layout", lint_layout(p)), ("roles", lint_roles(p)),
                          ("tavern", lint_tavern(p)), ("landmarks", lint_landmarks(d, p, landmarks)),
                          ("factions", lint_factions(plan.get("factions"))),
-                         ("routes", lint_routes(p)), ("districts", lint_districts(p))):
+                         ("routes", lint_routes(p)), ("districts", lint_districts(p)),
+                         ("supply", lint_supply(p, plan.get("supply")))):
         res["warnings"] += [dict(check=name, text=t) for t in w]
         res["info"] += i
     return res
