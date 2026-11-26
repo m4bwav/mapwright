@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261126-6 · 2026-11-26 · 0.34.0: lint checks locks and keys (softlock, one key room, toll, wandering keys, decoys)
+- because: RPG book harvest verdict, Deep Carbon Observatory (Patrick Stuart; p. 21, 31 gate keys dropped by roaming guardians, p. 34-35 a decoy door beside a disguised real one, p. 46-47 password levels and a toll passage). Ideas only, code written fresh; unverified against play.
+- files: scripts/mpw_lint.py, tests/test_lint.py, skills/mapwright/SKILL.md, scripts/mpw.py, plugin.json, .claude-plugin/plugin.json
+- New `locks` lint family, opt-in through plan `locks`; links may carry an `id` for a lock to sit on, rooms `decoy` and `secret`. Softlock is a reachability search from the entrances with that lock closed. Tests: 383 pass, 2 skip (5 new).
+
 ### C-20261126-5 · 2026-11-26 · 0.33.0: lint checks plane layers, special terrain trade-offs and lairs
 - because: RPG book harvest verdicts, Manual of the Planes (p. 9 arrival on the outer layer with guarded or portal links deeper; p. 21-22 special terrain should both cost and pay) and Draconomicon: The Book of Chromatic Dragons (p. 93 an owner wants two ways out plus a gap too small for itself; p. 61 a hoard has a footprint in squares). Ideas only, code written fresh; unverified against play.
 - files: scripts/mpw_lint.py, tests/test_lint.py, skills/mapwright/SKILL.md, scripts/mpw.py, plugin.json, .claude-plugin/plugin.json
