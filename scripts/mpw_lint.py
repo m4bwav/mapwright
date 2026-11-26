@@ -33,6 +33,16 @@ Checks, each grouped by family:
              with no supply line to a base, and a line costing more than "max"; reports each line's cost
              and path. With "daily_hex" (width of a daily-march hex) it reports the weekly hex width,
              "ratio" (default 4) daily hexes across. The weights are yours: no numbers ship as defaults.
+  layers   - opt-in with plan "layers" = {"order": ["outer", "middle", "core"], "arrival": "outer"};
+             rooms carry "layer". Warns when arrival is not the first (outer) layer, and when a deeper
+             layer has no link to a shallower layer tagged portal or guarded (link "portal": true,
+             "guarded": true, or "tags": ["portal"]).
+  terrain  - a terrain entry {"name": .., "special": true, "cost": .., "boon": ..} in a room's
+             "terrain" list or in plan "terrain" must give both a cost and a boon.
+  lair     - opt-in with plan "lair" = {"owner": "huge" or squares across, "hoard": squares};
+             entrance rooms may give "opening" (squares across). Warns on fewer than 2 entrances,
+             on no entrance narrower than the owner (a gap the owner cannot use), and on a treasure
+             room smaller than the hoard footprint; reports each treasure room's area vs the hoard.
   factions - every plan faction names what it eats and why it tolerates its neighbours
   roles    - five-room roles in path order on the entrance-to-goal path, exactly one climax,
              a setback on that path
@@ -288,6 +298,100 @@ def lint_supply(p, sup):
     return w, info
 
 
+def _tagged(at, *names):
+    tags = {str(t).casefold() for t in (at.get("tags") or [])} | {str(at.get("kind", "")).casefold()}
+    return any(at.get(n) or n in tags for n in names)
+
+
+def lint_layers(p, layers):
+    if not layers:
+        return [], []
+    order = list(layers.get("order") or [])
+    if not order:
+        return ["layers has no order: list the layers from outer to deepest"], []
+    w = []
+    arrival = layers.get("arrival")
+    if arrival is None:
+        w.append("layers has no arrival layer")
+    elif arrival != order[0]:
+        w.append("arrival layer %s is not the outer layer %s: travellers should land on the outside"
+                 % (arrival, order[0]))
+    depth = {name: i for i, name in enumerate(order)}
+    for i, name in enumerate(order[1:], 1):
+        ok = False
+        for a, b, at in p.link_attrs:
+            la, lb = depth.get(p.rooms[a].get("layer")), depth.get(p.rooms[b].get("layer"))
+            if la is None or lb is None or i not in (la, lb) or min(la, lb) >= i:
+                continue
+            if _tagged(at, "portal", "guarded"):
+                ok = True
+                break
+        if not ok:
+            w.append("layer %s has no link from a shallower layer tagged portal or guarded" % name)
+    return w, []
+
+
+def lint_terrain(p, extra):
+    w = []
+    items = [("plan", t) for t in (extra or [])]
+    items += [(k, t) for k, r in p.rooms.items() for t in (r.get("terrain") or [])]
+    for where, t in items:
+        if not isinstance(t, dict) or not t.get("special"):
+            continue
+        has_c, has_b = bool(t.get("cost")), bool(t.get("boon"))
+        if not (has_c and has_b):
+            side = "only a cost" if has_c else "only a boon" if has_b else "neither cost nor boon"
+            w.append("special terrain %s (%s) has %s: give it both a price and a payoff"
+                     % (t.get("name", "?"), where, side))
+    return w, []
+
+
+SIZE_SQUARES = {"tiny": 0.5, "small": 1, "medium": 1, "large": 2, "huge": 3, "gargantuan": 4,
+                "colossal": 6}
+
+
+def _squares(v):
+    if isinstance(v, str):
+        if v.casefold() not in SIZE_SQUARES:
+            raise ValueError("lair owner size %r: use a number of squares or %s" % (v, ", ".join(SIZE_SQUARES)))
+        return float(SIZE_SQUARES[v.casefold()])
+    return float(v)
+
+
+def lint_lair(p, lair):
+    if not lair:
+        return [], []
+    w, info = [], []
+    ents = p.entrances()
+    if len(ents) < 2:
+        w.append("lair has %d entrance(s): the owner wants at least 2 ways out" % len(ents))
+    if lair.get("owner") is not None:
+        own = _squares(lair["owner"])
+        widths = {k: float(p.rooms[k]["opening"]) for k in ents if "opening" in p.rooms[k]}
+        if len(widths) < len(ents):
+            info.append("lair: %d entrance(s) give no opening width" % (len(ents) - len(widths)))
+        if not any(v < own for v in widths.values()):
+            w.append("no lair entrance is narrower than the owner (%g squares): add a gap only "
+                     "small intruders can use" % own)
+    hoard = lair.get("hoard")
+    for k, r in p.rooms.items():
+        if not r.get("treasure"):
+            continue
+        if "area" not in r:
+            info.append("lair: treasure room %s has no area" % k)
+            continue
+        if hoard is None:
+            info.append("lair: treasure room %s area %g squares" % (k, r["area"]))
+            continue
+        pct = 100.0 * float(hoard) / r["area"] if r["area"] else 0.0
+        info.append("lair: treasure room %s area %g squares vs hoard %g (%.0f%%)"
+                    % (k, r["area"], float(hoard), pct))
+        if r["area"] < float(hoard):
+            w.append("treasure room %s (%g squares) is smaller than the hoard (%g squares)"
+                     % (k, r["area"], float(hoard)))
+    return w, info
+
+
 def lint_districts(p):
     w = []
     for k, r in p.rooms.items():
@@ -430,7 +534,10 @@ def lint(d, landmarks=()):
                          ("tavern", lint_tavern(p)), ("landmarks", lint_landmarks(d, p, landmarks)),
                          ("factions", lint_factions(plan.get("factions"))),
                          ("routes", lint_routes(p)), ("districts", lint_districts(p)),
-                         ("supply", lint_supply(p, plan.get("supply")))):
+                         ("supply", lint_supply(p, plan.get("supply"))),
+                         ("layers", lint_layers(p, plan.get("layers"))),
+                         ("terrain", lint_terrain(p, plan.get("terrain"))),
+                         ("lair", lint_lair(p, plan.get("lair")))):
         res["warnings"] += [dict(check=name, text=t) for t in w]
         res["info"] += i
     return res

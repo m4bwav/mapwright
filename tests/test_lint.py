@@ -336,3 +336,77 @@ class TestSupplyChecks(LintBase):
 
     def test_no_supply_is_silent(self):
         self.assertEqual(texts(self.put({"rooms": [{"id": "a"}]}), "supply"), [])
+
+
+class TestLayerChecks(LintBase):
+    """Manual of the Planes p. 9 (arrive on the outer layer), p. 21-22 (special terrain costs and pays)."""
+
+    def plan(self, arrival="outer", tag=True):
+        link = {"a": "m", "b": "c"}
+        if tag:
+            link["portal"] = True
+        return {"rooms": [{"id": "o", "layer": "outer"}, {"id": "m", "layer": "middle"},
+                          {"id": "c", "layer": "core"}],
+                "links": [{"a": "o", "b": "m", "tags": ["guarded"]}, link],
+                "layers": {"order": ["outer", "middle", "core"], "arrival": arrival}}
+
+    def test_clean(self):
+        self.assertEqual(texts(self.put(self.plan()), "layers"), [])
+
+    def test_arrival_not_outer(self):
+        self.assertEqual(texts(self.put(self.plan(arrival="middle")), "layers"),
+                         ["arrival layer middle is not the outer layer outer: travellers should land on the outside"])
+
+    def test_deeper_layer_untagged(self):
+        self.assertEqual(texts(self.put(self.plan(tag=False)), "layers"),
+                         ["layer core has no link from a shallower layer tagged portal or guarded"])
+
+    def test_special_terrain_one_sided(self):
+        plan = {"rooms": [{"id": "a", "terrain": ["pit", {"name": "ash", "special": True, "cost": "slow"}]}],
+                "terrain": [{"name": "glass", "special": True, "boon": "heal 1"},
+                            {"name": "moss", "special": True, "cost": "slick", "boon": "silent"},
+                            {"name": "rock", "cost": "slow"}]}
+        self.assertEqual(sorted(texts(self.put(plan), "terrain")),
+                         ["special terrain ash (a) has only a cost: give it both a price and a payoff",
+                          "special terrain glass (plan) has only a boon: give it both a price and a payoff"])
+
+
+class TestLairChecks(LintBase):
+    """Draconomicon p. 93 (two ways out, a gap too small for the owner), p. 61 (hoard footprint)."""
+
+    def plan(self):
+        return {"rooms": [{"id": "mouth", "entrance": True, "opening": 4},
+                          {"id": "crack", "entrance": True, "opening": 1},
+                          {"id": "hoard", "treasure": True, "area": 36}],
+                "links": [["mouth", "hoard"], ["crack", "hoard"]],
+                "lair": {"owner": "gargantuan", "hoard": 16}}
+
+    def test_clean_reports_area(self):
+        res = self.put(self.plan())
+        self.assertEqual(texts(res, "lair"), [])
+        self.assertIn("lair: treasure room hoard area 36 squares vs hoard 16 (44%)", res["info"])
+
+    def test_one_entrance_none_small_hoard_too_big(self):
+        plan = self.plan()
+        plan["rooms"][1] = {"id": "crack"}
+        plan["lair"]["hoard"] = 49
+        self.assertEqual(texts(self.put(plan), "lair"), [
+            "lair has 1 entrance(s): the owner wants at least 2 ways out",
+            "no lair entrance is narrower than the owner (4 squares): add a gap only small intruders can use",
+            "treasure room hoard (36 squares) is smaller than the hoard (49 squares)"])
+
+    def test_bad_size_and_silent(self):
+        plan = self.plan()
+        plan["lair"]["owner"] = "enormous"
+        with self.assertRaises(ValueError):
+            self.put(plan)
+        self.assertEqual(texts(self.put({"rooms": [{"id": "a"}]}), "lair"), [])
+
+    def test_cli_strict(self):
+        plan = self.plan()
+        plan["rooms"][1] = {"id": "crack"}
+        self.put(plan)
+        buf = io.StringIO()
+        with redirect_stdout(buf), self.assertRaises(SystemExit):
+            mpw.main(["lint", self.tmp, "--strict"])
+        self.assertIn("WARN lair:", buf.getvalue())
