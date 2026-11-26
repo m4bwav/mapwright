@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261126-5 · 2026-11-26 · 0.33.0: lint checks plane layers, special terrain trade-offs and lairs
+- because: RPG book harvest verdicts, Manual of the Planes (p. 9 arrival on the outer layer with guarded or portal links deeper; p. 21-22 special terrain should both cost and pay) and Draconomicon: The Book of Chromatic Dragons (p. 93 an owner wants two ways out plus a gap too small for itself; p. 61 a hoard has a footprint in squares). Ideas only, code written fresh; unverified against play.
+- files: scripts/mpw_lint.py, tests/test_lint.py, skills/mapwright/SKILL.md, scripts/mpw.py, plugin.json, .claude-plugin/plugin.json
+- New `layers`, `terrain` and `lair` lint families, all opt-in through plan fields (`layers`, special terrain entries, `lair`). The lair check rides on `mpw lint`, since `check` runs no design warnings. Tests: 380 pass, 2 skip (9 new).
+
 ### C-20261126-4 · 2026-11-26 · 0.32.0: lint traces supply lines over weighted hexes, nested hex scales
 - because: RPG book harvest verdict, Domains at War: Campaigns (Autarch; p. 55 a small daily-march hex inside a weekly hex about four times as wide, p. 58 supply lines traced over road, settled, wild, desert and river hexes). Ideas only, code written fresh; the weights are the user's input, no book numbers ship; unverified against play.
 - files: scripts/mpw_lint.py, tests/test_lint.py, skills/mapwright/SKILL.md, scripts/mpw.py, plugin.json, .claude-plugin/plugin.json
