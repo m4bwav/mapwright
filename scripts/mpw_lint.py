@@ -9,13 +9,19 @@ plan = {
              "stairs": false, "staffed": false, "public": true, "door": "front", "area": 48}],
   "links": [["r1", "r2"], {"a": "r2", "b": "r3", "length": 4}],
   "goal": "r5",
-  "landmarks": ["Old Well", "Gate Hall"]
+  "landmarks": ["Old Well", "Gate Hall"],
+  "factions": [{"name": "kobolds", "eats": "cave fish", "tolerates": "the goblins pay them in iron"}]
 }
+
+Rooms may also carry "hook" (why an empty room is worth a look) and "vertical" (true or a note).
 
 Every field is optional. A room's area falls back to grid.json rooms (w * h) when the id matches.
 Checks, each grouped by family:
   layout   - one entrance only; danger not rising with distance from the main entrance; fewer than
-             2 links between adjacent levels; empty share outside 15-50%; combat room with no terrain
+             2 links between adjacent levels; empty share outside 15-50%; combat room with no terrain;
+             a climax room with fewer than 2 links (no retreat); a level with no vertical feature;
+             an empty room with no hook
+  factions - every plan faction names what it eats and why it tolerates its neighbours
   roles    - five-room roles in path order on the entrance-to-goal path, exactly one climax,
              a setback on that path
   tavern   - taproom the largest public room, kitchen next to the taproom, a front and a rear door,
@@ -34,6 +40,7 @@ PUBLIC_KINDS = {"taproom", "bar", "snug", "private-dining", "common-room", "dini
 DRINKING_KINDS = {"taproom", "bar", "snug"}
 STAFFED_KINDS = {"kitchen", "bar", "office", "staff", "taproom"}
 EMPTY_LOW, EMPTY_HIGH = 0.15, 0.50
+VERTICAL_TERRAIN = {"ledge", "balcony", "pit", "shaft", "stairs", "ladder", "chasm", "gallery", "mezzanine"}
 
 
 def _load(d, name):
@@ -148,7 +155,36 @@ def lint_layout(p):
     for k, r in p.rooms.items():
         if r.get("combat") and not r.get("terrain"):
             w.append("combat room %s has no terrain feature (cover, height, hazard)" % k)
+    for k, r in p.rooms.items():
+        if r.get("role") == "climax" and len(p.adj[k]) < 2:
+            w.append("climax room %s has %d link(s): a dead end leaves no retreat" % (k, len(p.adj[k])))
+        if r.get("empty") and not r.get("hook"):
+            w.append("empty room %s has no hook (something to notice, use or wonder about)" % k)
+    by_level = {}
+    for r in p.rooms.values():
+        if "level" in r:
+            by_level.setdefault(r["level"], []).append(r)
+    for lv in sorted(by_level, key=str):
+        if not any(_vertical(r) for r in by_level[lv]):
+            w.append("level %s has no room with a vertical feature (ledge, balcony, pit, shaft, stairs)" % lv)
     return w, info
+
+
+def _vertical(r):
+    if r.get("vertical") or r.get("stairs"):
+        return True
+    return any(str(t).casefold() in VERTICAL_TERRAIN for t in (r.get("terrain") or []))
+
+
+def lint_factions(factions):
+    w = []
+    for i, f in enumerate(factions or []):
+        name = f.get("name", "#%d" % i) if isinstance(f, dict) else str(f)
+        f = f if isinstance(f, dict) else {}
+        for key, why in (("eats", "what it eats"), ("tolerates", "why it tolerates its neighbours")):
+            if not f.get(key):
+                w.append("faction %s has no %s: say %s" % (name, key, why))
+    return w, []
 
 
 def lint_roles(p):
@@ -277,7 +313,8 @@ def lint(d, landmarks=()):
     p = Plan(plan, _load(d, "grid.json"))
     res = dict(warnings=[], info=[], escape=escape_report(p))
     for name, (w, i) in (("layout", lint_layout(p)), ("roles", lint_roles(p)),
-                         ("tavern", lint_tavern(p)), ("landmarks", lint_landmarks(d, p, landmarks))):
+                         ("tavern", lint_tavern(p)), ("landmarks", lint_landmarks(d, p, landmarks)),
+                         ("factions", lint_factions(plan.get("factions")))):
         res["warnings"] += [dict(check=name, text=t) for t in w]
         res["info"] += i
     return res

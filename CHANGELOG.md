@@ -2,14 +2,19 @@
 
 Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its companions, newest first, each with the reason. Reasons cite lessons in [LEARNINGS.md](LEARNINGS.md) (`L-`) and test runs in [TESTS.md](TESTS.md) (`T-`).
 
-Entry shape: `### C-20261126-1 · 2026-11-26 · 0.29.0: lint command for room plans (layout, five-room roles, tavern, landmarks, escape)
+Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
+
+### C-20261126-2 · 2026-11-26 · 0.30.0: lint warns on dead-end climax, flat levels, hookless empty rooms, faction ecology
+- because: RPG book harvest verdict, Kobold Guide to Dungeons (Kobold Press; p. 29-30 no empty rooms, p. 85-88 retreat routes, p. 91 vertical design); faction eats and tolerates from the DMG ecology advice (5e and 3.5). Ideas only, rules written fresh; unverified against play.
+- files: scripts/mpw_lint.py, tests/test_lint.py, skills/mapwright/SKILL.md, scripts/mpw.py, plugin.json, .claude-plugin/plugin.json
+- `mpw lint` warns when a climax room has fewer than 2 links, when a level has no room with `vertical`, `stairs` or vertical terrain (ledge, balcony, pit, shaft and the like), when an `empty: true` room has no `hook`, and when a `plan.factions` entry lacks `eats` or `tolerates`.
+
+### C-20261126-1 · 2026-11-26 · 0.29.0: lint command for room plans (layout, five-room roles, tavern, landmarks, escape)
 - because: RPG book harvest verdicts (Fast Combats; Be Awesome at Dungeon Design; 5 Room Dungeons; an inns and taverns design guide, p. 50-65; a Campaign Creation Guide; Book of Dirty Tricks, p. 74). Ideas only, rules written fresh in our own words; thresholds are book advice, unverified against play.
 - files: scripts/mpw_lint.py (new), scripts/mpw.py, tests/test_lint.py (new), skills/mapwright/SKILL.md, plugin.json, .claude-plugin/plugin.json
 - New `mpw lint DIR`: an optional `plan` object in recipe.json (rooms, links, goal, landmarks; every field optional, old recipes lint clean) gets design warnings: single entrance, danger against distance, routes between levels, empty-room share, combat rooms without terrain, five-room role order, tavern layout and missing landmarks, plus treasure-to-exit distance. `--strict` exits 1 on any warning. Tests: 24 new.
 
-### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
-
-### C-20261121-1 · 2026-11-21 · 0.28.0: battle biomes with noise-band ground and scatter rules
+1-1 · 2026-11-21 · 0.28.0: battle biomes with noise-band ground and scatter rules
 - because: harvest: RimWorld local harvest 2026-11-21 (technique observed in RimWorld's shipped defs, 2026-11-21; describe-only notes, code written fresh, nothing copied)
 - files: scripts/mpw_biome.py (new), scripts/mpw_places.py, scripts/mpw.py, tests/test_biome.py (new), references/game-map-generation.md (section 12), references/cli-generate.md, RESEARCH.md, plugin.json, .claude-plugin/plugin.json, skills/mapwright/SKILL.md
 - `gen battle --biome` and `--rules`: seeded value noise cut into terrain bands, then per-feature scatter rules (count per 10k cells, min spacing, edge margin, avoided terrain, blocking or marker). Blockers only where their ring is open, so the map stays one region. Before: 0.27.2 rejected `--biome` and had one global density share. Tests: 332 pass, 2 skip (9 new).

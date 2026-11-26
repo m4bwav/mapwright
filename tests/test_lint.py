@@ -25,9 +25,10 @@ def good_dungeon():
         "rooms": [
             {"id": "a", "entrance": True, "main": True, "role": "entrance", "danger": 1, "empty": False,
              "level": 0},
-            {"id": "b", "entrance": True, "danger": 1, "empty": True, "level": 0},
-            {"id": "c", "role": "puzzle", "danger": 2, "empty": False, "level": 0},
-            {"id": "d", "role": "setback", "danger": 3, "empty": True, "combat": True, "terrain": ["pit"],
+            {"id": "b", "entrance": True, "danger": 1, "empty": True, "level": 0, "hook": "dry fountain"},
+            {"id": "c", "role": "puzzle", "danger": 2, "empty": False, "level": 0, "vertical": True},
+            {"id": "d", "role": "setback", "danger": 3, "empty": True, "hook": "claw marks", "combat": True,
+             "terrain": ["pit"],
              "level": 1},
             {"id": "e", "role": "climax", "danger": 5, "empty": False, "combat": True, "terrain": ["pillars"],
              "level": 1},
@@ -222,3 +223,39 @@ class TestCli(LintBase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestKoboldChecks(LintBase):
+    def test_good_plan_clean(self):
+        self.assertEqual(texts(self.put(good_dungeon()), "layout"), [])
+
+    def test_dead_end_climax(self):
+        plan = good_dungeon()
+        plan["links"] = [l for l in plan["links"] if l != ["e", "f"]]
+        self.assertTrue(any("climax room e has 1 link" in t for t in texts(self.put(plan), "layout")))
+
+    def test_level_without_vertical(self):
+        plan = good_dungeon()
+        plan["rooms"][2].pop("vertical")
+        self.assertTrue(any("level 0 has no room with a vertical" in t for t in texts(self.put(plan))))
+
+    def test_vertical_terrain_counts(self):
+        plan = good_dungeon()
+        plan["rooms"][2].pop("vertical")
+        plan["rooms"][0]["terrain"] = ["Balcony"]
+        self.assertFalse(any("vertical" in t for t in texts(self.put(plan))))
+
+    def test_empty_room_without_hook(self):
+        plan = good_dungeon()
+        plan["rooms"][1].pop("hook")
+        self.assertIn("empty room b has no hook (something to notice, use or wonder about)",
+                      texts(self.put(plan), "layout"))
+
+    def test_factions_need_eats_and_tolerates(self):
+        plan = good_dungeon()
+        plan["factions"] = [{"name": "kobolds", "eats": "cave fish", "tolerates": "goblin iron"},
+                            {"name": "goblins", "eats": "rats"}, "ghouls"]
+        w = texts(self.put(plan), "factions")
+        self.assertEqual(len(w), 3)
+        self.assertTrue(any("goblins has no tolerates" in t for t in w))
+        self.assertTrue(any("ghouls has no eats" in t for t in w))
