@@ -2,7 +2,12 @@
 
 Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its companions, newest first, each with the reason. Reasons cite lessons in [LEARNINGS.md](LEARNINGS.md) (`L-`) and test runs in [TESTS.md](TESTS.md) (`T-`).
 
-Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
+Entry shape: `### C-20261126-1 · 2026-11-26 · 0.29.0: lint command for room plans (layout, five-room roles, tavern, landmarks, escape)
+- because: RPG book harvest verdicts (Fast Combats; Be Awesome at Dungeon Design; 5 Room Dungeons; an inns and taverns design guide, p. 50-65; a Campaign Creation Guide; Book of Dirty Tricks, p. 74). Ideas only, rules written fresh in our own words; thresholds are book advice, unverified against play.
+- files: scripts/mpw_lint.py (new), scripts/mpw.py, tests/test_lint.py (new), skills/mapwright/SKILL.md, plugin.json, .claude-plugin/plugin.json
+- New `mpw lint DIR`: an optional `plan` object in recipe.json (rooms, links, goal, landmarks; every field optional, old recipes lint clean) gets design warnings: single entrance, danger against distance, routes between levels, empty-room share, combat rooms without terrain, five-room role order, tavern layout and missing landmarks, plus treasure-to-exit distance. `--strict` exits 1 on any warning. Tests: 24 new.
+
+### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
 ### C-20261121-1 · 2026-11-21 · 0.28.0: battle biomes with noise-band ground and scatter rules
 - because: harvest: RimWorld local harvest 2026-11-21 (technique observed in RimWorld's shipped defs, 2026-11-21; describe-only notes, code written fresh, nothing copied)

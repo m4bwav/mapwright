@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.28.0"
+VERSION = "0.29.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -1761,6 +1761,30 @@ def cmd_check(a):
         sys.exit(1)
 
 
+def cmd_lint(a):
+    lt = importlib.import_module("mpw_lint")
+    extra = [s.strip() for s in (a.landmarks or "").split(",") if s.strip()]
+    try:
+        res = lt.lint(a.dir, extra)
+    except ValueError as e:
+        die(str(e))
+    if a.json:
+        print(json.dumps(res, indent=1))
+    else:
+        for w in res["warnings"]:
+            print("WARN %s: %s" % (w["check"], w["text"]))
+        for i in res["info"]:
+            print("info: %s" % i)
+        for e in res["escape"]:
+            if e["exit"] is None:
+                print("escape: treasure %s has no path to an exit" % e["treasure"])
+            else:
+                print("escape: treasure %s to exit %s: %g" % (e["treasure"], e["exit"], e["distance"]))
+        print("%d warning(s)" % len(res["warnings"]))
+    if a.strict and res["warnings"]:
+        sys.exit(1)
+
+
 def cmd_sky(a):
     sky = importlib.import_module("mpw_sky")
     try:
@@ -2380,6 +2404,15 @@ def build_parser():
     s.add_argument("--resources", help="--fair: resources as X,Y;X,Y (default: lights, else room centres)")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_check)
+
+    s = sub.add_parser("lint", help="design warnings on a recipe's optional room plan: entrances, danger by "
+                       "distance, level routes, empty share, terrain, five-room roles, tavern layout, "
+                       "landmarks, treasure escape distance")
+    s.add_argument("dir", help="recipe folder")
+    s.add_argument("--landmarks", help="more landmark names that must be on the map, comma separated")
+    s.add_argument("--strict", action="store_true", help="exit 1 when there is any warning")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_lint)
 
     s = sub.add_parser("path", help="cheapest route (A*) or a Dijkstra field on a dungeon, battle, deck, world or "
                        "region recipe; writes path.json, path.geojson and path.svg (or field.json and field.svg)")
