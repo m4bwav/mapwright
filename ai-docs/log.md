@@ -127,3 +127,4 @@ Newest last. One dated line per fact another session would need.
 
 - 2026-11-26: 0.29.0 adds `mpw lint` (scripts/mpw_lint.py) for an optional recipe `plan`: layout, five-room roles, tavern, landmarks, treasure escape distance. Not built: none of the five candidates needed a redesign; room plans are hand-written, generators do not emit `plan` yet (next step if wanted). Tests 354 pass, 2 skip.
 - 2026-11-26: 0.31.0 lint routes (trade-off, hub cue) and districts (nuisance/residential, market access) from ICRPG Worlds p.110 and Kobold Cities and Towns p.44.
+- 2026-11-26: 0.32.0 lint `supply` family (weighted hex supply lines, user weights) and hex_scale() nested daily/weekly hexes, from Domains at War: Campaigns p.55, p.58.
