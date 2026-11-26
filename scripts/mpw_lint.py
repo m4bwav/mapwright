@@ -7,13 +7,15 @@ plan = {
              "danger": 2, "empty": false, "combat": true, "terrain": ["pillars"],
              "level": 0, "main": true, "entrance": true, "exit": true, "treasure": false,
              "stairs": false, "staffed": false, "public": true, "door": "front", "area": 48}],
-  "links": [["r1", "r2"], {"a": "r2", "b": "r3", "length": 4}],
+  "links": [["r1", "r2"], {"a": "r2", "b": "r3", "length": 4, "hazard": 2, "cue": "smoke above the trees"}],
   "goal": "r5",
   "landmarks": ["Old Well", "Gate Hall"],
   "factions": [{"name": "kobolds", "eats": "cave fish", "tolerates": "the goblins pay them in iron"}]
 }
 
 Rooms may also carry "hook" (why an empty room is worth a look) and "vertical" (true or a note).
+A city plan may use rooms as districts: "kind" (market, gate, dock, main-road, residential...) and
+"tags" (["nuisance"], ["residential"]); a link then means two districts border each other.
 
 Every field is optional. A room's area falls back to grid.json rooms (w * h) when the id matches.
 Checks, each grouped by family:
@@ -21,6 +23,10 @@ Checks, each grouped by family:
              2 links between adjacent levels; empty share outside 15-50%; combat room with no terrain;
              a climax room with fewer than 2 links (no retreat); a level with no vertical feature;
              an empty room with no hook
+  routes   - two links joining the same pair of rooms with the same length and hazard (no trade-off);
+             a hub (3+ neighbours) with a link that has no "cue", checked only once any link has a cue
+  districts- a nuisance district bordering a residential one; a market with no link to a gate, dock
+             or main road (kind or tag)
   factions - every plan faction names what it eats and why it tolerates its neighbours
   roles    - five-room roles in path order on the entrance-to-goal path, exactly one climax,
              a setback on that path
@@ -65,6 +71,7 @@ class Plan:
                     r["area"] = g["w"] * g["h"]
         self.adj = {k: {} for k in self.rooms}
         self.links = []
+        self.link_attrs = []
         for l in plan.get("links") or []:
             if isinstance(l, dict):
                 a, b, w = l.get("a"), l.get("b"), float(l.get("length", 1))
@@ -74,6 +81,7 @@ class Plan:
             if a not in self.rooms or b not in self.rooms:
                 raise ValueError("plan link names an unknown room: %r - %r" % (a, b))
             self.links.append((a, b, w))
+            self.link_attrs.append((a, b, l if isinstance(l, dict) else {"length": w}))
             for x, y in ((a, b), (b, a)):
                 if y not in self.adj[x] or w < self.adj[x][y]:
                     self.adj[x][y] = w
@@ -184,6 +192,45 @@ def lint_factions(factions):
         for key, why in (("eats", "what it eats"), ("tolerates", "why it tolerates its neighbours")):
             if not f.get(key):
                 w.append("faction %s has no %s: say %s" % (name, key, why))
+    return w, []
+
+
+def lint_routes(p):
+    w = []
+    seen = {}
+    for a, b, at in p.link_attrs:
+        key = frozenset((a, b))
+        sig = (float(at.get("length", 1)), at.get("hazard", 0) or 0)
+        for other in seen.get(key, []):
+            if other == sig:
+                w.append("rooms %s and %s are joined by two routes with the same length and hazard: "
+                         "give one a trade-off (shorter but riskier)" % (a, b))
+                break
+        seen.setdefault(key, []).append(sig)
+    if any(at.get("cue") for _, _, at in p.link_attrs):
+        for k in p.rooms:
+            if len(p.adj[k]) < 3:
+                continue
+            for a, b, at in p.link_attrs:
+                if k in (a, b) and not at.get("cue"):
+                    w.append("hub %s: link to %s has no cue the players can see" % (k, b if a == k else a))
+    return w, []
+
+
+def _dtags(r):
+    return {str(t).casefold() for t in (r.get("tags") or [])} | {str(r.get("kind", "")).casefold()}
+
+
+def lint_districts(p):
+    w = []
+    for k, r in p.rooms.items():
+        t = _dtags(r)
+        if "nuisance" in t:
+            for n in p.adj[k]:
+                if "residential" in _dtags(p.rooms[n]):
+                    w.append("nuisance district %s borders residential district %s" % (k, n))
+        if "market" in t and not any(_dtags(p.rooms[n]) & {"gate", "dock", "main-road"} for n in p.adj[k]):
+            w.append("market %s has no link to a gate, dock or main road" % k)
     return w, []
 
 
@@ -314,7 +361,8 @@ def lint(d, landmarks=()):
     res = dict(warnings=[], info=[], escape=escape_report(p))
     for name, (w, i) in (("layout", lint_layout(p)), ("roles", lint_roles(p)),
                          ("tavern", lint_tavern(p)), ("landmarks", lint_landmarks(d, p, landmarks)),
-                         ("factions", lint_factions(plan.get("factions")))):
+                         ("factions", lint_factions(plan.get("factions"))),
+                         ("routes", lint_routes(p)), ("districts", lint_districts(p))):
         res["warnings"] += [dict(check=name, text=t) for t in w]
         res["info"] += i
     return res
