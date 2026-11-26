@@ -3,7 +3,7 @@ name: mapwright
 description: "Cartography for real, fantasy and sci-fi worlds: read, write, find and generate maps of places. Reads and converts GeoJSON, GPX, KML and shapefiles, finds OpenStreetMap or Overpass data with its licence, measures distance, area and scale, grows seeded worlds, regions, cities, dungeons, battle maps, star sectors, systems, planets and ship deck plans. Exports engine heightmaps (Unity, Unreal, Godot, Roblox), Tiled tilemaps, Universal VTT, meshes and PDFs. Use for any map of a place or world: 'what is in this GPX', 'KML to GeoJSON', 'find OpenStreetMap data for this area', 'make a fantasy continent map', 'generate a dungeon for my game', 'star sector or deck plan for my sci-fi setting', 'shortest path or chokepoints on my game map', 'export it as a Unity heightmap, Tiled map or dd2vtt'. Also 'refresh mapwright'. Not for code or repository maps (evergreen-map), data charts on a map such as choropleths (chartwright), 3D models of real places (polywright-capture) or pixel-art tiles (pixelwright)."
 license: MIT
 metadata:
-  version: 0.28.0
+  version: 0.29.0
 ---
 
 # mapwright
@@ -54,6 +54,7 @@ Read [references/cli-find.md](../../references/cli-find.md) before any `--online
 
 - `MPW gen world|region|city|dungeon|battle|sector|system|planet|deck --seed N --out DIR`, then `MPW check DIR` (exit 1 on any failed bar; run it before handing a map over).
 - `MPW path DIR --from X,Y --to X,Y`, `MPW travel DIR --from X,Y`, `MPW check DIR --chokepoints [--fair]` for routes, travel times and fairness.
+- `MPW lint DIR [--landmarks A,B] [--strict] [--json]`: design warnings on the recipe's optional `plan` (rooms with `role`, `kind`, `danger`, `empty`, `combat`, `terrain`, `level`, `entrance`, `exit`, `treasure`, `door`, `stairs`, `area`; `links`; `goal`; `landmarks`). Warns on one entrance, danger not rising with distance, fewer than 2 routes between levels, empty rooms outside 15-50%, a combat room with no terrain, five-room roles out of path order (one climax, a setback on the path), tavern layout (taproom largest public room, kitchen next to it, front and rear doors, vault next to staff, no stairs in drinking rooms) and missing landmarks; reports the path length from each treasure room to the nearest exit. Warnings, not bars: `check` does not run it. Schema in the `scripts/mpw_lint.py` docstring.
 
 Read [references/cli-generate.md](../../references/cli-generate.md) before running any `gen`, `zoom`, `names`, `path`, `travel` or `check` option beyond the line above: it holds every kind's options, outputs, timings and proof bars. Background: [references/cities-and-dungeons.md](../../references/cities-and-dungeons.md), [references/scifi-maps.md](../../references/scifi-maps.md), [references/game-map-generation.md](../../references/game-map-generation.md), [references/pathfinding.md](../../references/pathfinding.md).
 
