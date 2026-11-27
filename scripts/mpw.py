@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.36.0"
+VERSION = "0.37.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -1485,6 +1485,18 @@ def cmd_gen_place(a):
         else:
             cave = {k: getattr(a, k) for k in ("fill", "passes", "birth", "survival", "radius", "border")
                     if getattr(a, k, None) is not None}
+            if getattr(a, "cave_type", None):
+                cave["type"] = a.cave_type
+            geo = {k: getattr(a, k) for k in ("rock", "above", "water_table", "heat", "humidity")
+                   if getattr(a, k, None) is not None}
+            if getattr(a, "built", False):
+                geo["built"] = True
+            if geo:
+                import mpw_caves
+                try:
+                    cave["geo"] = mpw_caves.geo_defaults(cave.get("type"), geo)
+                except ValueError as e:
+                    die(str(e))
             r = P.gen_grid(a.what, a.seed, a.out, a.w, a.h, getattr(a, "method", "bsp"), getattr(a, "grid", "square"),
                            a.pps, a.style, VERSION, a.name_style, cave=cave or None,
                            density=getattr(a, "density", None), branches=getattr(a, "branches", None),
@@ -1765,6 +1777,19 @@ def cmd_check(a):
             print("bar %d %s: %s (%s)" % (num, "SKIP" if ok is None else ("PASS" if ok else "FAIL"), name, detail))
     if any(b[2] is False for b in bars):
         sys.exit(1)
+
+
+def cmd_grow(a):
+    import mpw_grow
+    try:
+        plan = mpw_grow.write_plan(a.out, a.seed, VERSION, transitions=a.transitions, trick_every=a.trick_every,
+                                   lair=a.lair, edge=a.edge)
+    except (ValueError, OSError) as e:
+        die(str(e))
+    g = plan["grow"]
+    print("wrote %s: %d areas, %d transitions, %d tricks, empty share %.2f (cap %.2f), goal %s"
+          % (os.path.join(a.out, "recipe.json"), len(plan["rooms"]), len(plan["links"]), g["tricks"],
+             g["empty_share"], g["empty_cap"], plan["goal"]))
 
 
 def cmd_lint(a):
@@ -2272,6 +2297,15 @@ def build_parser():
     d.add_argument("--survival", type=int, help="cave: wall stays wall at this many wall neighbours (default 4)")
     d.add_argument("--radius", type=int, choices=(1, 2), help="cave: neighbourhood radius, 1 = 8 cells, 2 = 24")
     d.add_argument("--border", type=int, help="cave: solid border in squares (default 1)")
+    d.add_argument("--cave-type", choices=("solution", "lava", "sea", "canyon", "crevice", "talus", "glacial"),
+                   help="cave: draw this natural cave type's shape and tag its passages (grid.json cave)")
+    d.add_argument("--rock", help="cave geography: limestone, basalt, sandstone, granite, shale or ice")
+    d.add_argument("--above", help="cave geography: what lies above (open, soil, forest, mountain, lake, sea, "
+                                   "city, ruins)")
+    d.add_argument("--water-table", type=float, help="cave geography: share of the floor below water, 0 to 1")
+    d.add_argument("--heat", help="cave geography: cold, temperate, hot or volcanic")
+    d.add_argument("--humidity", help="cave geography: dry, damp or wet")
+    d.add_argument("--built", action="store_true", help="cave geography: dug, not natural (worked stone)")
     d.add_argument("--branches", type=int, help="cyclic: dead-end side branches, 0 to 8 (treasure, secret doors; "
                                                 "never a key). Default none")
     d.add_argument("--corridor", type=int, help="bsp, cyclic, blocks: corridor width in squares, 1 to 3; above 1 the "
@@ -2426,6 +2460,16 @@ def build_parser():
     s.add_argument("--strict", action="store_true", help="exit 1 when there is any warning")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_lint)
+
+    s = sub.add_parser("grow", help="room plan grown transition-first from one map edge: a transition, then the "
+                       "area beyond; a trick on every N-th transition; --lair caps empty areas. Lint reads it")
+    s.add_argument("--seed", type=int, required=True)
+    s.add_argument("--out", required=True, help="folder for recipe.json (kind plan)")
+    s.add_argument("--transitions", type=int, default=8, help="transitions to place, 1 to 60 (default 8)")
+    s.add_argument("--trick-every", type=int, default=3, help="every N-th transition carries a trick (default 3)")
+    s.add_argument("--lair", action="store_true", help="lair mode: at most 15%% of areas empty")
+    s.add_argument("--edge", choices=("north", "south", "east", "west"), default="south")
+    s.set_defaults(fn=cmd_grow)
 
     s = sub.add_parser("path", help="cheapest route (A*) or a Dijkstra field on a dungeon, battle, deck, world or "
                        "region recipe; writes path.json, path.geojson and path.svg (or field.json and field.svg)")
