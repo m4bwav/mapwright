@@ -282,6 +282,36 @@ def _parent_context(parent, settlement):
 
 DISTRICTS_IN = ["craftsmen", "merchants", "temple", "nobles", "docks", "slums", "guildhall", "garrison"]
 DISTRICTS_OUT = ["farms", "suburb", "orchards", "tanneries"]
+# Quarters by people and shops by district first, spots later (Living Fantasy p. 10, 87, 95; JG Guidebook to
+# the City p. 6 and Guidebook to Shops p. 2: ideas only). Word lists are our own.
+PEOPLE = ["old families", "newcomers", "river folk", "hill folk", "foreign traders", "guild families", "pilgrims",
+          "soldiers' kin", "dock hands", "day labourers"]
+SHOPS = {"craftsmen": ["smith", "cooper", "carpenter", "potter", "wheelwright"],
+         "merchants": ["cloth seller", "spice seller", "moneychanger", "general store", "chandler"],
+         "temple": ["candle maker", "scribe", "herbalist", "relic seller"],
+         "nobles": ["jeweller", "tailor", "wine seller", "perfumer"],
+         "docks": ["ship chandler", "fishmonger", "rope walk", "tavern", "net mender"],
+         "slums": ["pawnbroker", "cookshop", "rag dealer", "cheap lodging"],
+         "guildhall": ["notary", "bookbinder", "clockmaker", "mapmaker"],
+         "garrison": ["armourer", "fletcher", "farrier", "barracks canteen"],
+         "farms": ["miller", "granary"], "suburb": ["inn", "stable", "smithy"], "orchards": ["cider press"],
+         "tanneries": ["tanner", "dyer", "glue boiler"]}
+
+
+def _ver(v):
+    try:
+        return tuple(int(x) for x in str(v).split(".")[:3])
+    except ValueError:
+        return (999,)
+
+
+def district_people_shops(seed, d):
+    """The folk who give a quarter its name, and the shops it holds (kinds, not spots)."""
+    people = PEOPLE[G.h64(seed, 92, d["sector"], d["ring"]) % len(PEOPLE)]
+    pool = SHOPS[d["type"]]
+    n = min(len(pool), 1 + len(d["blocks"]) // 3)
+    k0 = G.h64(seed, 93, d["sector"], d["ring"]) % len(pool)
+    return people, [pool[(k0 + i) % len(pool)] for i in range(n)]
 
 
 def gen_city(seed, out, bands=6, wall=4, spokes=None, ring_m=55.0, lot_m2=300.0, parent=None, settlement=None,
@@ -508,8 +538,12 @@ def gen_city(seed, out, bands=6, wall=4, spokes=None, ring_m=55.0, lot_m2=300.0,
         pts = [centroid(b["poly"]) for b in d["blocks"]]
         ws = [abs(area(b["poly"])) for b in d["blocks"]]
         c = (sum(p[0] * w for p, w in zip(pts, ws)) / sum(ws), sum(p[1] * w for p, w in zip(pts, ws)) / sum(ws))
-        F.append({"type": "Feature", "properties": dict(kind="district", id=d["id"], name=d["name"], type=d["type"],
-                                                         inside=d["inside"], blocks=[b["id"] for b in d["blocks"]]),
+        pr = dict(kind="district", id=d["id"], name=d["name"], type=d["type"], inside=d["inside"],
+                  blocks=[b["id"] for b in d["blocks"]])
+        if _ver(version) >= (0, 37, 0):     # older recipes regenerate byte for byte without these
+            people, shops = district_people_shops(seed, d)
+            pr.update(people=people, quarter="%s quarter" % people, shops=shops)
+        F.append({"type": "Feature", "properties": pr,
                   "geometry": {"type": "Point", "coordinates": P(c)}})
     if shore:
         nx, ny, dd = shore
@@ -1591,7 +1625,12 @@ def _build_once(seed, w, h, method, cave, legacy, rng, branches=0, corridor=1):
         g, rr = bsp_dungeon(w, h, rng, corridor=corridor)
         rooms = [dict(id=i, x=r[0], y=r[1], w=r[2], h=r[3]) for i, r in enumerate(rr)]
     elif method == "cave":
-        g, _ = cave_dungeon(w, h, rng, stats=stats, **dict(CAVE_DEFAULTS, **(cave or {})))
+        cp = {k: v for k, v in (cave or {}).items() if k not in ("type", "geo")}
+        if (cave or {}).get("type"):
+            import mpw_caves
+            g, _ = mpw_caves.typed_cave(w, h, rng, cave["type"], stats)
+        else:
+            g, _ = cave_dungeon(w, h, rng, stats=stats, **dict(CAVE_DEFAULTS, **cp))
     elif method == "cyclic" and not legacy:
         g, rr, graph = cyclic_dungeon(w, h, seed, rng, branches, corridor)
         rooms = [dict(id=i, x=r[0], y=r[1], w=r[2], h=r[3]) for i, r in enumerate(rr)]
@@ -1708,6 +1747,9 @@ def gen_grid(kind, seed, out, w, h, method="bsp", grid="square", pps=None, style
         gj["rerolls"] = graph["rerolls"] if graph else D["stats"].get("rerolls", 0)
     if graph:
         gj["graph"] = graph
+    if kind == "dungeon" and method == "cave" and cave and ("type" in cave or "geo" in cave):
+        import mpw_caves
+        gj["cave"] = mpw_caves.annotate(g, w, h, seed, cave.get("type"), cave.get("geo"), lights)
     if kind == "dungeon" and "blocks" in D["stats"]:
         gj["blocks"] = D["stats"]["blocks"]
     feats = []

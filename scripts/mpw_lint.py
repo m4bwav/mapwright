@@ -70,6 +70,13 @@ Checks, each grouped by family:
              way back from its far side ("b"): a "return" on that room, or a path to "a" without it.
   cue      - rooms may carry "cue": 0-5 (threat the players can sense). Warns on a value outside 0-5
              and when the cue drops between two cued rooms on the entrance-to-goal path.
+  signal   - opt-in with plan "signal" = {"keep": room id, "range": sight distance, "routes": [[room ids
+             from the map edge toward the keep], ..], "ridges": [{"x":, "y":, "elev":}]}. Rooms with
+             "outpost": true carry "x", "y" and "elev". Two posts (or a post and the keep) see each other
+             when within range and no ridge point near the line stands above it. Warns on an approach
+             route with no outpost on it, and on an outpost whose signal cannot reach the keep; reports
+             the hops. Any room with "fire_load": "high" needs "secret_exit": true or a secret link.
+             A room with "under": another room id is reported as hard to retrofit.
   landmarks- every listed landmark found among plan room names, names.json and feature names
   escape   - path length from each treasure room to the nearest exit (a report line, not a warning)
 """
@@ -688,6 +695,69 @@ def map_names(d, p):
     return names
 
 
+def _sees(a, b, rng, ridges):
+    ax, ay, az = float(a["x"]), float(a["y"]), float(a.get("elev", 0))
+    bx, by, bz = float(b["x"]), float(b["y"]), float(b.get("elev", 0))
+    L = ((bx - ax) ** 2 + (by - ay) ** 2) ** 0.5
+    if L > rng:
+        return False
+    for r in ridges:
+        rx, ry, rz = float(r["x"]), float(r["y"]), float(r["elev"])
+        t = ((rx - ax) * (bx - ax) + (ry - ay) * (by - ay)) / (L * L) if L else 0.0
+        if not 0 < t < 1:
+            continue
+        off = ((ax + t * (bx - ax) - rx) ** 2 + (ay + t * (by - ay) - ry) ** 2) ** 0.5
+        if off <= 0.5 and rz > az + t * (bz - az):
+            return False
+    return True
+
+
+def lint_signal(p, sig):
+    """Outposts on the approach routes and a line-of-sight signal chain back to the keep (Stronghold
+    Builder's Guidebook, pp. 93, 96, 102: idea only)."""
+    w, info = [], []
+    for k, r in p.rooms.items():
+        if r.get("under") is not None:
+            info.append("signal: room %s sits under room %s: hard to retrofit, build it first" % (k, r["under"]))
+        if str(r.get("fire_load", "")).lower() == "high":
+            secret = r.get("secret_exit") or any(at.get("secret") for a, b, at in p.link_attrs if k in (a, b))
+            if not secret:
+                w.append("room %s has a high fire load and no secret exit (secret_exit or a secret link)" % k)
+    if not sig:
+        return w, info
+    keep = sig.get("keep")
+    if keep not in p.rooms:
+        return w + ["signal keep %r is not a plan room" % (keep,)], info
+    rng = float(sig.get("range", 10))
+    ridges = sig.get("ridges") or []
+    posts = [k for k, r in p.rooms.items() if r.get("outpost")]
+    for k in posts:
+        if not all(f in p.rooms[k] for f in ("x", "y")):
+            w.append("outpost %s has no x, y position" % k)
+    nodes = [k for k in posts if "x" in p.rooms[k] and "y" in p.rooms[k]]
+    if "x" in p.rooms[keep] and "y" in p.rooms[keep]:
+        nodes.append(keep)
+    else:
+        w.append("signal keep %s has no x, y position" % keep)
+    hops = {keep: 0}
+    todo = [keep]
+    while todo:
+        u = todo.pop(0)
+        for v in nodes:
+            if v not in hops and _sees(p.rooms[u], p.rooms[v], rng, ridges):
+                hops[v] = hops[u] + 1
+                todo.append(v)
+    for k in posts:
+        if k in hops:
+            info.append("signal: outpost %s reaches the keep in %d hop(s)" % (k, hops[k]))
+        else:
+            w.append("outpost %s cannot pass a signal to the keep by line of sight" % k)
+    for i, route in enumerate(sig.get("routes") or []):
+        if not any(p.rooms.get(k, {}).get("outpost") for k in route):
+            w.append("approach route %d (%s) has no outpost on it" % (i + 1, " - ".join(str(k) for k in route)))
+    return w, info
+
+
 def lint_landmarks(d, p, extra=()):
     want = list(p.landmarks) + list(extra)
     if not want:
@@ -747,7 +817,8 @@ def lint(d, landmarks=()):
                          ("doom", lint_doom(p, plan.get("doom"))),
                          ("questions", lint_questions(p)),
                          ("omens", lint_omens(p, plan.get("omens"))),
-                         ("portals", lint_portals(p)), ("cue", lint_cue(p))):
+                         ("portals", lint_portals(p)), ("cue", lint_cue(p)),
+                         ("signal", lint_signal(p, plan.get("signal")))):
         res["warnings"] += [dict(check=name, text=t) for t in w]
         res["info"] += i
     if sb is not None:
