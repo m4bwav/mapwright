@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261126-7 · 2026-11-26 · 0.35.0: lint checks hostile bases, doom tracks, open questions, omens, one-way portals and threat cues
+- because: RPG book harvest verdicts, CORE 1-2 (p. 19-21 a lethal zone with a warning cue, a baffle wall behind gates, a decoy room beside the prize), CORE 1-3 (p. 7, 19 a doom track drawn as a circle on the map), Dungeon Delves (p. 3, 6, 14 open questions tied to locked doors, pits, hidden doors and the centre), Booklet of Infinite Horrors (p. 4 omens per site type), Devils in the Details (p. 5, 8, 26 a one-way shift needs a stated way back) and For Whom the Bell Tolls (p. 8, 22, 30 a 0-5 threat cue that rises toward the goal). Ideas only, code written fresh; unverified against play.
+- files: scripts/mpw_lint.py, tests/test_lint_r2s3.py, skills/mapwright/SKILL.md, README.md, scripts/mpw.py, plugin.json, .claude-plugin/plugin.json
+- New `hostile`, `doom`, `questions`, `omens`, `portals` and `cue` lint families. Questions are report lines, not warnings. The doom track is checked and reported as a path; rendering it on the map is left for later. Tests: 397 pass, 2 skip (14 new).
+
 ### C-20261126-6 · 2026-11-26 · 0.34.0: lint checks locks and keys (softlock, one key room, toll, wandering keys, decoys)
 - because: RPG book harvest verdict, Deep Carbon Observatory (Patrick Stuart; p. 21, 31 gate keys dropped by roaming guardians, p. 34-35 a decoy door beside a disguised real one, p. 46-47 password levels and a toll passage). Ideas only, code written fresh; unverified against play.
 - files: scripts/mpw_lint.py, tests/test_lint.py, skills/mapwright/SKILL.md, scripts/mpw.py, plugin.json, .claude-plugin/plugin.json
