@@ -69,6 +69,34 @@ def neighbours(c, rw, cols, rows):
             yield x, y
 
 
+def hex_dist(a, b):
+    """Steps between two (col, row) hexes on the flat-top, odd-columns-lower grid."""
+    def cube(c, rw):
+        z = rw - (c - (c & 1)) // 2
+        return c, -c - z, z
+    x1, y1, z1 = cube(*a)
+    x2, y2, z2 = cube(*b)
+    return max(abs(x1 - x2), abs(y1 - y2), abs(z1 - z2))
+
+
+RISK_BANDS = (1, 3, 6)      # hexes from a town for tiers 0, 1, 2; beyond is tier 3
+ROAD_BAND = 1               # a hex next to a road is at most tier 1
+
+
+def risk_rings(cols, rows, towns, roads=()):
+    """Risk tier 0-3 per hex in rings around towns and along roads (Borderland Provinces pp. 15-16 idea:
+    danger grows with distance from settled ground). Returns {(col, row): tier}."""
+    out = {}
+    for c in range(cols):
+        for rw in range(rows):
+            d = min((hex_dist((c, rw), t) for t in towns), default=99)
+            tier = next((i for i, b in enumerate(RISK_BANDS) if d <= b), 3)
+            if roads and min(hex_dist((c, rw), q) for q in roads) <= ROAD_BAND:
+                tier = min(tier, 1)
+            out[(c, rw)] = tier
+    return out
+
+
 def letter(i):
     s = ""
     i += 1
@@ -147,7 +175,8 @@ def _pick_kind(r, terrain):
     return opts[-1][0]
 
 
-def gen_hexcrawl(seed, out, cols=20, rows=16, keyed=0.33, miles=6, version="0.36.0", name_style=None):
+def gen_hexcrawl(seed, out, cols=20, rows=16, keyed=0.33, miles=6, version="0.36.0", name_style=None,
+                 anchors=False, risk=False):
     t0 = time.perf_counter()
     if not (6 <= cols <= 60 and 6 <= rows <= 60):
         raise ValueError("--cols and --rows are 6 to 60 hexes")
@@ -188,6 +217,15 @@ def gen_hexcrawl(seed, out, cols=20, rows=16, keyed=0.33, miles=6, version="0.36
         k = keys[0]
         k.update(kind="tower", title="%s tower" % k["title"].rsplit(" ", 1)[0], landmark=True,
                  sight=SIGHT.get(k["terrain"], 2) + 1)
+    if anchors:
+        # large hexes: one anchor site per feature plus landmarks; the rest is detailed on arrival
+        seen, kept = set(), []
+        for k in keys:
+            if k.get("landmark") or (k["feature"] and k["feature"] not in seen):
+                seen.add(k["feature"])
+                k["detail"] = "on arrival"
+                kept.append(k)
+        keys = kept
     keyed_ids = [k["hex"] for k in keys]
     homes = [k["hex"] for k in keys if k["kind"] in HOMES] or keyed_ids
     enc = [dict(roll=1, kind="clash", text="results 2 and 3 meet and fight each other")]
@@ -214,10 +252,21 @@ def gen_hexcrawl(seed, out, cols=20, rows=16, keyed=0.33, miles=6, version="0.36
                                          layout="flat-top columns, odd columns half a hex lower"),
                     miles_per_hex=miles, hexes=len(grid), land_hexes=len(land), keyed=len(keys),
                     keyed_share=round(len(keys) / float(len(land)), 4), text="")
+    if anchors:
+        overview["anchors_only"] = True
     sandbox = dict(overview=overview, terrain=terrain, geography=geo, rumors=rumors, encounters=enc, keys=keys)
     hexes = [dict(hex=hex_id(c, rw), terrain=grid[(c, rw)], feature=letter_of.get((c, rw)))
              for c in range(cols) for rw in range(rows)]
+    if risk:
+        towns = [parse_hex(k["hex"]) for k in keys if k["kind"] == "village"]
+        tiers = risk_rings(cols, rows, towns)
+        for x in hexes:
+            x["risk"] = tiers[parse_hex(x["hex"])]
     params = dict(cols=cols, rows=rows, keyed=keyed, miles=miles, name_style=name_style)
+    if anchors:
+        params["anchors"] = True
+    if risk:
+        params["risk"] = True
     recipe = dict(kind="hexcrawl", seed=int(seed), tool_version=version, hex_version=HEX_VERSION, params=params,
                   language=lang)
     t1 = time.perf_counter()
@@ -299,7 +348,8 @@ def render_svg(sb, hexes, st=ST):
 def regenerate(d, tmp):
     rc = P.load(d, "recipe.json")
     p = rc["params"]
-    gen_hexcrawl(rc["seed"], tmp, p["cols"], p["rows"], p["keyed"], p["miles"], rc["tool_version"], p["name_style"])
+    gen_hexcrawl(rc["seed"], tmp, p["cols"], p["rows"], p["keyed"], p["miles"], rc["tool_version"], p["name_style"],
+                 p.get("anchors", False), p.get("risk", False))
 
 
 def sandbox_issues(sb):
@@ -391,6 +441,8 @@ def bars(d):
     want = rc["params"]["keyed"]
     share = sb["overview"]["keyed_share"]
     land = sb["overview"]["land_hexes"]
+    if rc["params"].get("anchors"):
+        return out
     out.append(("hexcrawl: keyed share within one hex of the target", abs(share - want) * land <= 1.0 + 1e-9,
                 "%.3f keyed vs %.3f wanted" % (share, want)))
     return out

@@ -85,3 +85,70 @@ def write_plan(out, seed, version, **kw):
         json.dump(recipe, f, indent=1, sort_keys=True)
         f.write("\n")
     return plan
+
+
+# Stronghold footprint (Engineering Castles pp. 19, 26 idea: the shape comes from a roll on the ground plan, the
+# room count and storeys from the building style) and home-base duty shifts with break values on doors and
+# windows (Adventurers Guild pp. 3, 41 idea). Shapes, styles, duties and numbers are our own.
+SHAPES = ("square", "oblong", "L", "round", "polygon", "rock-following", "D", "twin-ward")
+STYLES = {  # style: (rooms lo, hi), (storeys lo, hi)
+    "tower": ((4, 7), (3, 5)), "hall-keep": ((6, 10), (2, 3)), "shell-keep": ((5, 9), (1, 2)),
+    "courtyard": ((8, 14), (1, 2)), "concentric": ((10, 18), (2, 3)), "manor": ((5, 9), (1, 2)),
+}
+ROOMS = ("hall", "chamber", "store", "chapel", "guardroom", "kitchen", "armoury", "solar", "well room",
+         "barracks", "office", "workshop")
+DUTIES = ("watch", "cook", "clerk", "smith", "porter", "patrol")
+BREAK = {"door": (12, 25), "window": (6, 15)}
+
+
+def stronghold_plan(seed, style="hall-keep", facade_only=False):
+    if style not in STYLES:
+        raise ValueError("--stronghold must be one of %s" % ", ".join(sorted(STYLES)))
+    (rl, rh), (sl, sh) = STYLES[style]
+    shape = SHAPES[int(_r(seed, 1, 1) * len(SHAPES))]
+    storeys = sl + int(_r(seed, 1, 2) * (sh - sl + 1))
+    count = rl + int(_r(seed, 1, 3) * (rh - rl + 1))
+    out = dict(id="out", name="Approach", kind="outside", entrance=True)
+    gate = dict(id="g0", name="Gate", kind="gatehouse", floor=0, facade=True)
+    rooms, links = [out, gate], [dict(a="out", b="g0", kind="door", door=True, **_brk(seed, "door", 0))]
+    if not facade_only:
+        for i in range(1, count + 1):
+            f = (i - 1) * storeys // count
+            r = dict(id="r%d" % i, name="Room %d" % i, kind=ROOMS[int(_r(seed, 2, i) * len(ROOMS))], floor=f)
+            prev = rooms[-1]
+            rooms.append(r)
+            kind = "stair" if prev.get("floor") != f else "door"
+            l = dict(a=prev["id"], b=r["id"], kind=kind)
+            if kind == "door":
+                l.update(door=True, **_brk(seed, "door", i))
+            links.append(l)
+            if f > 0 and _r(seed, 3, i) < 0.5:
+                links.append(dict(a=r["id"], b="out", kind="window", **_brk(seed, "window", i)))
+    shifts = {}
+    for name in ("day", "night"):
+        duty = {}
+        for f in sorted({r["floor"] for r in rooms if "floor" in r}):
+            here = [r for r in rooms if r.get("floor") == f]
+            pick = here[int(_r(seed, 4, len(name), f) * len(here))]
+            duty[pick["id"]] = DUTIES[int(_r(seed, 5, len(name), f) * len(DUTIES))]
+        shifts[name] = duty
+    return dict(rooms=rooms, links=links, goal=rooms[-1]["id"], base=dict(shifts=shifts),
+                stronghold=dict(style=style, shape=shape, storeys=storeys, rooms=count, facade_only=facade_only))
+
+
+def _brk(seed, kind, i):
+    lo, hi = BREAK[kind]
+    return {"break": lo + int(_r(seed, 6, len(kind), i) * (hi - lo + 1))}
+
+
+def write_stronghold(out, seed, version, **kw):
+    import json
+    import os
+    plan = stronghold_plan(seed, **kw)
+    recipe = dict(kind="plan", seed=seed, tool="mapwright", tool_version=version, generator="stronghold-1",
+                  params=dict(kw), plan=plan)
+    os.makedirs(out, exist_ok=True)
+    with open(os.path.join(out, "recipe.json"), "w", encoding="utf-8", newline="\n") as f:
+        json.dump(recipe, f, indent=1, sort_keys=True)
+        f.write("\n")
+    return plan
