@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.37.0"
+VERSION = "0.38.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -1431,7 +1431,8 @@ def cmd_gen_space(a):
     try:
         if a.what == "hexcrawl":
             import mpw_hexcrawl
-            r = mpw_hexcrawl.gen_hexcrawl(a.seed, a.out, a.cols, a.rows, a.keyed, a.miles, VERSION, a.name_style)
+            r = mpw_hexcrawl.gen_hexcrawl(a.seed, a.out, a.cols, a.rows, a.keyed, a.miles, VERSION, a.name_style,
+                                          a.anchors_only, a.risk_rings)
         elif a.what == "sector":
             r = S.gen_sector(a.seed, a.out, a.size, a.density, a.jump, a.real, a.radius_pc, VERSION, a.name_style,
                              a.systems, a.hazards or 0)
@@ -1781,6 +1782,16 @@ def cmd_check(a):
 
 def cmd_grow(a):
     import mpw_grow
+    if a.stronghold:
+        try:
+            plan = mpw_grow.write_stronghold(a.out, a.seed, VERSION, style=a.stronghold, facade_only=a.facade_only)
+        except (ValueError, OSError) as e:
+            die(str(e))
+        g = plan["stronghold"]
+        print("wrote %s: %s %s footprint, %d storeys, %d rooms%s"
+              % (os.path.join(a.out, "recipe.json"), g["shape"], g["style"], g["storeys"], g["rooms"],
+                 " (facade only)" if g["facade_only"] else ""))
+        return
     try:
         plan = mpw_grow.write_plan(a.out, a.seed, VERSION, transitions=a.transitions, trick_every=a.trick_every,
                                    lair=a.lair, edge=a.edge)
@@ -2369,6 +2380,9 @@ def build_parser():
     hc.add_argument("--rows", type=int, default=16, help="hex rows (6-60)")
     hc.add_argument("--keyed", type=float, default=0.33, help="share of land hexes keyed (0.05-0.9)")
     hc.add_argument("--miles", type=int, default=6, help="miles per hex, printed on the map")
+    hc.add_argument("--anchors-only", action="store_true", help="large hexes: key one anchor site per feature "
+                    "plus landmarks, marked detail on arrival")
+    hc.add_argument("--risk-rings", action="store_true", help="risk tier 0-3 per hex in rings around villages")
     for x in (sc, sy, pl, dk, hc):
         x.add_argument("--out", required=True)
         x.add_argument("--json", action="store_true")
@@ -2469,6 +2483,10 @@ def build_parser():
     s.add_argument("--trick-every", type=int, default=3, help="every N-th transition carries a trick (default 3)")
     s.add_argument("--lair", action="store_true", help="lair mode: at most 15%% of areas empty")
     s.add_argument("--edge", choices=("north", "south", "east", "west"), default="south")
+    s.add_argument("--stronghold", help="instead: a stronghold plan; footprint shape rolled, rooms and storeys from "
+                   "this style (tower, hall-keep, shell-keep, courtyard, concentric, manor), day and night shifts, "
+                   "break values on doors and windows")
+    s.add_argument("--facade-only", action="store_true", help="with --stronghold: outside and gate only")
     s.set_defaults(fn=cmd_grow)
 
     s = sub.add_parser("path", help="cheapest route (A*) or a Dijkstra field on a dungeon, battle, deck, world or "

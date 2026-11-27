@@ -377,8 +377,10 @@ class TestLairChecks(LintBase):
     def plan(self):
         return {"rooms": [{"id": "mouth", "entrance": True, "opening": 4},
                           {"id": "crack", "entrance": True, "opening": 1},
-                          {"id": "hoard", "treasure": True, "area": 36}],
-                "links": [["mouth", "hoard"], ["crack", "hoard"]],
+                          {"id": "hoard", "treasure": True, "area": 36,
+                           "home_hazard": {"gate": "weight", "limit": 2}}],
+                "links": [["mouth", "hoard"], ["crack", "hoard"],
+                          {"a": "mouth", "b": "hoard", "resident_only": True, "length": 3}],
                 "lair": {"owner": "gargantuan", "hoard": 16}}
 
     def test_clean_reports_area(self):

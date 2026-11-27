@@ -43,6 +43,15 @@ Checks, each grouped by family:
              entrance rooms may give "opening" (squares across). Warns on fewer than 2 entrances,
              on no entrance narrower than the owner (a gap the owner cannot use), and on a treasure
              room smaller than the hoard footprint; reports each treasure room's area vs the hoard.
+             Also warns when no room or link has a "home_hazard" {"gate": "weight" or "size",
+             "limit": ..} (squares residents pass freely) and no link is "resident_only" (a secret
+             route for those who live there). Book of Lairs pp. 4-5, 8 idea.
+  traps    - a room "trap" {"trigger": [cells], "effect": [cells], "bypass": ..} needs both areas;
+             a room with "lockdown": true needs "door" on every link it has; plan "owner_route"
+             (room ids) warns on a trap room along it with no "bypass". 20 New Traps pp. 2-8 idea.
+  base     - opt-in with plan "base" = {"shifts": {"day": {room id: duty}, ..}}: warns on a shift
+             naming an unknown room, a floor ("floor" on rooms) left unstaffed in a shift, and a
+             door or window link ("kind") with no "break" value. Adventurers Guild pp. 3, 41 idea.
   locks    - opt-in with plan "locks" = [{"at": room id or link "id", "key": "red stone",
              "key_in": room id or "wander", "kind": "key" | "word" | "toll", "oneway": true,
              "drop_from": "foe"}]. Warns when the key_in room cannot be reached from any entrance with
@@ -418,6 +427,65 @@ def lint_lair(p, lair):
         if r["area"] < float(hoard):
             w.append("treasure room %s (%g squares) is smaller than the hoard (%g squares)"
                      % (k, r["area"], float(hoard)))
+    return w, info
+
+
+def lint_lair_home(p, lair):
+    if not lair:
+        return [], []
+    w = []
+    things = list(p.rooms.values()) + [a for _, _, a in p.link_attrs]
+    hz = [t["home_hazard"] for t in things if t.get("home_hazard")]
+    for h in hz:
+        if not isinstance(h, dict) or h.get("gate") not in ("weight", "size") or h.get("limit") is None:
+            w.append("home_hazard %r: give gate weight or size and a limit residents stay under" % (h,))
+    if not hz:
+        w.append("lair has no home_hazard (weight- or size-gated squares the residents pass freely)")
+    if not any(a.get("resident_only") for _, _, a in p.link_attrs):
+        w.append("lair has no resident_only link (a secret route only those who live there use)")
+    return w, ["lair: %d home hazard(s)" % len(hz)]
+
+
+def lint_traps(p, owner_route=None):
+    w, info = [], []
+    for k, r in p.rooms.items():
+        t = r.get("trap")
+        if t:
+            if not isinstance(t, dict) or not t.get("trigger") or not t.get("effect"):
+                w.append("trap in room %s needs separate trigger and effect areas" % k)
+            elif sorted(map(str, t["trigger"])) == sorted(map(str, t["effect"])):
+                info.append("traps: room %s trigger and effect cover the same squares" % k)
+        if r.get("lockdown"):
+            for a, b, at in p.link_attrs:
+                if k in (a, b) and not at.get("door"):
+                    w.append("lockdown room %s has a link to %s with no door drawn" % (k, b if a == k else a))
+    for k in owner_route or []:
+        if k not in p.rooms:
+            w.append("owner_route names unknown room %s" % k)
+            continue
+        t = p.rooms[k].get("trap")
+        if t and not (isinstance(t, dict) and t.get("bypass")):
+            w.append("trap in room %s sits on the owner route with no bypass" % k)
+    return w, info
+
+
+def lint_base(p, base):
+    if not base:
+        return [], []
+    w, info = [], []
+    floors = sorted({r["floor"] for r in p.rooms.values() if "floor" in r}, key=str)
+    for name, duty in sorted((base.get("shifts") or {}).items()):
+        for k in duty:
+            if k not in p.rooms and str(k) not in map(str, p.rooms):
+                w.append("shift %s names unknown room %s" % (name, k))
+        staffed = {p.rooms[k].get("floor") for k in duty if k in p.rooms}
+        for f in floors:
+            if f not in staffed:
+                w.append("floor %s has nobody on the %s shift" % (f, name))
+        info.append("base: %s shift covers %d room(s)" % (name, len(duty)))
+    for a, b, at in p.link_attrs:
+        if at.get("kind") in ("door", "window") and at.get("break") is None:
+            w.append("%s %s - %s has no break value" % (at["kind"], a, b))
     return w, info
 
 
@@ -812,6 +880,9 @@ def lint(d, landmarks=()):
                          ("layers", lint_layers(p, plan.get("layers"))),
                          ("terrain", lint_terrain(p, plan.get("terrain"))),
                          ("lair", lint_lair(p, plan.get("lair"))),
+                         ("lair", lint_lair_home(p, plan.get("lair"))),
+                         ("traps", lint_traps(p, plan.get("owner_route"))),
+                         ("base", lint_base(p, plan.get("base"))),
                          ("locks", lint_locks(p, plan.get("locks"))),
                          ("hostile", lint_hostile(p, plan.get("hostile"))),
                          ("doom", lint_doom(p, plan.get("doom"))),
