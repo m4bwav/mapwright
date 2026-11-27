@@ -1566,6 +1566,9 @@ def _deck_bars(d):
 def render_svg(d, view=None):
     rc = P.load(d, "recipe.json")
     k = rc["kind"]
+    if k == "hexcrawl":
+        import mpw_hexcrawl as H
+        return H.render_svg(P.load(d, "sandbox.json"), P.load(d, "hexcrawl.json")["hexes"])
     if k == "sector":
         return render_sector_svg(rc, P.load(d, "sector.json"))
     if k == "system":
@@ -1583,7 +1586,10 @@ def regenerate(d, tmp):
     p = rc["params"]
     v = rc["tool_version"]
     k = rc["kind"]
-    if k == "sector":
+    if k == "hexcrawl":
+        import mpw_hexcrawl as H
+        H.regenerate(d, tmp)
+    elif k == "sector":
         gen_sector(rc["seed"], tmp, p["size"], p["density"], p["jump"], p["real"], p["radius_pc"], v, p["name_style"],
                    hazards=p.get("hazards", 0))
     elif k == "system":
@@ -1605,7 +1611,11 @@ def _bytes(path):
 def check(d, determinism=True, labels=True):
     rc = P.load(d, "recipe.json")
     k = rc["kind"]
-    bars = {"sector": _sector_bars, "system": _system_bars, "planet": _planet_bars, "deck": _deck_bars}[k](d)
+    if k == "hexcrawl":
+        import mpw_hexcrawl as H
+        bars = H.bars(d)
+    else:
+        bars = {"sector": _sector_bars, "system": _system_bars, "planet": _planet_bars, "deck": _deck_bars}[k](d)
     if determinism:
         tmp = tempfile.mkdtemp(prefix="mpw-space-")
         try:
