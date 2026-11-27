@@ -55,6 +55,21 @@ Checks, each grouped by family:
              a setback on that path
   tavern   - taproom the largest public room, kitchen next to the taproom, a front and a rear door,
              vault next to a staffed room, no stairs in a drinking room
+  hostile  - opt-in with plan "hostile": true. A room with "lethal": true needs a "warning" (the cue
+             players can read first); a gate room (kind or tag "gate") needs a neighbour that is a
+             "baffle" (flag, kind or tag: a wall behind the gate); the goal room needs a "decoy"
+             neighbour.
+  doom     - opt-in with plan "doom" = {"track": [room ids], "circle": true}. Each step must be a room,
+             each step linked to the next, the last back to the first when "circle" (default true),
+             and at least 3 steps. Reports the track as a path to draw on the map.
+  questions- report lines: an open question for each locked door ("locked"), pit (terrain or kind),
+             secret room or link, and the goal (centre) that has no "answer" yet.
+  omens    - opt-in with plan "omens" = {"crypt": ["cold draft", ..]}: warns on a room kind with no
+             omens listed.
+  portals  - a link with "oneway": true that is a portal or shift ("portal", "shift" or tag) needs a
+             way back from its far side ("b"): a "return" on that room, or a path to "a" without it.
+  cue      - rooms may carry "cue": 0-5 (threat the players can sense). Warns on a value outside 0-5
+             and when the cue drops between two cued rooms on the entrance-to-goal path.
   landmarks- every listed landmark found among plan room names, names.json and feature names
   escape   - path length from each treasure room to the nearest exit (a report line, not a warning)
 """
@@ -542,6 +557,120 @@ def lint_tavern(p):
     return w, info
 
 
+def _is(r, name):
+    return bool(r.get(name)) or name in _dtags(r)
+
+
+def lint_hostile(p, on):
+    w = []
+    if not on:
+        return w, []
+    for k, r in p.rooms.items():
+        if r.get("lethal") and not r.get("warning"):
+            w.append("lethal room %s has no warning cue: let players read the danger first" % k)
+        if "gate" in _dtags(r) and not any(_is(p.rooms[n], "baffle") for n in p.adj[k]):
+            w.append("gate %s has no baffle wall behind it: a straight line of fire runs through" % k)
+    goals = [p.goal] if p.goal in p.rooms else [k for k, r in p.rooms.items() if r.get("treasure")]
+    for g in goals:
+        if not any(p.rooms[n].get("decoy") for n in p.adj[g]):
+            w.append("prize room %s has no decoy room beside it" % g)
+    return w, []
+
+
+def lint_doom(p, doom):
+    w, info = [], []
+    if not doom:
+        return w, info
+    track = list(doom.get("track") or [])
+    bad = [t for t in track if t not in p.rooms]
+    if bad:
+        raise ValueError("doom track names unknown room(s): %s" % ", ".join(map(str, bad)))
+    if len(track) < 3:
+        w.append("doom track has %d steps: want 3 or more" % len(track))
+        return w, info
+    circle = doom.get("circle", True)
+    pairs = list(zip(track, track[1:])) + ([(track[-1], track[0])] if circle else [])
+    for a, b in pairs:
+        if b not in p.adj[a]:
+            w.append("doom track step %s > %s has no link: draw the path along linked rooms" % (a, b))
+    info.append("doom track: " + " > ".join(str(t) for t in track + ([track[0]] if circle else [])))
+    return w, info
+
+
+def lint_questions(p):
+    info = []
+    for k, r in p.rooms.items():
+        if r.get("answer"):
+            continue
+        terr = {str(t if not isinstance(t, dict) else t.get("name", "")).casefold() for t in r.get("terrain") or []}
+        if r.get("locked"):
+            info.append("open question: who locked %s, and who holds the key?" % k)
+        if "pit" in terr or "pit" in _dtags(r):
+            info.append("open question: what lies at the bottom of the pit in %s?" % k)
+        if r.get("secret"):
+            info.append("open question: who hid %s, and what for?" % k)
+        if k == p.goal:
+            info.append("open question: why is the goal %s at the centre of it all?" % k)
+    for a, b, at in p.link_attrs:
+        if at.get("answer"):
+            continue
+        if at.get("locked"):
+            info.append("open question: who locked the door %s - %s?" % (a, b))
+        if at.get("secret"):
+            info.append("open question: who built the hidden door %s - %s?" % (a, b))
+    return [], info
+
+
+def lint_omens(p, omens):
+    if not omens:
+        return [], []
+    have = {str(k).casefold() for k, v in omens.items() if v}
+    kinds = sorted({str(r["kind"]).casefold() for r in p.rooms.values() if r.get("kind")})
+    return ["site kind %s has no omens: give a sign that it is near" % k for k in kinds if k not in have], []
+
+
+def lint_portals(p):
+    w = []
+    for i, (a, b, at) in enumerate(p.link_attrs):
+        if not (at.get("oneway") and (at.get("portal") or at.get("shift") or _tagged(at, "portal", "shift"))):
+            continue
+        if p.rooms[b].get("return"):
+            continue
+        edges = {}
+        for j, (x, y, t) in enumerate(p.link_attrs):
+            if j == i:
+                continue
+            edges.setdefault(x, set()).add(y)
+            if not t.get("oneway"):
+                edges.setdefault(y, set()).add(x)
+        seen, todo = {b}, [b]
+        while todo:
+            for d in edges.get(todo.pop(), ()):
+                if d not in seen:
+                    seen.add(d)
+                    todo.append(d)
+        if a not in seen:
+            w.append("one-way portal %s > %s: %s states no return exit" % (a, b, b))
+    return w, []
+
+
+def lint_cue(p):
+    w = []
+    cues = {k: r["cue"] for k, r in p.rooms.items() if "cue" in r}
+    for k, v in cues.items():
+        if not isinstance(v, (int, float)) or not 0 <= v <= 5:
+            w.append("room %s cue %r: use 0-5" % (k, v))
+    start = p.main_entrance()
+    if not cues or start is None or p.goal not in p.rooms:
+        return w, []
+    path = p.path(start, p.goal) or []
+    seq = [(k, cues[k]) for k in path if isinstance(cues.get(k), (int, float))]
+    for (k1, c1), (k2, c2) in zip(seq, seq[1:]):
+        if c2 < c1:
+            w.append("cue drops from %s (%s) to %s (%s) on the way to the goal" % (k1, c1, k2, c2))
+    return w, []
+
+
 def map_names(d, p):
     names = {str(r["name"]) for r in p.rooms.values() if r.get("name")}
     n = _load(d, "names.json") or {}
@@ -607,7 +736,12 @@ def lint(d, landmarks=()):
                          ("layers", lint_layers(p, plan.get("layers"))),
                          ("terrain", lint_terrain(p, plan.get("terrain"))),
                          ("lair", lint_lair(p, plan.get("lair"))),
-                         ("locks", lint_locks(p, plan.get("locks")))):
+                         ("locks", lint_locks(p, plan.get("locks"))),
+                         ("hostile", lint_hostile(p, plan.get("hostile"))),
+                         ("doom", lint_doom(p, plan.get("doom"))),
+                         ("questions", lint_questions(p)),
+                         ("omens", lint_omens(p, plan.get("omens"))),
+                         ("portals", lint_portals(p)), ("cue", lint_cue(p))):
         res["warnings"] += [dict(check=name, text=t) for t in w]
         res["info"] += i
     return res
