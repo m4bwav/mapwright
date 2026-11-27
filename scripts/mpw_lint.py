@@ -719,6 +719,12 @@ def lint(d, landmarks=()):
     if rc is None:
         raise ValueError("no recipe.json in " + d)
     plan = rc.get("plan")
+    sb = _load(d, "sandbox.json")
+    if sb is not None:
+        import mpw_hexcrawl
+        sw = [dict(check="sandbox", text=t) for t in mpw_hexcrawl.sandbox_issues(sb)]
+        if not plan:
+            return dict(warnings=sw, info=["sandbox.json: %d keyed hexes" % len(sb.get("keys") or [])], escape=[])
     if not plan:
         res = dict(warnings=[], info=["recipe has no plan: nothing to lint"], escape=[])
         if landmarks:
@@ -744,4 +750,6 @@ def lint(d, landmarks=()):
                          ("portals", lint_portals(p)), ("cue", lint_cue(p))):
         res["warnings"] += [dict(check=name, text=t) for t in w]
         res["info"] += i
+    if sb is not None:
+        res["warnings"] += sw
     return res

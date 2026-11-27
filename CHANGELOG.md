@@ -4,6 +4,11 @@ Every change to [skills/mapwright/SKILL.md](skills/mapwright/SKILL.md) and its c
 
 Entry shape: `### C-YYYYMMDD-n · date · one-line summary`, then `because:`, `files:`, and a sentence on what changed.
 
+### C-20261126-8 · 2026-11-26 · 0.36.0: gen hexcrawl, a fantasy wilderness hex sandbox with a sandbox.json kit and its lint
+- because: RPG book harvest verdict, Points of Light (Robert Conley and Dwayne Gillingham, Goodman Games; pp. 1-2 four-digit column+row hex IDs and multi-hex features listed A-Z, p. 2 partial keying on purpose and the five-part kit, p. 5 per-hex region hazards, p. 19 landmark sight in hexes, p. 41 apex creatures as a soft level gate). Format idea only; terrain, hazard, predator and site word lists are our own, no setting names. Unverified against play.
+- files: scripts/mpw_hexcrawl.py, scripts/mpw_space.py, scripts/mpw_lint.py, scripts/mpw.py, tests/test_hexcrawl.py, skills/mapwright/SKILL.md, README.md, plugin.json, .claude-plugin/plugin.json
+- New `gen hexcrawl` kind (region-grown terrain, A-Z features, `--keyed` share, rumor and encounter slots) with check bars (kit lints clean, connected features, each lettered once, keyed share within one hex, byte-identical regen); `lint` now checks a `sandbox.json`. Tests: 407 pass, 2 skip (8 new).
+
 ### C-20261126-7 · 2026-11-26 · 0.35.0: lint checks hostile bases, doom tracks, open questions, omens, one-way portals and threat cues
 - because: RPG book harvest verdicts, CORE 1-2 (p. 19-21 a lethal zone with a warning cue, a baffle wall behind gates, a decoy room beside the prize), CORE 1-3 (p. 7, 19 a doom track drawn as a circle on the map), Dungeon Delves (p. 3, 6, 14 open questions tied to locked doors, pits, hidden doors and the centre), Booklet of Infinite Horrors (p. 4 omens per site type), Devils in the Details (p. 5, 8, 26 a one-way shift needs a stated way back) and For Whom the Bell Tolls (p. 8, 22, 30 a 0-5 threat cue that rises toward the goal). Ideas only, code written fresh; unverified against play.
 - files: scripts/mpw_lint.py, tests/test_lint_r2s3.py, skills/mapwright/SKILL.md, README.md, scripts/mpw.py, plugin.json, .claude-plugin/plugin.json

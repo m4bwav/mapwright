@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
-VERSION = "0.35.0"
+VERSION = "0.36.0"
 
 # ---------------------------------------------------------------- ellipsoids
 ELLIPSOIDS = {
@@ -1423,13 +1423,16 @@ def _space():
     return mpw_space
 
 
-SPACE = ("sector", "system", "planet", "deck")
+SPACE = ("sector", "system", "planet", "deck", "hexcrawl")
 
 
 def cmd_gen_space(a):
     S = _space()
     try:
-        if a.what == "sector":
+        if a.what == "hexcrawl":
+            import mpw_hexcrawl
+            r = mpw_hexcrawl.gen_hexcrawl(a.seed, a.out, a.cols, a.rows, a.keyed, a.miles, VERSION, a.name_style)
+        elif a.what == "sector":
             r = S.gen_sector(a.seed, a.out, a.size, a.density, a.jump, a.real, a.radius_pc, VERSION, a.name_style,
                              a.systems, a.hazards or 0)
         elif a.what == "system":
@@ -1448,6 +1451,9 @@ def cmd_gen_space(a):
         die(str(e))
     if a.json:
         print(json.dumps(r, indent=1))
+    elif a.what == "hexcrawl":
+        print("wrote %s: %s, %d hexes, %d features, %d keyed (%d landmarks) in %.2f s"
+              % (r["out"], r["name"], r["hexes"], r["features"], r["keyed"], r["landmarks"], r["times"]["total"]))
     elif a.what == "sector":
         print("wrote %s: %s, %d worlds, %d routes (%d long) in %.2f s"
               % (r["out"], r["name"], r["worlds"], r["routes"], r["long"], r["times"]["total"]))
@@ -2322,10 +2328,17 @@ def build_parser():
     dk.add_argument("--h", type=int, default=21, help="beam in 1.5 m squares")
     dk.add_argument("--decks", type=int, default=2)
     dk.add_argument("--pps", type=int, default=16, help="pixels per square in map.svg")
-    for x in (sc, sy, pl, dk):
+    hc = gs.add_parser("hexcrawl", help="fantasy wilderness hex map: terrain features lettered A-Z, about a third of "
+                       "hexes keyed, hazards and top predators per terrain, landmark sight; writes sandbox.json")
+    hc.add_argument("--seed", type=int, default=1)
+    hc.add_argument("--cols", type=int, default=20, help="hex columns (6-60)")
+    hc.add_argument("--rows", type=int, default=16, help="hex rows (6-60)")
+    hc.add_argument("--keyed", type=float, default=0.33, help="share of land hexes keyed (0.05-0.9)")
+    hc.add_argument("--miles", type=int, default=6, help="miles per hex, printed on the map")
+    for x in (sc, sy, pl, dk, hc):
         x.add_argument("--out", required=True)
         x.add_argument("--json", action="store_true")
-    for x in (sc, sy, dk):
+    for x in (sc, sy, dk, hc):
         x.add_argument("--name-style", help="name sound pattern (`names --list`)")
     for x in (c, d, b):
         x.add_argument("--out", required=True)
@@ -2405,7 +2418,7 @@ def build_parser():
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_check)
 
-    s = sub.add_parser("lint", help="design warnings on a recipe's optional room plan: entrances, danger by "
+    s = sub.add_parser("lint", help="design warnings on a recipe's optional room plan or sandbox.json: entrances, danger by "
                        "distance, level routes, empty share, terrain, five-room roles, tavern layout, "
                        "landmarks, treasure escape distance")
     s.add_argument("dir", help="recipe folder")
